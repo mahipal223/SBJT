@@ -1,0 +1,10 @@
+{
+  "tables": 47,
+  "tenantTables": 35,
+  "foreignKeys": 91,
+  "paths": 87,
+  "operations": 104,
+  "schemas": 110,
+  "referencesChecked": 1233,
+  "errors": []
+}

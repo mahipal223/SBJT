@@ -1,0 +1,1076 @@
+[
+  {
+    "schema": "auth",
+    "name": "Users",
+    "cols": [
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "Subject nvarchar(200) NOT NULL",
+      "Email nvarchar(254) NOT NULL",
+      "NormalizedEmail nvarchar(254) NOT NULL",
+      "FullName nvarchar(200) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Active' CHECK (Status IN ('Active','Disabled'))",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (Id)",
+      "UNIQUE (Subject)",
+      "UNIQUE (NormalizedEmail)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "auth",
+    "name": "Roles",
+    "cols": [
+      "Code nvarchar(32) NOT NULL",
+      "Name nvarchar(80) NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (Code)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "auth",
+    "name": "Permissions",
+    "cols": [
+      "Code nvarchar(80) NOT NULL",
+      "Description nvarchar(300) NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (Code)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "auth",
+    "name": "RolePermissions",
+    "cols": [
+      "RoleCode nvarchar(32) NOT NULL",
+      "PermissionCode nvarchar(80) NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (RoleCode,PermissionCode)",
+      "FOREIGN KEY (RoleCode) REFERENCES auth.Roles(Code)",
+      "FOREIGN KEY (PermissionCode) REFERENCES auth.Permissions(Code)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "platform",
+    "name": "Businesses",
+    "cols": [
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "Name nvarchar(200) NOT NULL",
+      "Industry varchar(32) NOT NULL DEFAULT 'Other' CHECK (Industry IN ('Plumbing','AutoService','Electrical','Other'))",
+      "Status varchar(32) NOT NULL DEFAULT 'Active' CHECK (Status IN ('Active','Suspended','DeletionPending','Closed'))",
+      "TimeZone nvarchar(80) NOT NULL",
+      "Currency char(3) NOT NULL DEFAULT 'USD' CHECK (Currency='USD')",
+      "BillingEmail nvarchar(254) NOT NULL",
+      "Settings nvarchar(max) NULL CHECK (ISJSON(Settings)=1)",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (Id)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "app",
+    "name": "Members",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "UserId uniqueidentifier NOT NULL",
+      "RoleCode nvarchar(32) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Active' CHECK (Status IN ('Active','Inactive'))",
+      "DeactivatedAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (UserId) REFERENCES auth.Users(Id)",
+      "FOREIGN KEY (RoleCode) REFERENCES auth.Roles(Code)",
+      "UNIQUE (BusinessId,UserId)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Invitations",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "Email nvarchar(254) NOT NULL",
+      "NormalizedEmail nvarchar(254) NOT NULL",
+      "RoleCode nvarchar(32) NOT NULL",
+      "TokenHash binary(32) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Pending' CHECK (Status IN ('Pending','Accepted','Revoked','Expired'))",
+      "InvitedByMemberId uniqueidentifier NOT NULL",
+      "AcceptedByUserId uniqueidentifier NULL",
+      "ExpiresAt datetime2(3) NOT NULL",
+      "AcceptedAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,InvitedByMemberId) REFERENCES app.Members(BusinessId,Id)",
+      "FOREIGN KEY (AcceptedByUserId) REFERENCES auth.Users(Id)",
+      "FOREIGN KEY (RoleCode) REFERENCES auth.Roles(Code)",
+      "CHECK (RoleCode IN ('Manager','Technician'))",
+      "UNIQUE (TokenHash)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "platform",
+    "name": "Plans",
+    "cols": [
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "Code nvarchar(40) NOT NULL",
+      "Revision int NOT NULL CHECK (Revision>0)",
+      "Name nvarchar(100) NOT NULL",
+      "BillingInterval varchar(32) NOT NULL DEFAULT 'Month' CHECK (BillingInterval IN ('Month','Year'))",
+      "Price decimal(19,2) NOT NULL DEFAULT 0 CHECK (Price >= 0)",
+      "Currency char(3) NOT NULL DEFAULT 'USD'",
+      "ProviderPriceId nvarchar(200) NULL",
+      "IsPublished bit NOT NULL DEFAULT 0",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (Id)",
+      "UNIQUE (Code,Revision,BillingInterval)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "platform",
+    "name": "PlanEntitlements",
+    "cols": [
+      "PlanId uniqueidentifier NOT NULL",
+      "FeatureCode nvarchar(60) NOT NULL",
+      "Enabled bit NOT NULL DEFAULT 1",
+      "LimitValue bigint NULL CHECK (LimitValue IS NULL OR LimitValue>=0)",
+      "DisplayText nvarchar(200) NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (PlanId,FeatureCode)",
+      "FOREIGN KEY (PlanId) REFERENCES platform.Plans(Id)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "app",
+    "name": "Subscriptions",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "PlanId uniqueidentifier NOT NULL",
+      "ProviderCustomerId nvarchar(200) NULL",
+      "ProviderSubscriptionId nvarchar(200) NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Trialing' CHECK (Status IN ('Trialing','Active','PastDue','ReadOnly','Ended'))",
+      "TrialEndsAt datetime2(3) NULL",
+      "PeriodStartsAt datetime2(3) NOT NULL",
+      "PeriodEndsAt datetime2(3) NOT NULL",
+      "GraceEndsAt datetime2(3) NULL",
+      "CancelAtPeriodEnd bit NOT NULL DEFAULT 0",
+      "IsCurrent bit NOT NULL DEFAULT 1",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (PlanId) REFERENCES platform.Plans(Id)",
+      "CHECK (PeriodEndsAt>PeriodStartsAt)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "PlanChanges",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "SubscriptionId uniqueidentifier NOT NULL",
+      "TargetPlanId uniqueidentifier NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Pending' CHECK (Status IN ('Pending','Applied','Blocked','Cancelled'))",
+      "EffectiveAt datetime2(3) NOT NULL",
+      "BlockedReason nvarchar(500) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,SubscriptionId) REFERENCES app.Subscriptions(BusinessId,Id)",
+      "FOREIGN KEY (TargetPlanId) REFERENCES platform.Plans(Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "SubscriptionInvoices",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "SubscriptionId uniqueidentifier NOT NULL",
+      "ProviderInvoiceId nvarchar(200) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Open' CHECK (Status IN ('Open','Paid','Void','Uncollectible'))",
+      "Total decimal(19,2) NOT NULL DEFAULT 0 CHECK (Total >= 0)",
+      "Currency char(3) NOT NULL DEFAULT 'USD'",
+      "DueAt datetime2(3) NULL",
+      "PaidAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,SubscriptionId) REFERENCES app.Subscriptions(BusinessId,Id)",
+      "UNIQUE (ProviderInvoiceId)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "UsageCounters",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "FeatureCode nvarchar(60) NOT NULL",
+      "PeriodStartsAt datetime2(3) NOT NULL",
+      "PeriodEndsAt datetime2(3) NOT NULL",
+      "UsedQuantity bigint NOT NULL DEFAULT 0 CHECK (UsedQuantity>=0)",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "UNIQUE (BusinessId,FeatureCode,PeriodStartsAt)",
+      "CHECK (PeriodEndsAt>PeriodStartsAt)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Customers",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "Name nvarchar(200) NOT NULL",
+      "CompanyName nvarchar(200) NULL",
+      "Email nvarchar(254) NULL",
+      "Phone nvarchar(32) NULL",
+      "CustomerType varchar(32) NOT NULL DEFAULT 'Residential' CHECK (CustomerType IN ('Residential','Commercial'))",
+      "ArchivedAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Locations",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "CustomerId uniqueidentifier NOT NULL",
+      "Label nvarchar(100) NOT NULL",
+      "AddressLine1 nvarchar(200) NOT NULL",
+      "AddressLine2 nvarchar(200) NULL",
+      "City nvarchar(100) NOT NULL",
+      "StateCode char(2) NOT NULL",
+      "PostalCode nvarchar(10) NOT NULL",
+      "CountryCode char(2) NOT NULL DEFAULT 'US'",
+      "ArchivedAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,CustomerId) REFERENCES app.Customers(BusinessId,Id)",
+      "UNIQUE (BusinessId,CustomerId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Assets",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "CustomerId uniqueidentifier NOT NULL",
+      "AssetType nvarchar(40) NOT NULL",
+      "Label nvarchar(200) NOT NULL",
+      "VinOrSerial nvarchar(100) NULL",
+      "Details nvarchar(max) NULL CHECK (ISJSON(Details)=1)",
+      "ArchivedAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,CustomerId) REFERENCES app.Customers(BusinessId,Id)",
+      "UNIQUE (BusinessId,CustomerId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "CatalogItems",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "ItemType varchar(32) NOT NULL DEFAULT 'Service' CHECK (ItemType IN ('Service','Labor','Part'))",
+      "Name nvarchar(200) NOT NULL",
+      "Unit nvarchar(32) NOT NULL",
+      "UnitCost decimal(19,2) NOT NULL DEFAULT 0 CHECK (UnitCost >= 0)",
+      "UnitPrice decimal(19,4) NOT NULL DEFAULT 0 CHECK (UnitPrice>=0)",
+      "TaxCategory nvarchar(80) NULL",
+      "ArchivedAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "NumberSequences",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "DocumentType nvarchar(30) NOT NULL",
+      "NextValue bigint NOT NULL DEFAULT 1 CHECK (NextValue>0)",
+      "Prefix nvarchar(30) NOT NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "UNIQUE (BusinessId,DocumentType)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Jobs",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "CustomerId uniqueidentifier NOT NULL",
+      "LocationId uniqueidentifier NULL",
+      "AssetId uniqueidentifier NULL",
+      "JobNumber nvarchar(40) NOT NULL",
+      "Title nvarchar(200) NOT NULL",
+      "Description nvarchar(max) NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Draft' CHECK (Status IN ('Draft','Scheduled','InProgress','OnHold','Completed','Cancelled'))",
+      "Priority varchar(32) NOT NULL DEFAULT 'Normal' CHECK (Priority IN ('Normal','High','Emergency'))",
+      "CreatedByMemberId uniqueidentifier NOT NULL",
+      "IndustryDetails nvarchar(max) NULL CHECK (ISJSON(IndustryDetails)=1)",
+      "CompletedAt datetime2(3) NULL",
+      "CancelledAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,CustomerId) REFERENCES app.Customers(BusinessId,Id)",
+      "FOREIGN KEY (BusinessId,CustomerId,LocationId) REFERENCES app.Locations(BusinessId,CustomerId,Id)",
+      "FOREIGN KEY (BusinessId,CustomerId,AssetId) REFERENCES app.Assets(BusinessId,CustomerId,Id)",
+      "FOREIGN KEY (BusinessId,CreatedByMemberId) REFERENCES app.Members(BusinessId,Id)",
+      "UNIQUE (BusinessId,JobNumber)",
+      "UNIQUE (BusinessId,CustomerId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "JobAssignments",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "MemberId uniqueidentifier NOT NULL",
+      "IsActive bit NOT NULL DEFAULT 1",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,JobId) REFERENCES app.Jobs(BusinessId,Id)",
+      "FOREIGN KEY (BusinessId,MemberId) REFERENCES app.Members(BusinessId,Id)",
+      "UNIQUE (BusinessId,JobId,MemberId)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Appointments",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "StartsAt datetime2(3) NOT NULL",
+      "EndsAt datetime2(3) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Scheduled' CHECK (Status IN ('Scheduled','Completed','Cancelled'))",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,JobId) REFERENCES app.Jobs(BusinessId,Id)",
+      "CHECK (EndsAt>StartsAt)",
+      "UNIQUE (BusinessId,JobId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "AppointmentStaff",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "AppointmentId uniqueidentifier NOT NULL",
+      "MemberId uniqueidentifier NOT NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,JobId,AppointmentId) REFERENCES app.Appointments(BusinessId,JobId,Id)",
+      "FOREIGN KEY (BusinessId,JobId,MemberId) REFERENCES app.JobAssignments(BusinessId,JobId,MemberId)",
+      "UNIQUE (BusinessId,AppointmentId,MemberId)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "JobItems",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "CatalogItemId uniqueidentifier NULL",
+      "ItemType varchar(32) NOT NULL DEFAULT 'Service' CHECK (ItemType IN ('Service','Labor','Part'))",
+      "Description nvarchar(500) NOT NULL",
+      "Quantity decimal(12,3) NOT NULL CHECK (Quantity>0)",
+      "Unit nvarchar(32) NOT NULL",
+      "UnitPrice decimal(19,4) NOT NULL CHECK (UnitPrice>=0)",
+      "DiscountAmount decimal(19,2) NOT NULL DEFAULT 0 CHECK (DiscountAmount >= 0)",
+      "TaxAmount decimal(19,2) NOT NULL DEFAULT 0 CHECK (TaxAmount >= 0)",
+      "SortOrder int NOT NULL DEFAULT 0 CHECK (SortOrder>=0)",
+      "CHECK (DiscountAmount <= ROUND(Quantity*UnitPrice,2))",
+      "LineTotal AS CONVERT(decimal(19,2),ROUND(Quantity*UnitPrice,2)-DiscountAmount+TaxAmount) PERSISTED",
+      "UnitCost decimal(19,2) NOT NULL DEFAULT 0 CHECK (UnitCost >= 0)",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,JobId) REFERENCES app.Jobs(BusinessId,Id)",
+      "FOREIGN KEY (BusinessId,CatalogItemId) REFERENCES app.CatalogItems(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "TimeEntries",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "MemberId uniqueidentifier NOT NULL",
+      "StartsAt datetime2(3) NOT NULL",
+      "EndsAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,JobId) REFERENCES app.Jobs(BusinessId,Id)",
+      "FOREIGN KEY (BusinessId,MemberId) REFERENCES app.Members(BusinessId,Id)",
+      "CHECK (EndsAt IS NULL OR EndsAt>StartsAt)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "JobNotes",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "AuthorMemberId uniqueidentifier NOT NULL",
+      "Note nvarchar(max) NOT NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,JobId) REFERENCES app.Jobs(BusinessId,Id)",
+      "FOREIGN KEY (BusinessId,AuthorMemberId) REFERENCES app.Members(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "JobFiles",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "UploadedByMemberId uniqueidentifier NOT NULL",
+      "StorageKey nvarchar(450) NOT NULL",
+      "FileName nvarchar(255) NOT NULL",
+      "MimeType nvarchar(100) NOT NULL",
+      "SizeBytes bigint NOT NULL CHECK (SizeBytes>=0)",
+      "Status varchar(32) NOT NULL DEFAULT 'Pending' CHECK (Status IN ('Pending','Scanning','Ready','Rejected'))",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,JobId) REFERENCES app.Jobs(BusinessId,Id)",
+      "FOREIGN KEY (BusinessId,UploadedByMemberId) REFERENCES app.Members(BusinessId,Id)",
+      "UNIQUE (BusinessId,StorageKey)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "JobChecklistItems",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "Label nvarchar(300) NOT NULL",
+      "IsRequired bit NOT NULL DEFAULT 0",
+      "IsCompleted bit NOT NULL DEFAULT 0",
+      "CompletedByMemberId uniqueidentifier NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,JobId) REFERENCES app.Jobs(BusinessId,Id)",
+      "FOREIGN KEY (BusinessId,CompletedByMemberId) REFERENCES app.Members(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Estimates",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "EstimateNumber nvarchar(40) NOT NULL",
+      "Revision int NOT NULL DEFAULT 1 CHECK (Revision>0)",
+      "Status varchar(32) NOT NULL DEFAULT 'Draft' CHECK (Status IN ('Draft','Sent','Approved','Declined','Expired','Superseded'))",
+      "ValidUntil date NOT NULL",
+      "Currency char(3) NOT NULL DEFAULT 'USD'",
+      "Subtotal decimal(19,2) NOT NULL DEFAULT 0 CHECK (Subtotal >= 0)",
+      "DiscountTotal decimal(19,2) NOT NULL DEFAULT 0 CHECK (DiscountTotal >= 0)",
+      "TaxTotal decimal(19,2) NOT NULL DEFAULT 0 CHECK (TaxTotal >= 0)",
+      "Total decimal(19,2) NOT NULL DEFAULT 0 CHECK (Total >= 0)",
+      "CustomerSnapshot nvarchar(max) NULL CHECK (ISJSON(CustomerSnapshot)=1)",
+      "SentAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,JobId) REFERENCES app.Jobs(BusinessId,Id)",
+      "UNIQUE (BusinessId,EstimateNumber,Revision)",
+      "CHECK (Total=Subtotal-DiscountTotal+TaxTotal AND DiscountTotal<=Subtotal)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "EstimateItems",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "EstimateId uniqueidentifier NOT NULL",
+      "ItemType varchar(32) NOT NULL DEFAULT 'Service' CHECK (ItemType IN ('Service','Labor','Part'))",
+      "Description nvarchar(500) NOT NULL",
+      "Quantity decimal(12,3) NOT NULL CHECK (Quantity>0)",
+      "Unit nvarchar(32) NOT NULL",
+      "UnitPrice decimal(19,4) NOT NULL CHECK (UnitPrice>=0)",
+      "DiscountAmount decimal(19,2) NOT NULL DEFAULT 0 CHECK (DiscountAmount >= 0)",
+      "TaxAmount decimal(19,2) NOT NULL DEFAULT 0 CHECK (TaxAmount >= 0)",
+      "SortOrder int NOT NULL DEFAULT 0 CHECK (SortOrder>=0)",
+      "CHECK (DiscountAmount <= ROUND(Quantity*UnitPrice,2))",
+      "LineTotal AS CONVERT(decimal(19,2),ROUND(Quantity*UnitPrice,2)-DiscountAmount+TaxAmount) PERSISTED",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,EstimateId) REFERENCES app.Estimates(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "EstimateDecisions",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "EstimateId uniqueidentifier NOT NULL",
+      "Decision varchar(32) NOT NULL DEFAULT 'Approved' CHECK (Decision IN ('Approved','Declined'))",
+      "ApproverName nvarchar(200) NOT NULL",
+      "ApproverEmail nvarchar(254) NOT NULL",
+      "EvidenceReference nvarchar(450) NULL",
+      "DecidedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,EstimateId) REFERENCES app.Estimates(BusinessId,Id)",
+      "UNIQUE (BusinessId,EstimateId)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "PublicLinks",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "EstimateId uniqueidentifier NOT NULL",
+      "TokenHash binary(32) NOT NULL",
+      "ExpiresAt datetime2(3) NOT NULL",
+      "ConsumedAt datetime2(3) NULL",
+      "RevokedAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,EstimateId) REFERENCES app.Estimates(BusinessId,Id)",
+      "UNIQUE (TokenHash)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Invoices",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "JobId uniqueidentifier NOT NULL",
+      "CustomerId uniqueidentifier NOT NULL",
+      "InvoiceNumber nvarchar(40) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Draft' CHECK (Status IN ('Draft','Issued','Voided'))",
+      "DeliveryStatus varchar(32) NOT NULL DEFAULT 'NotSent' CHECK (DeliveryStatus IN ('NotSent','Queued','Sent','Failed'))",
+      "IssuedOn date NULL",
+      "DueOn date NULL",
+      "Currency char(3) NOT NULL DEFAULT 'USD'",
+      "Subtotal decimal(19,2) NOT NULL DEFAULT 0 CHECK (Subtotal >= 0)",
+      "DiscountTotal decimal(19,2) NOT NULL DEFAULT 0 CHECK (DiscountTotal >= 0)",
+      "TaxTotal decimal(19,2) NOT NULL DEFAULT 0 CHECK (TaxTotal >= 0)",
+      "Total decimal(19,2) NOT NULL DEFAULT 0 CHECK (Total >= 0)",
+      "BillingSnapshot nvarchar(max) NULL CHECK (ISJSON(BillingSnapshot)=1)",
+      "VoidReason nvarchar(500) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,CustomerId,JobId) REFERENCES app.Jobs(BusinessId,CustomerId,Id)",
+      "UNIQUE (BusinessId,InvoiceNumber)",
+      "CHECK (Total=Subtotal-DiscountTotal+TaxTotal AND DiscountTotal<=Subtotal)",
+      "CHECK (Status='Draft' OR (IssuedOn IS NOT NULL AND DueOn IS NOT NULL AND DueOn>=IssuedOn AND BillingSnapshot IS NOT NULL))"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "InvoiceItems",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "InvoiceId uniqueidentifier NOT NULL",
+      "ItemType varchar(32) NOT NULL DEFAULT 'Service' CHECK (ItemType IN ('Service','Labor','Part'))",
+      "Description nvarchar(500) NOT NULL",
+      "Quantity decimal(12,3) NOT NULL CHECK (Quantity>0)",
+      "Unit nvarchar(32) NOT NULL",
+      "UnitPrice decimal(19,4) NOT NULL CHECK (UnitPrice>=0)",
+      "DiscountAmount decimal(19,2) NOT NULL DEFAULT 0 CHECK (DiscountAmount >= 0)",
+      "TaxAmount decimal(19,2) NOT NULL DEFAULT 0 CHECK (TaxAmount >= 0)",
+      "SortOrder int NOT NULL DEFAULT 0 CHECK (SortOrder>=0)",
+      "CHECK (DiscountAmount <= ROUND(Quantity*UnitPrice,2))",
+      "LineTotal AS CONVERT(decimal(19,2),ROUND(Quantity*UnitPrice,2)-DiscountAmount+TaxAmount) PERSISTED",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,InvoiceId) REFERENCES app.Invoices(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Payments",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "InvoiceId uniqueidentifier NOT NULL",
+      "Amount decimal(19,2) NOT NULL CHECK (Amount>0)",
+      "Method varchar(32) NOT NULL DEFAULT 'Cash' CHECK (Method IN ('Cash','Check','BankTransfer','Card'))",
+      "Status varchar(32) NOT NULL DEFAULT 'Pending' CHECK (Status IN ('Pending','Succeeded','Failed'))",
+      "ExternalReference nvarchar(200) NULL",
+      "PaidAt datetime2(3) NULL",
+      "RecordedByMemberId uniqueidentifier NOT NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,InvoiceId) REFERENCES app.Invoices(BusinessId,Id)",
+      "FOREIGN KEY (BusinessId,RecordedByMemberId) REFERENCES app.Members(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "PaymentRefunds",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "PaymentId uniqueidentifier NOT NULL",
+      "Amount decimal(19,2) NOT NULL CHECK (Amount>0)",
+      "Status varchar(32) NOT NULL DEFAULT 'Pending' CHECK (Status IN ('Pending','Succeeded','Failed'))",
+      "Reason nvarchar(500) NOT NULL",
+      "ExternalReference nvarchar(200) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,PaymentId) REFERENCES app.Payments(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "CreditNotes",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "InvoiceId uniqueidentifier NOT NULL",
+      "CreditNumber nvarchar(40) NOT NULL",
+      "Amount decimal(19,2) NOT NULL CHECK (Amount>0)",
+      "Reason nvarchar(500) NOT NULL",
+      "CreatedByMemberId uniqueidentifier NOT NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,InvoiceId) REFERENCES app.Invoices(BusinessId,Id)",
+      "FOREIGN KEY (BusinessId,CreatedByMemberId) REFERENCES app.Members(BusinessId,Id)",
+      "UNIQUE (BusinessId,CreditNumber)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "ExportRequests",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "RequestedByMemberId uniqueidentifier NOT NULL",
+      "ExportType varchar(32) NOT NULL DEFAULT 'FullBusiness' CHECK (ExportType IN ('Customers','Jobs','Invoices','FullBusiness'))",
+      "Status varchar(32) NOT NULL DEFAULT 'Queued' CHECK (Status IN ('Queued','Running','Ready','Failed','Expired'))",
+      "Filters nvarchar(max) NULL CHECK (ISJSON(Filters)=1)",
+      "StorageKey nvarchar(450) NULL",
+      "ExpiresAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,RequestedByMemberId) REFERENCES app.Members(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "AuditEvents",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "ActorUserId uniqueidentifier NULL",
+      "Action nvarchar(100) NOT NULL",
+      "EntityType nvarchar(80) NOT NULL",
+      "EntityId uniqueidentifier NULL",
+      "CorrelationId nvarchar(100) NOT NULL",
+      "Changes nvarchar(max) NULL CHECK (ISJSON(Changes)=1)",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (ActorUserId) REFERENCES auth.Users(Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "Operations",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "RequestedByMemberId uniqueidentifier NULL",
+      "Kind nvarchar(80) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Queued' CHECK (Status IN ('Queued','Running','Ready','Failed'))",
+      "ResultReference nvarchar(450) NULL",
+      "FailureCode nvarchar(100) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (BusinessId,RequestedByMemberId) REFERENCES app.Members(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "OutboxMessages",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "EventType nvarchar(100) NOT NULL",
+      "Payload nvarchar(max) NOT NULL CHECK (ISJSON(Payload)=1)",
+      "ProcessedAt datetime2(3) NULL",
+      "Attempts int NOT NULL DEFAULT 0",
+      "NextAttemptAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "app",
+    "name": "IdempotencyRecords",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "ActorUserId uniqueidentifier NOT NULL",
+      "Operation nvarchar(120) NOT NULL",
+      "IdempotencyKey nvarchar(100) NOT NULL",
+      "RequestHash binary(32) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'InProgress' CHECK (Status IN ('InProgress','Completed'))",
+      "ResponseCode int NULL",
+      "ResponseJson nvarchar(max) NULL",
+      "ExpiresAt datetime2(3) NOT NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (ActorUserId) REFERENCES auth.Users(Id)",
+      "UNIQUE (BusinessId,ActorUserId,Operation,IdempotencyKey)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "platform",
+    "name": "WebhookEvents",
+    "cols": [
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "Provider nvarchar(40) NOT NULL",
+      "ProviderEventId nvarchar(200) NOT NULL",
+      "BusinessId uniqueidentifier NULL",
+      "PayloadHash binary(32) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Received' CHECK (Status IN ('Received','Processed','Failed'))",
+      "ReceivedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "ProcessedAt datetime2(3) NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (Id)",
+      "UNIQUE (Provider,ProviderEventId)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "platform",
+    "name": "Administrators",
+    "cols": [
+      "UserId uniqueidentifier NOT NULL",
+      "RoleCode varchar(32) NOT NULL DEFAULT 'Support' CHECK (RoleCode IN ('Support','BillingAdmin','OperationsAdmin'))",
+      "IsActive bit NOT NULL DEFAULT 1"
+    ],
+    "extras": [
+      "PRIMARY KEY (UserId)",
+      "FOREIGN KEY (UserId) REFERENCES auth.Users(Id)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "app",
+    "name": "SupportAccessGrants",
+    "cols": [
+      "BusinessId uniqueidentifier NOT NULL",
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "AdminUserId uniqueidentifier NOT NULL",
+      "ApprovedByMemberId uniqueidentifier NOT NULL",
+      "Scope varchar(32) NOT NULL DEFAULT 'ReadOnly' CHECK (Scope IN ('ReadOnly'))",
+      "ExpiresAt datetime2(3) NOT NULL",
+      "RevokedAt datetime2(3) NULL",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()",
+      "Version rowversion NOT NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (BusinessId,Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)",
+      "FOREIGN KEY (AdminUserId) REFERENCES platform.Administrators(UserId)",
+      "FOREIGN KEY (BusinessId,ApprovedByMemberId) REFERENCES app.Members(BusinessId,Id)"
+    ],
+    "tenant": true
+  },
+  {
+    "schema": "platform",
+    "name": "AdminAuditEvents",
+    "cols": [
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "ActorUserId uniqueidentifier NOT NULL",
+      "BusinessId uniqueidentifier NULL",
+      "Action nvarchar(100) NOT NULL",
+      "Details nvarchar(max) NULL CHECK (ISJSON(Details)=1)",
+      "CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()"
+    ],
+    "extras": [
+      "PRIMARY KEY (Id)",
+      "FOREIGN KEY (ActorUserId) REFERENCES auth.Users(Id)",
+      "FOREIGN KEY (BusinessId) REFERENCES platform.Businesses(Id)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "platform",
+    "name": "BackupRuns",
+    "cols": [
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "ProviderReference nvarchar(450) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Running' CHECK (Status IN ('Running','Succeeded','Failed'))",
+      "StartedAt datetime2(3) NOT NULL",
+      "CompletedAt datetime2(3) NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (Id)"
+    ],
+    "tenant": false
+  },
+  {
+    "schema": "platform",
+    "name": "RestoreRuns",
+    "cols": [
+      "Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+      "BackupRunId uniqueidentifier NOT NULL",
+      "RequestedByUserId uniqueidentifier NOT NULL",
+      "TargetEnvironment nvarchar(100) NOT NULL",
+      "Status varchar(32) NOT NULL DEFAULT 'Running' CHECK (Status IN ('Running','Succeeded','Failed'))",
+      "StartedAt datetime2(3) NOT NULL",
+      "CompletedAt datetime2(3) NULL"
+    ],
+    "extras": [
+      "PRIMARY KEY (Id)",
+      "FOREIGN KEY (BackupRunId) REFERENCES platform.BackupRuns(Id)",
+      "FOREIGN KEY (RequestedByUserId) REFERENCES auth.Users(Id)"
+    ],
+    "tenant": false
+  }
+]

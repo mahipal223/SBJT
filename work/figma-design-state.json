@@ -1,0 +1,17 @@
+{
+  "fileKey": "2oNJ4A732god5pxVDhuXuA",
+  "url": "https://www.figma.com/design/2oNJ4A732god5pxVDhuXuA",
+  "productName": "ServiceDesk (placeholder)",
+  "stack": "Angular and ASP.NET Core Web API",
+  "status": "Blocked by Figma Starter MCP tool-call limit",
+  "screens": [
+    {"name":"Overview","id":"5:47","visuallyChecked":true},
+    {"name":"Customers","id":"7:38","visuallyChecked":true},
+    {"name":"Jobs","id":"7:146","visuallyChecked":true},
+    {"name":"Create job","id":"8:110","visuallyChecked":false},
+    {"name":"Services and parts","id":"8:216","visuallyChecked":false}
+  ],
+  "sidebarComponentId": "3:2",
+  "remaining": ["Verify last two screens", "Invoice review", "Subscription and plan limits", "Team permissions", "Platform admin", "Technician mobile view", "Other module screens and interaction states"],
+  "notes": "Material 3 Button set key ab924dce8b851fd820bd0d56da24a9c489311ae6 must be imported on each call; previous imported IDs may not persist. Bind nested Content fill to primary, clear root instance fill. Horizontal auto-layout frames require primary FIXED and counter AUTO for fixed width and hug height. Local ServiceDesk variables and text styles use Inter."
+}

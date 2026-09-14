@@ -1,0 +1,35 @@
+{
+  "sql": [
+    {
+      "file": "01-schema.sql",
+      "errorCount": 0,
+      "errors": []
+    },
+    {
+      "file": "02-tenant-security.sql",
+      "errorCount": 0,
+      "errors": []
+    },
+    {
+      "file": "03-reference-data.sql",
+      "errorCount": 0,
+      "errors": []
+    },
+    {
+      "file": "04-document-guards.sql",
+      "errorCount": 0,
+      "errors": []
+    },
+    {
+      "file": "05-isolation-smoke-tests.sql",
+      "errorCount": 0,
+      "errors": []
+    }
+  ],
+  "openApi": {
+    "errorCount": 0,
+    "warningCount": 0,
+    "paths": 87
+  },
+  "databaseExecution": "Not run: local Windows authentication failed"
+}
