@@ -2,6 +2,8 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 
+import { isAuth0Configured } from '../app.config';
+
 /**
  * AuthService wraps Auth0 when configured and falls back to the development
  * mock when Auth0 credentials are not yet filled in.
@@ -24,7 +26,7 @@ export class AuthService {
   private readonly _auth0Email      = signal<string | null>(sessionStorage.getItem('sd.email'));
   private readonly _auth0FullName   = signal<string | null>(sessionStorage.getItem('sd.fullName'));
 
-  readonly isAuth0Mode = !localStorage.getItem('servicedesk.userId') || !!sessionStorage.getItem('sd.userId');
+  readonly isAuth0Mode = isAuth0Configured && (!localStorage.getItem('servicedesk.userId') || !!sessionStorage.getItem('sd.userId'));
 
   readonly userId     = computed(() => this._auth0UserId()     ?? this._devUserId());
   readonly businessId = computed(() => this._auth0BusinessId() ?? this._devBusinessId());

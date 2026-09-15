@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
+using ServiceDesk.Api.Security;
 using ServiceDesk.Application.Abstractions;
 using ServiceDesk.Application.Security;
 using ServiceDesk.Infrastructure.Tenancy;
@@ -13,6 +14,16 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
         IMembershipResolver membershipResolver,
         TenantContextAccessor tenantContextAccessor)
     {
+        var endpoint = httpContext.GetEndpoint();
+        var isPlatformEndpoint = endpoint?.Metadata.GetMetadata<PlatformEndpointAttribute>() is not null
+                                 || httpContext.Request.Path.StartsWithSegments("/api/v1/admin");
+
+        if (isPlatformEndpoint)
+        {
+            await next(httpContext);
+            return;
+        }
+
         if (!httpContext.Request.RouteValues.TryGetValue("businessId", out var value))
         {
             await next(httpContext);

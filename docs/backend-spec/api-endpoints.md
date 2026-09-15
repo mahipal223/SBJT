@@ -106,11 +106,15 @@ Malformed or reversed windows return `400 validation_failed` before creating a j
 | POST | /businesses/{businessId}/support-grants | support.approve | SupportGrantInput | SupportGrant |
 | POST | /businesses/{businessId}/support-grants/{grantId}/revoke | support.approve | — | CommandResult |
 | POST | /webhooks/subscription-billing | verified provider signature | — | WebhookAck |
-| GET | /admin/businesses | platform:Support OR BillingAdmin OR OperationsAdmin | — | BusinessPage |
-| PATCH | /admin/businesses/{businessId}/status | platform:OperationsAdmin | UpdateBusinessStatus | Business |
+| GET | /admin/me | platform:Support | — | PlatformOperator |
+| GET | /admin/businesses | platform:Support | — | BusinessPage |
+| GET | /admin/businesses/{businessId} | platform:Support | — | Business |
+| PATCH | /admin/businesses/{businessId}/status | platform:OperationsAdmin | UpdateBusinessStatus | CommandResult |
+| GET | /admin/plans | platform:BillingAdmin | — | PlanPage |
 | POST | /admin/plans | platform:BillingAdmin | CreatePlan | Plan |
 | GET | /admin/metrics | platform:OperationsAdmin | — | PlatformMetrics |
 | GET | /admin/backups | platform:OperationsAdmin | — | BackupRunPage |
 | POST | /admin/restores | platform:OperationsAdmin | RestoreRequest | AsyncOperation |
 | GET | /admin/restores/{restoreId} | platform:OperationsAdmin | — | OperationStatus |
+| GET | /admin/audit-events | platform:OperationsAdmin | — | PlatformAdminAuditEventPage |
 | GET | /businesses/{businessId}/subscription/invoices | subscription.manage | — | SubscriptionInvoicePage |

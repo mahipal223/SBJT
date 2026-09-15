@@ -17,10 +17,14 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("ServiceDesk");
+        var platformConnectionString = configuration.GetConnectionString("PlatformAdmin");
+        services.AddScoped<IAdministratorResolver, DbAdministratorResolver>();
+
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
             services.AddScoped(serviceProvider => new BaseDAL(
                 connectionString,
+                platformConnectionString,
                 serviceProvider.GetRequiredService<ILogger<BaseDAL>>()));
             services.AddScoped<IBusinessService, BusinessService>();
             services.AddScoped<IWorkStore, WorkService>();

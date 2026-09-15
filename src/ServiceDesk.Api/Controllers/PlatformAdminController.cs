@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ServiceDesk.Api.Security;
 using ServiceDesk.Application.Platform;
 using ServiceDesk.Application.Security;
 
@@ -10,9 +11,36 @@ namespace ServiceDesk.Api.Controllers;
 /// Route prefix: /api/v1/admin  (no businessId — these are cross-tenant).
 /// </summary>
 [ApiController]
+[PlatformEndpoint]
 [Route("api/v1/admin")]
-public sealed class PlatformAdminController(IPlatformAdminService platformAdmin) : ControllerBase
+public sealed class PlatformAdminController(
+    IPlatformAdminService platformAdmin,
+    IPlatformContextAccessor platformContextAccessor) : ControllerBase
 {
+    // ─── Current operator ───────────────────────────────────────────────────
+
+    [HttpGet("me")]
+    [Authorize(Policy = Permissions.PlatformSupport)]
+    public ActionResult<PlatformOperatorResponse> GetCurrentOperator()
+    {
+        var current = platformContextAccessor.Current;
+        if (current is null)
+        {
+            return Problem(
+                statusCode: 403,
+                title: "Forbidden",
+                detail: "Platform administrator access denied.",
+                extensions: new Dictionary<string, object?> { ["code"] = "forbidden" });
+        }
+
+        return Ok(new PlatformOperatorResponse(
+            current.OperatorUserId,
+            current.FullName,
+            current.Email,
+            current.RoleCode,
+            current.Permissions.ToList()));
+    }
+
     // ─── Businesses ─────────────────────────────────────────────────────────
 
     [HttpGet("businesses")]
@@ -55,8 +83,7 @@ public sealed class PlatformAdminController(IPlatformAdminService platformAdmin)
             return Problem(statusCode: 400, title: "Validation failed", detail: "A reason is required when changing business status.", extensions: new Dictionary<string, object?> { ["code"] = "validation_failed" });
         }
 
-        // Platform admin actor — use a well-known development identity or extract from claims in production
-        var actorUserId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var actorUserId = platformContextAccessor.Current?.OperatorUserId ?? Guid.Empty;
         await platformAdmin.UpdateBusinessStatusAsync(businessId, actorUserId, request, cancellationToken);
         return NoContent();
     }
@@ -88,7 +115,7 @@ public sealed class PlatformAdminController(IPlatformAdminService platformAdmin)
         CreatePlatformPlanRequest request,
         CancellationToken cancellationToken)
     {
-        var actorUserId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var actorUserId = platformContextAccessor.Current?.OperatorUserId ?? Guid.Empty;
         var plan = await platformAdmin.CreatePlanAsync(actorUserId, request, cancellationToken);
         return CreatedAtAction(nameof(GetPlans), plan);
     }
@@ -111,7 +138,7 @@ public sealed class PlatformAdminController(IPlatformAdminService platformAdmin)
         CreateRestoreRequest request,
         CancellationToken cancellationToken)
     {
-        var actorUserId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var actorUserId = platformContextAccessor.Current?.OperatorUserId ?? Guid.Empty;
         var restore = await platformAdmin.CreateRestoreRunAsync(actorUserId, request, cancellationToken);
         return CreatedAtAction(nameof(GetRestoreRun), new { restoreId = restore.Id }, restore);
     }

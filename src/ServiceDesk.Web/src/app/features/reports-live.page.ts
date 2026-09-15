@@ -8,22 +8,22 @@ import { AuditEvent, BusinessReport, ExportRequest, WorkApiService } from '../co
   standalone: true,
   imports: [CommonModule, FormsModule, CurrencyPipe, DatePipe],
   template: `
-    <div class="page reports-page" style="padding-bottom: 6rem;">
+    <main class="page" style="padding-bottom: 5rem;">
       <!-- Header & Filter Bar -->
-      <div class="header-row">
+      <header class="page-head">
         <div>
-          <span class="eyebrow">Financial Analytics & Data Controls</span>
-          <h1 class="page-title">Reports & Workspace Intelligence</h1>
-          <p class="subtitle">Live SQL performance analytics, tenant CSV exports, and immutable audit logs.</p>
+          <p class="eyebrow">Financial Analytics & Data Controls</p>
+          <h1>Reports & Workspace Intelligence</h1>
+          <p>Live SQL performance analytics, tenant CSV exports, and immutable audit logs.</p>
         </div>
-        <div class="filter-controls">
+        <div class="page-actions" style="align-items: center;">
           <div class="period-buttons">
-            <button class="btn btn-sm" [ngClass]="period() === '30' ? 'btn-primary' : 'btn-secondary'" (click)="setPeriod('30')">Last 30 Days</button>
-            <button class="btn btn-sm" [ngClass]="period() === '90' ? 'btn-primary' : 'btn-secondary'" (click)="setPeriod('90')">Last 90 Days</button>
-            <button class="btn btn-sm" [ngClass]="period() === 'month' ? 'btn-primary' : 'btn-secondary'" (click)="setPeriod('month')">This Month</button>
-            <button class="btn btn-sm" [ngClass]="period() === 'ytd' ? 'btn-primary' : 'btn-secondary'" (click)="setPeriod('ytd')">Year to Date</button>
+            <button class="btn small" [class.primary]="period() === '30'" (click)="setPeriod('30')">Last 30 Days</button>
+            <button class="btn small" [class.primary]="period() === '90'" (click)="setPeriod('90')">Last 90 Days</button>
+            <button class="btn small" [class.primary]="period() === 'month'" (click)="setPeriod('month')">This Month</button>
+            <button class="btn small" [class.primary]="period() === 'ytd'" (click)="setPeriod('ytd')">Year to Date</button>
           </div>
-          <button class="btn btn-secondary btn-sm" (click)="loadReport()" [disabled]="loading()">
+          <button class="btn small" (click)="loadReport()" [disabled]="loading()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px">
               <polyline points="23 4 23 10 17 10"></polyline>
               <polyline points="1 20 1 14 7 14"></polyline>
@@ -32,20 +32,16 @@ import { AuditEvent, BusinessReport, ExportRequest, WorkApiService } from '../co
             Refresh
           </button>
         </div>
-      </div>
+      </header>
 
-      <!-- Navigation Tabs: Reports vs Data Controls vs Audit Trail -->
-      <div class="tab-bar">
-        <button class="tab-btn" [class.active]="activeTab() === 'analytics'" (click)="activeTab.set('analytics')">
-          📈 Analytics & KPIs
-        </button>
-        <button class="tab-btn" [class.active]="activeTab() === 'exports'" (click)="activeTab.set('exports')">
-          📦 CSV Data Exports
-        </button>
-        <button class="tab-btn" [class.active]="activeTab() === 'audit'" (click)="activeTab.set('audit')">
-          🛡️ Audit Trail Log
-        </button>
-      </div>
+      <!-- Tab navigation -->
+      <nav class="tabs" style="margin-bottom: 1.5rem;">
+        @for (t of tabs; track t.id) {
+          <a [class.active]="activeTab() === t.id" (click)="activeTab.set(t.id)" style="cursor: pointer;">
+            <span>{{ t.icon }}</span> {{ t.label }}
+          </a>
+        }
+      </nav>
 
       @if (errorMessage()) {
         <div class="callout error-text" style="margin-bottom: 22px;">
@@ -374,59 +370,20 @@ import { AuditEvent, BusinessReport, ExportRequest, WorkApiService } from '../co
           }
         </div>
       }
-    </div>
+    </main>
   `,
   styles: [`
-    .reports-page {
-      max-width: 1360px;
-      margin: 0 auto;
-    }
     .card-head h2 { font-size: 16px; }
-    .header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 24px;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .filter-controls {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
     .period-buttons {
       display: flex;
-      gap: 6px;
+      gap: 4px;
       background: var(--surface);
       padding: 3px;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
     }
-    .tab-bar {
-      display: flex;
-      gap: 8px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 24px;
-    }
-    .tab-btn {
-      padding: 10px 18px;
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      font-size: 14px;
+    .period-buttons .btn {
       font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .tab-btn:hover {
-      color: var(--text);
-    }
-    .tab-btn.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
     }
     .kpi-grid {
       display: grid;
@@ -745,13 +702,18 @@ import { AuditEvent, BusinessReport, ExportRequest, WorkApiService } from '../co
     @media (max-width: 600px) {
       .kpi-grid { grid-template-columns: 1fr; }
       .aging-grid { grid-template-columns: 1fr; }
-      .header-row { flex-direction: column; align-items: stretch; }
       .period-buttons { flex-wrap: wrap; }
     }
   `]
 })
 export class ReportsLivePage implements OnInit {
   private readonly api = inject(WorkApiService);
+
+  readonly tabs: { id: 'analytics' | 'exports' | 'audit'; label: string; icon: string }[] = [
+    { id: 'analytics', label: 'Analytics & KPIs', icon: '📈' },
+    { id: 'exports', label: 'CSV Data Exports', icon: '📦' },
+    { id: 'audit', label: 'Audit Trail Log', icon: '🛡' }
+  ];
 
   readonly activeTab = signal<'analytics' | 'exports' | 'audit'>('analytics');
   readonly period = signal('30');

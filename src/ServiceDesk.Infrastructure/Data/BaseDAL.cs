@@ -12,8 +12,23 @@ namespace ServiceDesk.Infrastructure.Data;
 /// Provides shared, tenant-safe SQL Server mechanics for Infrastructure feature services.
 /// Business SQL stays beside the feature service method that executes and maps it.
 /// </summary>
-public sealed class BaseDAL(string connectionString, ILogger<BaseDAL> logger)
+public sealed class BaseDAL
 {
+    public BaseDAL(string connectionString, ILogger<BaseDAL> logger)
+        : this(connectionString, null, logger)
+    {
+    }
+
+    public BaseDAL(string connectionString, string? platformConnectionString, ILogger<BaseDAL> logger)
+    {
+        this.connectionString = connectionString;
+        this.platformConnectionString = platformConnectionString;
+        this.logger = logger;
+    }
+
+    private readonly string connectionString;
+    private readonly string? platformConnectionString;
+    private readonly ILogger<BaseDAL> logger;
     private const int DefaultCommandTimeoutSeconds = 30;
     private static readonly Action<ILogger, string, long, Exception?> OperationCompleted =
         LoggerMessage.Define<string, long>(
@@ -221,10 +236,15 @@ public sealed class BaseDAL(string connectionString, ILogger<BaseDAL> logger)
 
     private async Task<SqlConnection> OpenPlatformConnectionAsync(CancellationToken cancellationToken)
     {
-        var connection = new SqlConnection(connectionString);
+        var targetConnectionString = !string.IsNullOrWhiteSpace(platformConnectionString)
+            ? platformConnectionString
+            : connectionString;
+
+        var connection = new SqlConnection(targetConnectionString);
         try
         {
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            await ClearTenantContextAsync(connection, cancellationToken).ConfigureAwait(false);
             return connection;
         }
         catch
@@ -232,6 +252,23 @@ public sealed class BaseDAL(string connectionString, ILogger<BaseDAL> logger)
             await connection.DisposeAsync().ConfigureAwait(false);
             throw;
         }
+    }
+
+    public static async Task ClearTenantContextAsync(
+        SqlConnection connection,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            EXEC sys.sp_set_session_context
+                @key = N'BusinessId',
+                @value = NULL,
+                @read_only = 0;
+            """;
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.CommandTimeout = DefaultCommandTimeoutSeconds;
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // ─── Shared infrastructure ──────────────────────────────────────────────

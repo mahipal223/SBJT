@@ -6,7 +6,10 @@ using ServiceDesk.Infrastructure.Data;
 
 namespace ServiceDesk.Infrastructure.Services;
 
-public sealed class PlatformAdminService(BaseDAL baseDAL, ILogger<PlatformAdminService> logger)
+public sealed class PlatformAdminService(
+    BaseDAL baseDAL,
+    ILogger<PlatformAdminService> logger,
+    IAdministratorResolver administratorResolver)
     : IPlatformAdminService
 {
     private static readonly Action<ILogger, Guid, string, string, Exception?> LogBusinessStatusChanged =
@@ -20,6 +23,27 @@ public sealed class PlatformAdminService(BaseDAL baseDAL, ILogger<PlatformAdminS
             LogLevel.Warning,
             new EventId(9002, nameof(LogRestoreTriggered)),
             "Platform admin triggered disaster recovery restore for backup {BackupRunId}");
+
+    // ─── Current operator ───────────────────────────────────────────────────
+
+    public async Task<PlatformOperatorResponse?> GetCurrentOperatorAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var admin = await administratorResolver.ResolveAsync(userId, cancellationToken).ConfigureAwait(false);
+        if (admin is null || !admin.IsActive)
+        {
+            return null;
+        }
+
+        var permissions = PlatformContext.GetPermissionsForRole(admin.RoleCode).ToList();
+        return new PlatformOperatorResponse(
+            admin.UserId,
+            admin.FullName,
+            admin.Email,
+            admin.RoleCode,
+            permissions);
+    }
 
     // ─── Businesses ─────────────────────────────────────────────────────────
 
@@ -195,11 +219,11 @@ public sealed class PlatformAdminService(BaseDAL baseDAL, ILogger<PlatformAdminS
             sql,
             reader => new
             {
-                Total = reader.GetInt32(0),
-                Active = reader.GetInt32(1),
-                Suspended = reader.GetInt32(2),
-                Trial = reader.GetInt32(3),
-                Mrr = reader.GetDecimal(4)
+                Total = Convert.ToInt32(reader.GetValue(0), System.Globalization.CultureInfo.InvariantCulture),
+                Active = reader.IsDBNull(1) ? 0 : Convert.ToInt32(reader.GetValue(1), System.Globalization.CultureInfo.InvariantCulture),
+                Suspended = reader.IsDBNull(2) ? 0 : Convert.ToInt32(reader.GetValue(2), System.Globalization.CultureInfo.InvariantCulture),
+                Trial = reader.IsDBNull(3) ? 0 : Convert.ToInt32(reader.GetValue(3), System.Globalization.CultureInfo.InvariantCulture),
+                Mrr = reader.IsDBNull(4) ? 0m : reader.GetDecimal(4)
             },
             [],
             cancellationToken).ConfigureAwait(false);
@@ -207,14 +231,20 @@ public sealed class PlatformAdminService(BaseDAL baseDAL, ILogger<PlatformAdminS
         var planDist = await baseDAL.ExecutePlatformQueryAsync(
             "Platform.Metrics.PlanDist",
             planDistSql,
-            reader => new PlatformPlanDistributionItem(reader.GetString(0), reader.GetInt32(1), reader.GetDecimal(2)),
+            reader => new PlatformPlanDistributionItem(
+                reader.GetString(0),
+                Convert.ToInt32(reader.GetValue(1), System.Globalization.CultureInfo.InvariantCulture),
+                reader.IsDBNull(2) ? 0m : reader.GetDecimal(2)),
             [],
             cancellationToken).ConfigureAwait(false);
 
         var industryDist = await baseDAL.ExecutePlatformQueryAsync(
             "Platform.Metrics.IndustryDist",
             industryDistSql,
-            reader => new PlatformIndustryDistributionItem(reader.GetString(0), reader.GetInt32(1), reader.GetDecimal(2)),
+            reader => new PlatformIndustryDistributionItem(
+                reader.GetString(0),
+                Convert.ToInt32(reader.GetValue(1), System.Globalization.CultureInfo.InvariantCulture),
+                reader.IsDBNull(2) ? 0m : reader.GetDecimal(2)),
             [],
             cancellationToken).ConfigureAwait(false);
 

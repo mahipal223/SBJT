@@ -15,8 +15,8 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
           <h1 class="page-title">Executive Overview</h1>
           <p class="subtitle">Live database KPIs, operational dispatching, and attention alerts.</p>
         </div>
-        <div class="actions">
-          <button class="btn btn-secondary" (click)="loadDashboard()" [disabled]="loading()">
+        <div class="header-actions">
+          <button class="btn" (click)="loadDashboard()" [disabled]="loading()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
               <polyline points="23 4 23 10 17 10"></polyline>
               <polyline points="1 20 1 14 7 14"></polyline>
@@ -24,7 +24,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
             </svg>
             {{ loading() ? 'Refreshing...' : 'Refresh' }}
           </button>
-          <a routerLink="/app/jobs" class="btn btn-primary">+ New Job</a>
+          <a routerLink="/app/jobs/new" class="btn primary">＋ New job</a>
         </div>
       </div>
 
@@ -128,9 +128,9 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
         <div class="section-gap"></div>
         <div class="dashboard-columns">
           <div class="main-column card">
-            <div class="card-header-flex">
+            <div class="card-head">
               <div>
-                <h2 class="section-title" style="margin:0;">Today's Operations & Active Jobs</h2>
+                <h2 style="margin:0; font-size: 17px;">Today's Operations & Active Jobs</h2>
                 <span class="meta-label">Live dispatch queue directly from SQL Server</span>
               </div>
               <a routerLink="/app/jobs" class="view-all-link">View All Jobs &rarr;</a>
@@ -142,7 +142,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
                 <a routerLink="/app/jobs" class="btn btn-secondary btn-sm" style="margin-top: 8px;">Dispatch New Job</a>
               </div>
             } @else {
-              <div class="table-responsive">
+              <div class="table-scroll">
                 <table class="data-table">
                   <thead>
                     <tr>
@@ -168,7 +168,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
                           <span class="priority-pill" [ngClass]="'priority-' + job.priority.toLowerCase()">{{ job.priority }}</span>
                         </td>
                         <td>
-                          <span class="status-pill" [ngClass]="'status-' + job.status.toLowerCase()">{{ job.status }}</span>
+                          <span class="status-pill" [ngClass]="'status-' + job.status.toLowerCase()">{{ formatStatus(job.status) }}</span>
                         </td>
                         <td>
                           <span class="staff-tag">{{ job.assignedMemberName || 'Staff' }}</span>
@@ -186,36 +186,40 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
 
           <!-- Fast Navigation Actions -->
           <div class="side-column card">
-            <h2 class="section-title" style="margin-top:0;">Fast Workflows</h2>
-            <div class="quick-links">
-              <a routerLink="/app/customers" class="quick-link-btn">
-                <span class="ql-icon">👥</span>
-                <div class="ql-info">
-                  <strong>Manage Customers</strong>
-                  <span>Accounts, service addresses, and contact info</span>
-                </div>
-              </a>
-              <a routerLink="/app/invoices" class="quick-link-btn">
-                <span class="ql-icon">📄</span>
-                <div class="ql-info">
-                  <strong>Invoices & Billing</strong>
-                  <span>Review unpaid balances and issue billing</span>
-                </div>
-              </a>
-              <a routerLink="/app/reports" class="quick-link-btn">
-                <span class="ql-icon">📊</span>
-                <div class="ql-info">
-                  <strong>Live Analytics & CSV Export</strong>
-                  <span>Period revenue reports & data controls</span>
-                </div>
-              </a>
-              <a routerLink="/app/subscription" class="quick-link-btn">
-                <span class="ql-icon">⚡</span>
-                <div class="ql-info">
-                  <strong>Subscription & Quota</strong>
-                  <span>Plan seats, capacity, and feature entitlements</span>
-                </div>
-              </a>
+            <div class="card-head">
+              <h2 style="margin:0; font-size: 17px;">Fast Workflows</h2>
+            </div>
+            <div class="card-body">
+              <div class="quick-links">
+                <a routerLink="/app/customers" class="quick-link-btn">
+                  <span class="ql-icon">👥</span>
+                  <div class="ql-info">
+                    <strong>Manage Customers</strong>
+                    <span>Accounts, service addresses, and contact info</span>
+                  </div>
+                </a>
+                <a routerLink="/app/invoices" class="quick-link-btn">
+                  <span class="ql-icon">📄</span>
+                  <div class="ql-info">
+                    <strong>Invoices & Billing</strong>
+                    <span>Review unpaid balances and issue billing</span>
+                  </div>
+                </a>
+                <a routerLink="/app/reports" class="quick-link-btn">
+                  <span class="ql-icon">📊</span>
+                  <div class="ql-info">
+                    <strong>Live Analytics & CSV Export</strong>
+                    <span>Period revenue reports & data controls</span>
+                  </div>
+                </a>
+                <a routerLink="/app/subscription" class="quick-link-btn">
+                  <span class="ql-icon">⚡</span>
+                  <div class="ql-info">
+                    <strong>Subscription & Quota</strong>
+                    <span>Plan seats, capacity, and feature entitlements</span>
+                  </div>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -223,10 +227,6 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
     </div>
   `,
   styles: [`
-    .dashboard-page {
-      max-width: 1360px;
-      margin: 0 auto;
-    }
     .header-row {
       display: flex;
       justify-content: space-between;
@@ -235,11 +235,20 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
       gap: 16px;
       flex-wrap: wrap;
     }
+    .header-actions,
+    .page-actions,
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 18px;
       margin-bottom: 24px;
+      min-width: 0;
     }
     .kpi-card {
       padding: 22px 20px;
@@ -251,6 +260,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       transition: transform 0.15s ease, box-shadow 0.15s ease;
+      min-width: 0;
     }
     .kpi-card:hover {
       transform: translateY(-2px);
@@ -318,9 +328,11 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
       padding: 16px 20px;
       border-radius: var(--radius-sm);
       margin-bottom: 24px;
+      min-width: 0;
     }
     .attention-box {
       margin-bottom: 24px;
+      min-width: 0;
     }
     .attention-item {
       display: flex;
@@ -335,72 +347,61 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
     }
     .dashboard-columns {
       display: grid;
-      grid-template-columns: 1fr 340px;
-      gap: 24px;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 20px;
       align-items: start;
+      min-width: 0;
     }
-    .card-header-flex {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 18px;
+    .main-column,
+    .side-column {
+      min-width: 0;
+    }
+    .table-scroll .data-table th,
+    .table-scroll .data-table td {
+      padding: 12px 14px;
     }
     .view-all-link {
       font-size: 13px;
-      font-weight: 600;
-      color: var(--primary);
+      font-weight: 700;
+      color: var(--teal);
       text-decoration: none;
     }
     .view-all-link:hover {
       text-decoration: underline;
     }
-    .table-responsive {
-      overflow-x: auto;
-    }
-    .data-table {
+    .table-scroll {
       width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-    .data-table th {
-      text-align: left;
-      padding: 10px 12px;
-      color: var(--text-muted);
-      font-weight: 600;
-      border-bottom: 2px solid var(--border);
-      text-transform: uppercase;
-      font-size: 11px;
-      letter-spacing: 0.5px;
-    }
-    .data-table td {
-      padding: 12px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .code-link {
       font-family: monospace;
       font-weight: 700;
-      color: var(--primary);
+      color: var(--teal);
       text-decoration: none;
+      white-space: nowrap;
     }
     .code-link:hover {
       text-decoration: underline;
     }
     .job-cell-title {
       font-weight: 600;
-      color: var(--text);
+      color: var(--ink);
+      font-size: 13px;
     }
     .job-cell-cust {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--muted);
+      margin-top: 2px;
     }
     .priority-pill {
       display: inline-block;
       padding: 2px 7px;
       border-radius: 4px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
+      white-space: nowrap;
     }
     .priority-emergency { background: #fee2e2; color: #991b1b; }
     .priority-high { background: #ffedd5; color: #9a3412; }
@@ -409,10 +410,11 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
 
     .status-pill {
       display: inline-block;
-      padding: 2px 8px;
+      padding: 3px 9px;
       border-radius: 9999px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
+      white-space: nowrap;
     }
     .status-draft { background: #f1f5f9; color: #475569; }
     .status-scheduled { background: #fef9c3; color: #854d0e; }
@@ -422,59 +424,62 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
 
     .staff-tag {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--muted);
       background: #f8fafc;
-      padding: 3px 6px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
+      padding: 3px 7px;
+      border-radius: 5px;
+      border: 1px solid var(--line-soft);
+      white-space: nowrap;
     }
     .time-cell {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--muted);
       white-space: nowrap;
     }
     .empty-state {
       padding: 36px 20px;
       text-align: center;
-      color: var(--text-muted);
+      color: var(--muted);
     }
     .quick-links {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      margin-top: 14px;
+      gap: 10px;
     }
     .quick-link-btn {
       display: flex;
       align-items: center;
       gap: 14px;
-      padding: 14px 16px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
       text-decoration: none;
       color: inherit;
       background: var(--surface);
-      transition: all 0.15s ease;
+      transition: border-color .15s, background .15s, transform .15s;
     }
     .quick-link-btn:hover {
-      border-color: var(--primary);
-      background: #f8fafc;
+      text-decoration: none !important;
+      border-color: var(--teal);
+      background: #f8fafb;
       transform: translateX(3px);
     }
     .ql-icon {
-      font-size: 22px;
+      font-size: 20px;
+      flex-shrink: 0;
     }
     .ql-info {
       display: flex;
       flex-direction: column;
     }
     .ql-info strong {
-      font-size: 14px;
-      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
     }
     .ql-info span {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--muted);
       margin-top: 2px;
     }
     .loading-state {
@@ -484,13 +489,13 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
       justify-content: center;
       padding: 48px;
       gap: 16px;
-      color: var(--text-muted);
+      color: var(--muted);
     }
     .spinner {
       width: 32px;
       height: 32px;
-      border: 3px solid var(--border);
-      border-top-color: var(--primary);
+      border: 3px solid var(--line);
+      border-top-color: var(--teal);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -498,21 +503,34 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
       to { transform: rotate(360deg); }
     }
 
-    @media (max-width: 1080px) {
-      .kpi-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
+    @media (max-width: 1180px) {
       .dashboard-columns {
         grid-template-columns: 1fr;
       }
     }
-    @media (max-width: 600px) {
+    @media (max-width: 1024px) {
       .kpi-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 640px) {
+      .kpi-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .kpi-card {
+        padding: 16px;
       }
       .header-row {
         flex-direction: column;
         align-items: stretch;
+      }
+      .header-actions {
+        width: 100%;
+      }
+      .header-actions .btn {
+        flex: 1;
+        text-align: center;
+        justify-content: center;
       }
     }
   `]
@@ -541,5 +559,10 @@ export class DashboardLivePage implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  formatStatus(status: string): string {
+    if (status === 'InProgress') return 'In progress';
+    return status;
   }
 }

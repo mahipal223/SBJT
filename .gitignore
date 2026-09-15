@@ -17,3 +17,4 @@ work/browser-use-qa/artifacts/
 .env
 .env.*
 !/.env.example
+scratch

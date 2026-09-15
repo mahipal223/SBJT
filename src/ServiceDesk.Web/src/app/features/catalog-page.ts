@@ -31,11 +31,11 @@ import { CatalogItem, WorkApiService } from '../core/work-api.service';
     <input id="unitPrice" name="unitPrice" type="number" min="0" step=".01" [(ngModel)]="model.unitPrice" (blur)="markTouched('unitPrice')" (input)="onInput('unitPrice')">
     @if(hasError('unitPrice')){<span class="field-error" id="catalog-price-error">{{errorMessage('unitPrice')}}</span>}
   </div>
-  <div class="field"><label for="taxCategory">Tax category</label><input id="taxCategory" name="taxCategory" [(ngModel)]="model.taxCategory" placeholder="Optional"></div>
+  <div class="field"><label for="taxCategory">Tax category</label><ng-select id="taxCategory" name="taxCategory" [items]="taxOptions" bindLabel="label" bindValue="value" [(ngModel)]="model.taxCategory" [searchable]="false" [clearable]="true" placeholder="Non-taxable"></ng-select></div>
   @if(error()){<div class="wide callout error-text" id="catalog-form-error">{{error()}}</div>}
   <div class="wide page-actions"><button class="btn primary" type="submit" [disabled]="saving()" id="save-catalog-btn">{{saving()?'Saving…':'Save item'}}</button><button class="btn" type="button" (click)="showForm.set(false)">Cancel</button></div>
 </form></section>}
-<section class="card section-gap"><div class="toolbar"><div class="search"><input placeholder="Search service or part" [(ngModel)]="search" (ngModelChange)="load()"></div><ng-select class="filter-ng-select" [items]="typeFilterOptions" bindLabel="label" bindValue="value" [(ngModel)]="type" (ngModelChange)="load()" [searchable]="false" [clearable]="false" aria-label="Catalog item type"></ng-select></div>@if(loading()){<div class="card-body muted">Loading catalog…</div>}@else if(error()&&!showForm()){<div class="card-body callout error-text">{{error()}}</div>}@else{<div class="table-scroll"><table class="data-table"><thead><tr><th>Item</th><th>Type</th><th>Unit</th><th>Cost</th><th>Sale price</th><th>Tax</th></tr></thead><tbody>@for(i of items();track i.id){<tr><td><strong>{{i.name}}</strong></td><td><span class="badge" [class.blue]="i.itemType==='Part'">{{i.itemType}}</span></td><td>{{i.unit}}</td><td>{{i.unitCost|currency}}</td><td class="money">{{i.unitPrice|currency}}</td><td>{{i.taxCategory||'Non-taxable'}}</td></tr>}</tbody></table></div>}</section></main>`})
+<section class="card section-gap"><div class="toolbar"><div class="search"><input placeholder="Search service or part" [(ngModel)]="search" (ngModelChange)="load()"></div><ng-select class="filter-ng-select" [items]="typeFilterOptions" bindLabel="label" bindValue="value" [(ngModel)]="type" (ngModelChange)="load()" [searchable]="false" [clearable]="false" aria-label="Catalog item type"></ng-select></div>@if(loading()){<div class="card-body muted">Loading catalog…</div>}@else if(error()&&!showForm()){<div class="card-body callout error-text">{{error()}}</div>}@else{<div class="table-scroll"><table class="data-table"><thead><tr><th>Item</th><th>Type</th><th>Unit</th><th>Cost</th><th>Sale price</th><th>Tax</th></tr></thead><tbody>@for(i of items();track i.id){<tr><td><strong>{{i.name}}</strong></td><td><span class="badge" [class.blue]="i.itemType==='Part'">{{i.itemType}}</span></td><td>{{i.unit}}</td><td>{{i.unitCost|currency}}</td><td class="money">{{i.unitPrice|currency}}</td><td>{{formatTax(i.taxCategory)}}</td></tr>}</tbody></table></div>}</section></main>`})
 export class CatalogLivePage {
   private api=inject(WorkApiService);items=signal<CatalogItem[]>([]);loading=signal(true);saving=signal(false);showForm=signal(false);error=signal('');search='';type='';
   readonly itemTypeOptions = [
@@ -48,6 +48,10 @@ export class CatalogLivePage {
     { value: 'Service', label: 'Service' },
     { value: 'Labor', label: 'Labor' },
     { value: 'Part', label: 'Part' }
+  ];
+  readonly taxOptions = [
+    { value: '', label: 'Non-taxable' },
+    { value: 'TX-TAXABLE', label: 'TX-TAXABLE' }
   ];
   submitted=signal(false);
   touched=signal<Record<string,boolean>>({});
@@ -121,6 +125,11 @@ export class CatalogLivePage {
   }
 
   count(type:string){return this.items().filter(x=>x.itemType===type).length} average(){return this.items().length?this.items().reduce((n,x)=>n+x.unitPrice,0)/this.items().length:0}
+  formatTax(val?: string | null): string {
+    if (!val || val === '0' || val === 'Non-taxable') return 'Non-taxable';
+    if (val === '1' || val === 'TX-TAXABLE') return 'TX-TAXABLE';
+    return val;
+  }
   private message(e:unknown){return e instanceof HttpErrorResponse?e.error?.detail||'Request failed.':'Request failed.'}
 }
 

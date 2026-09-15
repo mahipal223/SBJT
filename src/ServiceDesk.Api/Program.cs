@@ -83,6 +83,9 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<TenantContextAccessor>();
 builder.Services.AddScoped<ITenantContextAccessor>(services =>
     services.GetRequiredService<TenantContextAccessor>());
+builder.Services.AddScoped<PlatformContextAccessor>();
+builder.Services.AddScoped<ServiceDesk.Application.Platform.IPlatformContextAccessor>(services =>
+    services.GetRequiredService<PlatformContextAccessor>());
 builder.Services.AddScoped<IMembershipResolver, ServiceDesk.Infrastructure.Tenancy.DbMembershipResolver>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, PermissionAuthorizationHandler>();
 
@@ -92,6 +95,7 @@ app.UseExceptionHandler();
 app.UseCors("Angular");
 app.UseRouting();
 app.UseAuthentication();
+app.UseMiddleware<PlatformContextMiddleware>();
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
 app.MapControllers();

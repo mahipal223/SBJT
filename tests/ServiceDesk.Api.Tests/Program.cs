@@ -449,6 +449,52 @@ Require(entitlement.FeatureCode == "staff.seats", "Entitlement feature code matc
 Require(entitlement.LimitValue == 10, "Entitlement limit value matches");
 Require(entitlement.Enabled, "Entitlement is enabled");
 
+// ── Two-Module Platform Separation & Superadmin Permission Matrix ───────────
+var superAdminPerms = PlatformContext.GetPermissionsForRole("OperationsAdmin");
+Require(superAdminPerms.Contains(Permissions.PlatformSupport), "OperationsAdmin (Superadmin) has PlatformSupport access");
+Require(superAdminPerms.Contains(Permissions.PlatformBillingAdmin), "OperationsAdmin (Superadmin) has PlatformBillingAdmin access");
+Require(superAdminPerms.Contains(Permissions.PlatformOperationsAdmin), "OperationsAdmin (Superadmin) has PlatformOperationsAdmin access");
+
+var billingAdminPerms = PlatformContext.GetPermissionsForRole("BillingAdmin");
+Require(billingAdminPerms.Contains(Permissions.PlatformSupport), "BillingAdmin has PlatformSupport access");
+Require(billingAdminPerms.Contains(Permissions.PlatformBillingAdmin), "BillingAdmin has PlatformBillingAdmin access");
+Require(!billingAdminPerms.Contains(Permissions.PlatformOperationsAdmin), "BillingAdmin is denied PlatformOperationsAdmin access");
+
+var supportPerms = PlatformContext.GetPermissionsForRole("Support");
+Require(supportPerms.Contains(Permissions.PlatformSupport), "Support has PlatformSupport access");
+Require(!supportPerms.Contains(Permissions.PlatformBillingAdmin), "Support is denied PlatformBillingAdmin access");
+Require(!supportPerms.Contains(Permissions.PlatformOperationsAdmin), "Support is denied PlatformOperationsAdmin access");
+
+// PlatformContext creation and operator contract
+var adminRecord = new PlatformAdministratorRecord(
+    Guid.Parse("99999999-9999-9999-9999-999999999999"),
+    "Platform SuperAdmin",
+    "admin@servicedesk.local",
+    "OperationsAdmin",
+    true);
+
+var platformContext = PlatformContext.Create(adminRecord);
+Require(platformContext.OperatorUserId == adminRecord.UserId, "PlatformContext operator ID matches");
+Require(platformContext.HasPermission(Permissions.PlatformSupport), "PlatformContext grants PlatformSupport");
+Require(platformContext.HasPermission(Permissions.PlatformBillingAdmin), "PlatformContext grants PlatformBillingAdmin");
+Require(platformContext.HasPermission(Permissions.PlatformOperationsAdmin), "PlatformContext grants PlatformOperationsAdmin");
+
+var operatorResponse = new PlatformOperatorResponse(
+    platformContext.OperatorUserId,
+    platformContext.FullName,
+    platformContext.Email,
+    platformContext.RoleCode,
+    platformContext.Permissions.ToList());
+Require(operatorResponse.Id == adminRecord.UserId, "OperatorResponse ID matches");
+Require(operatorResponse.Role == "OperationsAdmin", "OperatorResponse role matches");
+Require(operatorResponse.Permissions.Count == 3, "OperatorResponse has all 3 platform permissions");
+
+// Tenant isolation: Tenant context must NOT contain platform permissions
+Require(!context.HasPermission(Permissions.PlatformSupport), "Tenant context cannot satisfy PlatformSupport");
+Require(!context.HasPermission(Permissions.PlatformBillingAdmin), "Tenant context cannot satisfy PlatformBillingAdmin");
+Require(!context.HasPermission(Permissions.PlatformOperationsAdmin), "Tenant context cannot satisfy PlatformOperationsAdmin");
+
+
 // ==========================================
 // Phase 10: Launch Verification & Security Audit
 // ==========================================

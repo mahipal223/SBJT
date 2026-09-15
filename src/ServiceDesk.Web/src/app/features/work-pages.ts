@@ -48,20 +48,22 @@ export class CustomersLivePage {
     <input id="addressLine1" name="addressLine1" [(ngModel)]="model.addressLine1" (blur)="markTouched('addressLine1')" (input)="onInput('addressLine1')" placeholder="e.g. 100 Main Street">
     @if(hasError('addressLine1')){<span class="field-error" id="address-error">{{errorMessage('addressLine1')}}</span>}
   </div>
-  <div class="field" [class.has-error]="hasError('city')">
-    <label for="city">City *</label>
-    <input id="city" name="city" [(ngModel)]="model.city" (blur)="markTouched('city')" (input)="onInput('city')" placeholder="e.g. Austin">
-    @if(hasError('city')){<span class="field-error" id="city-error">{{errorMessage('city')}}</span>}
-  </div>
-  <div class="field" [class.has-error]="hasError('stateCode')">
-    <label for="stateCode">State *</label>
-    <input id="stateCode" name="stateCode" maxlength="2" [(ngModel)]="model.stateCode" (blur)="markTouched('stateCode')" (input)="onInput('stateCode')" placeholder="e.g. TX">
-    @if(hasError('stateCode')){<span class="field-error" id="state-error">{{errorMessage('stateCode')}}</span>}
-  </div>
-  <div class="field" [class.has-error]="hasError('postalCode')">
-    <label for="postalCode">ZIP *</label>
-    <input id="postalCode" name="postalCode" [(ngModel)]="model.postalCode" (blur)="markTouched('postalCode')" (input)="onInput('postalCode')" placeholder="e.g. 78701">
-    @if(hasError('postalCode')){<span class="field-error" id="zip-error">{{errorMessage('postalCode')}}</span>}
+  <div class="wide grid-3-cols">
+    <div class="field" [class.has-error]="hasError('city')">
+      <label for="city">City *</label>
+      <input id="city" name="city" [(ngModel)]="model.city" (blur)="markTouched('city')" (input)="onInput('city')" placeholder="e.g. Austin">
+      @if(hasError('city')){<span class="field-error" id="city-error">{{errorMessage('city')}}</span>}
+    </div>
+    <div class="field" [class.has-error]="hasError('stateCode')">
+      <label for="stateCode">State *</label>
+      <input id="stateCode" name="stateCode" maxlength="2" [(ngModel)]="model.stateCode" (blur)="markTouched('stateCode')" (input)="onInput('stateCode')" placeholder="e.g. TX">
+      @if(hasError('stateCode')){<span class="field-error" id="state-error">{{errorMessage('stateCode')}}</span>}
+    </div>
+    <div class="field" [class.has-error]="hasError('postalCode')">
+      <label for="postalCode">ZIP *</label>
+      <input id="postalCode" name="postalCode" [(ngModel)]="model.postalCode" (blur)="markTouched('postalCode')" (input)="onInput('postalCode')" placeholder="e.g. 78701">
+      @if(hasError('postalCode')){<span class="field-error" id="zip-error">{{errorMessage('postalCode')}}</span>}
+    </div>
   </div>
   @if(error()){<div class="wide callout error-text" id="form-error-banner">{{error()}}</div>}
   <div class="wide page-actions"><a class="btn" routerLink="/app/customers">Cancel</a><button class="btn primary" type="submit" [disabled]="saving()" id="save-customer-btn">{{saving()?'Saving…':'Save customer'}}</button></div>
@@ -160,7 +162,7 @@ export class CustomerFormLivePage {
 }
 
 @Component({selector:'app-jobs-live',imports:[RouterLink,FormsModule,CurrencyPipe,NgSelectComponent],template:`
-<main class="page"><header class="page-head"><div><p class="eyebrow">Work orders</p><h1>Jobs</h1><p>Track every visit from request through completion.</p></div><a class="btn primary" routerLink="/app/jobs/new">＋ Create job</a></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">All jobs</span><strong class="stat-value">{{jobs().length}}</strong><span class="stat-meta">Loaded from your workspace</span></article><article class="card stat"><span class="stat-label">Scheduled</span><strong class="stat-value">{{statusCount('Scheduled')}}</strong><span class="stat-meta">Ready for service</span></article><article class="card stat"><span class="stat-label">In progress</span><strong class="stat-value">{{statusCount('InProgress')}}</strong><span class="stat-meta">Active work</span></article><article class="card stat"><span class="stat-label">This period</span><strong class="stat-value">{{jobs().length}} / 100</strong><span class="stat-meta">Solo plan usage</span></article></section>
+<main class="page"><header class="page-head"><div><p class="eyebrow">Work orders</p><h1>Jobs</h1><p>Track every visit from request through completion.</p></div><a class="btn primary" routerLink="/app/jobs/new">＋ Create job</a></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">All jobs</span><strong class="stat-value">{{jobs().length}}</strong><span class="stat-meta">Loaded from your workspace</span></article><article class="card stat"><span class="stat-label">Scheduled</span><strong class="stat-value">{{statusCount('Scheduled')}}</strong><span class="stat-meta">Ready for service</span></article><article class="card stat"><span class="stat-label">In progress</span><strong class="stat-value">{{statusCount('InProgress')}}</strong><span class="stat-meta">Active work</span></article><article class="card stat"><span class="stat-label">This period</span><strong class="stat-value">{{jobs().length}} / 100</strong><span class="stat-meta">Jobs in billing period</span></article></section>
 <section class="card section-gap"><div class="toolbar"><div class="search"><input placeholder="Search job number or title" [(ngModel)]="search" (ngModelChange)="load()"></div><ng-select class="filter-ng-select" [items]="jobStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select></div>
 @if(loading()){<div class="card-body muted">Loading jobs…</div>}@else if(error()){<div class="card-body callout error-text">{{error()}}</div>}@else if(!jobs().length){<div class="empty-state"><h2>No matching jobs</h2><p>Create a job or change the filters.</p></div>}@else{<div class="table-scroll"><table class="data-table"><thead><tr><th>Job</th><th>Customer</th><th>Schedule</th><th>Priority</th><th>Status</th><th>Total</th></tr></thead><tbody>@for(j of jobs();track j.id){<tr><td><a class="cell-main link" [routerLink]="['/app/jobs',j.id]"><strong>#{{j.jobNumber}} · {{j.title}}</strong><small>{{j.description || 'No description'}}</small></a></td><td>{{customerName(j.customerId)}}</td><td>{{j.scheduledDate || 'Unscheduled'}}<small class="cell-main">{{j.arrivalWindow || '—'}}</small></td><td>{{j.priority}}</td><td><span class="badge" [class.amber]="j.status==='InProgress'" [class.blue]="j.status==='Scheduled'" [class.gray]="j.status==='Draft'">{{label(j.status)}}</span></td><td class="money">{{j.total | currency}}</td></tr>}</tbody></table></div>}</section></main>`})
 export class JobsLivePage {
@@ -225,7 +227,7 @@ export class JobFormLivePage {
   submitted=signal(false);
   touched=signal<Record<string,boolean>>({});
   errors=signal<Record<string,string>>({});
-  model={customerId:'',title:'',description:'',priority:'Normal',scheduledDate:'',arrivalWindow:''};
+  model={customerId:null as string | null,title:'',description:'',priority:'Normal',scheduledDate:'',arrivalWindow:''};
 
   constructor(){
     const prefillCustomer = this.route.snapshot.queryParamMap.get('customerId');
@@ -281,7 +283,7 @@ export class JobFormLivePage {
     if(this.saving())return;
     this.saving.set(true);
     this.error.set('');
-    const command={...this.model,scheduledDate:this.model.scheduledDate||undefined};
+    const command={...this.model,customerId:this.model.customerId!,scheduledDate:this.model.scheduledDate||undefined};
     this.api.createJob(command).subscribe({
       next:j=>this.router.navigate(['/app/jobs',j.id]),
       error:e=>{this.error.set(messageFrom(e));this.saving.set(false)}

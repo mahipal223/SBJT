@@ -51,7 +51,6 @@ import { CurrentUser, WorkspaceContext } from '../../core/api.models';
     </main>
   `,
   styles: `
-    .page { padding: 40px 32px 96px; }
     .heading { display: flex; align-items: start; justify-content: space-between; gap: 24px; }
     .eyebrow { margin: 0 0 8px; color: #087f74; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
     h1 { margin: 0; color: #142d3b; font-size: clamp(28px, 4vw, 38px); }

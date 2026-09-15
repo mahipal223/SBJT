@@ -70,7 +70,10 @@ import { AuthService } from '../core/auth.service';
   styles: `
 :host { display: block; min-height: 100vh; }
 .app-layout { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
-.app-sidebar { position: sticky; top: 0; z-index: 30; height: 100vh; display: flex; flex-direction: column; padding: 20px 14px; color: #e9f0f3; background: var(--navy); overflow: auto; }
+.app-sidebar { position: sticky; top: 0; z-index: 30; height: 100vh; display: flex; flex-direction: column; padding: 20px 14px; color: #e9f0f3; background: var(--navy); overflow: auto; scrollbar-width: thin; scrollbar-color: #274d5d transparent; }
+.app-sidebar::-webkit-scrollbar { width: 6px; }
+.app-sidebar::-webkit-scrollbar-track { background: transparent; }
+.app-sidebar::-webkit-scrollbar-thumb { background: #274d5d; border-radius: 3px; }
 .brand-row { display: flex; align-items: center; justify-content: space-between; padding: 0 9px; }
 .brand { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 19px; font-weight: 800; text-decoration: none; }
 .brand > span { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 8px; color: var(--navy); background: #65d0c5; font-size: 16px; }
@@ -126,7 +129,8 @@ nav em { margin-left: auto; min-width: 20px; padding: 2px 6px; border-radius: 10
 }
 @media (max-width: 520px) {
   .top-search span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .top-actions button:not(.btn-logout) { display: none; }
+  .top-actions button { display: none; }
+  .btn-logout { display: none !important; }
 }
 `
 })
@@ -169,8 +173,7 @@ export class AppShell {
       items: [
         { label: 'Team & permissions', path: '/app/team', icon: '♙' },
         { label: 'Subscription', path: '/app/subscription', icon: '☆' },
-        { label: 'Business settings', path: '/app/settings', icon: '⚙' },
-        { label: 'Platform admin', path: '/app/admin', icon: '⌘' }
+        { label: 'Business settings', path: '/app/settings', icon: '⚙' }
       ]
     }
   ];

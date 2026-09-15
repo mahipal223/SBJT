@@ -1,0 +1,328 @@
+# Business and Platform Admin — Two-Module Implementation Plan
+
+Reviewed and rewritten September 15, 2026 against the current repository.
+Status: proposal; this review changes the plan only.
+
+## 1. Objective and boundary
+
+Keep one ServiceDesk.Web Angular application, one API deployment, and the existing
+development ports. Give platform operators separate routes, presentation, and
+navigation, supported by independent server authorization and database permissions.
+
+Organize the SaaS into exactly two functional modules within this application:
+
+| Module | Login page | Protected area | API namespace |
+| --- | --- | --- | --- |
+| Business | /login | /app/* | /api/v1/businesses/{businessId} |
+| Platform Admin | /platform-admin/login | /platform-admin/* except login | /api/v1/admin/* |
+
+Business contains customer, job, catalog, scheduling, estimate, invoice, team,
+subscription, and business settings workflows. Platform Admin contains operator
+login, workspace administration, plans, backups, and platform audit workflows.
+Each module owns its login presentation, shell, navigation, context, and permissions.
+The admin login is a page within Platform Admin, not a third module or application.
+Shared authentication callbacks and public document links remain shared routes.
+These are logical feature modules; Angular standalone components and route trees
+are sufficient, without introducing NgModule classes or additional deployments.
+
+This is logical separation within a shared origin and deployment. Routes, themes,
+lazy loading, and browser-storage flags do not isolate same-origin scripts or XSS.
+Every API request must enforce its own authentication and authorization.
+
+## 2. Findings requiring changes to the original proposal
+
+| Current implementation or original proposal | Required correction |
+| --- | --- |
+| AuthService combines Auth0 and development identities. | Do not overwrite tenant userId or rely on a browser flag to establish platform identity. |
+| Proposed guard trusts sessionStorage. | Validate current operator access with a server endpoint before rendering platform content. |
+| PermissionAuthorizationHandler checks tenant membership, permission and scope claims, but not platform_role. | Add dedicated platform requirements and authorization handling; prevent generic tenant/claim fallback from granting platform privileges. |
+| Proposed development header grants OperationsAdmin to any GUID. | Require an explicitly enabled, configured identity and active server-side administrator record. |
+| TenantResolutionMiddleware treats every businessId route parameter as tenant scope, including admin business routes. | Classify tenant and platform endpoints explicitly; target business IDs on admin routes must not trigger tenant membership resolution. |
+| PlatformAdminPage injects HttpClient and manually sends X-Dev-User-Id with a demo-owner fallback. | Move HTTP calls into a typed platform service; remove manual headers and fallback identities. |
+| PlatformAdminController hard-codes the demo owner as mutation actor. | Resolve actor identity from validated platform context. |
+| BaseDAL platform methods use the tenant connection string and do not explicitly clear tenant context. | Use separately configured restricted platform credentials through the shared BaseDAL mechanics and clear tenant context on acquisition. |
+| The existing page eagerly loads all tabs and hides several failures as empty data. | Fetch authorized sections on demand and distinguish denied, empty, loading, error, and retry states. |
+
+These are source-review findings. They do not establish that current platform APIs,
+RLS behavior, or production authentication have passed runtime tests.
+
+## 3. Platform identity and permission model
+
+### Server-owned identity
+
+Reuse configured OIDC/Auth0 authentication in production. Validate signature,
+issuer, audience, and expiry, then map the external subject through the established
+application-user mapping; do not assume OIDC subjects are GUIDs.
+
+Resolve an active row in the existing platform.Administrators table. It already has
+UserId, RoleCode, and IsActive, with Support, BillingAdmin, and OperationsAdmin roles
+and a foreign key to auth.Users. Do not add a parallel role table or automatically
+make tenant owners platform administrators.
+
+Add an Application platform-context contract and administrator-resolver interface,
+an Infrastructure implementation, and API integration. Context supplies the verified
+operator ID, role, and effective permissions. Actor IDs never come from request bodies.
+Recheck active administrator status for protected requests so revocation takes effect
+after login; browser guard state is not continuing authorization.
+
+### Dedicated policies
+
+Register platform permission constants with a dedicated platform requirement/handler.
+Tenant membership resolution and the generic permission/scope fallback must not satisfy
+these requirements. Keep tenant permission enforcement independent.
+
+Use this explicit proposed mapping:
+
+| Capability / existing policy | Support | BillingAdmin | OperationsAdmin |
+| --- | --- | --- | --- |
+| Workspace summaries: platform:Support | Yes | Yes | Yes |
+| Plans and entitlements: platform:BillingAdmin | No | Yes | No |
+| Metrics, status changes, backups/restores and audit: platform:OperationsAdmin | No | No | Yes |
+
+OperationsAdmin is not implicitly a superuser. The current schema assigns one role
+per user. Show only permitted sections and route the platform entry to the first
+permitted section. A combined-role model would require an explicit schema/policy change.
+
+Tenant subscription entitlements do not grant platform privileges. Tenant operations
+retain their own membership, permission, and subscription checks.
+
+### Current-operator contract
+
+Add GET /api/v1/admin/me, requiring an authenticated, active platform operator.
+Return a minimal response with operator ID, display name/email, role, and effective
+permissions. Anonymous requests return 401; authenticated non-operators or inactive
+operators return 403.
+
+Implement its DTO, named access policy, Application query/handler, service method,
+OpenAPI entry, and endpoint index together. Do not return tenant membership lists or
+secrets. Frontend guards use this endpoint, not an isPlatformAdmin storage flag.
+
+## 4. Development and production authentication
+
+A dedicated X-Dev-Platform-Admin-Id header is acceptable only for local development:
+
+1. Require both IsDevelopment() and an explicit disabled-by-default platform-demo setting.
+2. Match the exact configured identity and resolve its active administrator record.
+   A valid GUID alone must never grant a role.
+3. Provision auth.Users and platform.Administrators with a development-only seed script.
+   Do not add tenant membership for the operator.
+4. Use centralized header constants. Reject conflicting identity mechanisms rather than
+   making the platform header globally override tenant or Bearer identity.
+5. Register/select authentication schemes explicitly in Program.cs, including behavior
+   when Auth0 is configured. Outside Development, ignore development headers and fail
+   closed when production authentication is unavailable.
+6. Show the quick-login button only under explicit frontend development configuration.
+   Backend enforcement is mandatory even if the button is hidden.
+
+Production platform login uses the configured IdP flow, including the operator MFA
+policy required by the deployment. Do not create a nonfunctional email/password form
+or collect passwords while authentication is unconfigured. Display configuration status
+instead. Missing OIDC configuration must not silently enable a production demo login.
+
+Verify actual Bearer-interceptor registration: app.config.ts currently supplies an
+Auth0 allowed list, but configuration alone does not prove tokens attach to requests.
+
+## 5. Tenant middleware, database access, and audit
+
+### Endpoint classification
+
+Add explicit metadata for tenant-scoped and platform-scoped endpoints. Tenant middleware
+must resolve membership only for tenant endpoints, not simply whenever businessId exists.
+An admin target business ID is a resource selector, not tenant impersonation.
+
+Do not bypass tenant resolution based on a user-controlled header or loose URL match.
+Test admin business detail/status routes and ordinary tenant routes independently.
+
+### Database boundary
+
+Keep BaseDAL as the single shared implementation of database mechanics. Keep platform
+feature SQL local to the PlatformAdminService methods that execute and map it.
+
+Configure a separate restricted platform database principal/connection, available only
+through platform infrastructure wiring. Missing platform configuration must fail closed;
+it must not fall back to tenant credentials. Store credentials outside source control.
+Neither runtime principal may be sa or db_owner. Tenant credentials must not acquire
+platform write permissions.
+
+Explicitly clear SESSION_CONTEXT(N'BusinessId') on every platform connection acquisition
+and set the validated tenant ID on every tenant acquisition, including pooled reuse.
+
+Null tenant context must continue to expose no tenant rows. Existing platform summaries
+join app.Members and app.Subscriptions; validate those joins with the real RLS policies
+before treating their counts as live. Do not fix empty counts by disabling RLS or granting
+unrestricted tenant-table access. Design reviewed, narrowly scoped aggregate access
+(such as signed database modules or maintained platform summaries), document its grants,
+and test it with the platform principal before enabling cross-tenant metrics.
+
+Platform membership does not imply tenant-data access. Any future support access must
+use the existing tenant-approved, expiring, revocable read-only support grants.
+Impersonation and automatic tenant membership are outside this change.
+
+### Commands and audit
+
+Application handlers own validation, permissions, state rules, and transaction boundaries.
+Controllers bind and map results. Remove hard-coded actors from business status, plan
+creation, and restore commands. Use validated platform context for every actor.
+
+Write aggregate changes and append-only platform audit events atomically. Include
+operator, target business where applicable, UTC time, action, trace ID, and safely
+serialized metadata. Avoid logging secrets or constructing audit JSON by string
+concatenation. Return safe ProblemDetails through central exception handling.
+
+Require rowversion/ETag checks for updates and idempotency for queued/high-impact commands.
+A real restore must run through an explicitly authorized background operation with
+202 Accepted and a status URL, not directly inside an HTTP request. If the existing
+restore control only records metadata, label it unavailable/prototype until execution
+and status tracking exist. Verify restore behavior only in disposable environments.
+
+## 6. Angular organization and session behavior
+
+Keep the Business route tree in AppShell and lazy-load the Platform Admin feature
+tree outside it. The module route structure is:
+
+```text
+Business module
+  /login                         Public business login
+  /app/*                         Protected business shell and pages
+
+Platform Admin module
+  /platform-admin/login          Public operator login
+  /platform-admin                Protected entry; first permitted section
+  /platform-admin/overview        Protected platform shell
+  /platform-admin/workspaces
+  /platform-admin/plans
+  /platform-admin/backups
+  /platform-admin/audit
+```
+
+Remove Platform admin from tenant navigation. Retire /app/admin through an explicit
+redirect to the guarded platform entry; never render an unguarded legacy admin page.
+
+Place the explicit login child before the protected empty-path shell route in the
+platform route configuration. Apply platform access guards to that shell and its
+protected children, not to the entire /platform-admin prefix: anonymous users must
+be able to reach /platform-admin/login without a redirect loop. The login page renders
+outside the authenticated platform shell. Use a full-path match for the base entry
+redirect, and resolve its destination from the operator's permitted sections.
+
+Wait for /api/v1/admin/me before rendering protected platform content.
+Anonymous users go to /platform-admin/login; authenticated non-operators see access denied.
+Network failures show retry rather than empty dashboards or login loops. Section
+visibility and direct-route checks use the same effective permission mapping.
+Do not introduce /platform-login as another canonical login route. If an earlier
+implementation has exposed it, add a compatibility redirect to /platform-admin/login.
+After IdP callback, validate any return path as a local route within the intended
+module and recheck access before navigation.
+
+Move platform-admin.page.ts under features/platform/. Reuse/split its section views
+so route state controls selection, refresh, deep links, and browser Back. Do not
+maintain independent sidebar and tab selection state. A move alone is insufficient:
+remove its bizHeader, direct HttpClient calls, and unused WorkApiService import.
+
+Add PlatformAdminApiService with typed request/response models and a separate
+platform UI/context service. Fetch only authorized sections when visited.
+
+Authentication handling must match approved API origins and exact path boundaries:
+platform development identity only on /api/v1/admin and descendants; tenant identity
+only on approved tenant/auth requests. Do not attach identity to third-party requests,
+public endpoints, or all requests merely because platform mode is active. Strip
+conflicting manual development headers. Verify production Bearer requests separately.
+
+### Session transitions
+
+Keep operator UI state in memory and revalidate after reload. Storage may preserve
+navigation preferences but cannot establish operator authority. Do not replace the
+tenant user ID during platform development login.
+
+Production may share one IdP identity across both areas. Define two distinct actions:
+
+- Exit platform clears platform UI/cache and returns to tenant login/entry. Tenant
+  membership must be resolved normally. This is not IdP logout or privilege revocation.
+- Sign out performs the configured authentication logout and clears this application's
+  identity/context/cache keys. Do not use blanket localStorage.clear() or
+  sessionStorage.clear().
+
+Handle token expiry, another-tab logout, account switching, and stale tenant IDs.
+A previous identity's cached data or privileges must not reappear after switching.
+Concurrent different production identities on the same origin are outside this plan.
+
+### Presentation
+
+Use distinct slate/indigo branding, Platform Operations title, operator identity/role,
+and permission-aware navigation. Remove the tenant workspace picker and tenant bottom
+navigation from this shell. Provide an accessible mobile menu with keyboard/focus
+handling at 390px, 768px, 1024px, and desktop.
+
+Every remote section needs loading, empty, validation, error, retry, and success states.
+Disable duplicate writes while active. Do not disguise denied requests as zero counts.
+Show unavailable features as unavailable.
+
+## 7. Implementation order and affected files
+
+1. Define the Business and Platform Admin route trees, including their login pages,
+   shells, platform identity, role mapping, /admin/me, endpoint classification, and
+   authentication-mode contracts.
+2. Implement server resolver/context/policies, development gates, and middleware
+   classification; prove negative authorization cases.
+3. Configure restricted platform SQL access through BaseDAL; validate RLS-safe summaries,
+   actor attribution, transactions, concurrency, and audit requirements.
+4. Add frontend platform API/context services, guards, /platform-admin/login, shell,
+   and lazy routes with the public login outside the protected shell.
+   Move/refactor existing views and remove manual headers and unauthorized eager loads.
+5. Verify tenant and operator flows, update documentation, and run repository checks.
+
+| Area | Main changes |
+| --- | --- |
+| Angular core | auth.service.ts, api-context.interceptor.ts; new platform API/context services and guard |
+| Angular composition | app.config.ts, app.routes.ts, layout/app-shell.ts, features/platform/* |
+| API security | Program.cs, development handler/defaults, dedicated platform policies/context integration |
+| API endpoints | PlatformAdminController.cs, endpoint metadata, TenantResolutionMiddleware.cs |
+| Application | PlatformContracts.cs, operator resolver/context interfaces, queries/commands/handlers, permissions |
+| Infrastructure | PlatformAdminService.cs, administrator resolver, BaseDAL.cs, service registration |
+| Database/configuration | Development seed, restricted platform principal/grants, reviewed RLS-safe summary access |
+| Tests/documentation | API and SQL integration tests, Angular tests, docs/backend-spec OpenAPI/index, phase/status docs |
+
+Angular paths above are relative to src/ServiceDesk.Web/src/app. Follow AGENTS.md for
+inward dependencies, typed SQL parameters, cancellation, query placement, and formatting.
+
+## 8. Acceptance criteria
+
+| Scenario | Required result |
+| --- | --- |
+| Anonymous opens /platform-admin/login | Operator login renders without the protected shell or a redirect loop |
+| Anonymous opens a protected /platform-admin/* page | Redirects to /platform-admin/login; no protected content renders |
+| Business login and Admin login | Separate module entry pages in the same application and port |
+| /app/admin legacy link | Redirects to the guarded platform entry; never renders inside the business shell |
+| Tenant owner edits storage flags or directly calls admin API | No elevation; authenticated request receives 403 |
+| Anonymous admin request | 401; no platform content |
+| Unknown/forged demo GUID or conflicting headers | Rejected; no role issued |
+| Demo headers outside Development or with demo mode off | No development authentication |
+| Each role opens allowed and forbidden sections/APIs | Matches the explicit matrix, including direct URLs |
+| Operator deactivated with page already open | Subsequent API requests denied; stale UI privileges cleared |
+| Admin route includes target businessId | Platform authorization applies without tenant membership lookup |
+| Operator uses tenant route without membership/support authorization | No tenant access |
+| Mutation audit | Correct operator; atomic change/audit; stale versions and retries handled |
+| Tenant/platform pooled connection reuse in both orders | No tenant-context leakage or accidental privilege expansion |
+| Summary queries with real RLS | Accurate authorized aggregates, not misleading zero counts |
+| Refresh, deep link, Back, expiry, switch account, logout | Consistent identity, route, cache, and permissions |
+| Desktop/mobile and keyboard navigation | Usable menus, focus, forms, tables, errors, and retry |
+| Existing tenant workflows | Continue under tenant permission and entitlement checks |
+
+Run:
+
+```powershell
+dotnet format ServiceDesk.slnx --verify-no-changes
+dotnet build ServiceDesk.slnx --no-restore
+dotnet run --project tests/ServiceDesk.Api.Tests --no-build
+npm --prefix src/ServiceDesk.Web run build
+npm --prefix src/ServiceDesk.Web test -- --watch=false
+```
+
+Also test affected API routes against SQL Server using both restricted principals and
+inspect the actual visible desktop/mobile browser session. Record HTTP outcomes,
+permission denials, persistence/audit evidence, and blocked checks. Route headings or
+rendered text length alone do not prove functional correctness or authorization.
+
+Complete only when contracts, security, SQL behavior, actor attribution, session
+transitions, UI, and documentation agree. Missing OIDC setup, unavailable SQL access,
+or incomplete restore/summary implementations must be reported explicitly.

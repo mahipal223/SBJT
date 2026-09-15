@@ -111,8 +111,26 @@ public sealed record CreateSupportGrantRequest(
     int DurationHours,
     string Reason);
 
+public sealed record PlatformOperatorResponse(
+    Guid Id,
+    string FullName,
+    string Email,
+    string Role,
+    IReadOnlyList<string> Permissions);
+
+public sealed record PlatformAdministratorRecord(
+    Guid UserId,
+    string FullName,
+    string Email,
+    string RoleCode,
+    bool IsActive);
+
 public interface IPlatformAdminService
 {
+    Task<PlatformOperatorResponse?> GetCurrentOperatorAsync(
+        Guid userId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<PlatformBusinessSummaryResponse>> GetBusinessesAsync(
         string? search,
         string? status,

@@ -1,5 +1,48 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Custom sleek scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.table-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.table-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.table-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .filter-select,
 select {
   appearance: none;
@@ -461,6 +504,15 @@ h3,
   grid-template-columns: repeat(2, minmax(0, 1fr))
 }
 
+.grid-3-cols {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 17px;
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}
+
 .stat {
   position: relative;
   min-height: 145px;
@@ -873,9 +925,15 @@ h3,
   }
 }
 
+@media(max-width:880px) {
+  .page {
+    padding: 20px 16px 110px !important;
+  }
+}
+
 @media(max-width:720px) {
   .page {
-    padding: 22px 16px 92px
+    padding: 20px 16px 110px !important;
   }
 
   .page-head {
@@ -1026,7 +1084,7 @@ button:disabled {
   text-decoration: none;
 }
 
-.page a:not(.btn):not(.back-link):not(.breadcrumb a):not(.tabs a):not(.toggle):not(.badge):not(.avatar):hover,
+.page a:not(.btn):not(.back-link):not(.breadcrumb a):not(.tabs a):not(.toggle):not(.badge):not(.avatar):not(.quick-link-btn):not(.card):not(.person):hover,
 .link:hover,
 .cell-main a:hover,
 .data-table a:hover {
