@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PlatformAdminApiService, PlatformBusinessSummaryResponse } from '../../core/platform-admin-api.service';
@@ -23,12 +23,39 @@ import { PlatformContextService } from '../../core/platform-context.service';
         (keyup.enter)="loadBusinesses()"
         class="search-input" />
 
-      <select [(ngModel)]="statusFilter" (change)="loadBusinesses()" class="status-select">
-        <option value="">All Statuses</option>
-        <option value="Active">Active</option>
-        <option value="Suspended">Suspended</option>
-        <option value="Closed">Closed</option>
-      </select>
+      <div class="custom-dropdown" (click)="$event.stopPropagation()">
+        <button
+          type="button"
+          class="dropdown-trigger"
+          (click)="statusDropdownOpen.set(!statusDropdownOpen())"
+          [class.open]="statusDropdownOpen()"
+          aria-haspopup="listbox"
+          [attr.aria-expanded]="statusDropdownOpen()">
+          <span>{{ selectedStatusLabel() }}</span>
+          <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
+        @if (statusDropdownOpen()) {
+          <div class="dropdown-menu" role="listbox">
+            @for (opt of statusOptions; track opt.value) {
+              <button
+                type="button"
+                class="dropdown-item"
+                role="option"
+                [attr.aria-selected]="statusFilter === opt.value"
+                [class.selected]="statusFilter === opt.value"
+                (click)="selectStatus(opt.value)">
+                <span>{{ opt.label }}</span>
+                @if (statusFilter === opt.value) {
+                  <span class="check-icon">✓</span>
+                }
+              </button>
+            }
+          </div>
+        }
+      </div>
 
       <button type="button" class="btn-primary" (click)="loadBusinesses()">Filter</button>
     </div>
@@ -144,44 +171,63 @@ import { PlatformContextService } from '../../core/platform-context.service';
 </div>
   `,
   styles: `
-.page-container { display: flex; flex-direction: column; gap: 1.5rem; }
+.page-container { display: flex; flex-direction: column; gap: 1.5rem; width: 100%; }
 .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-h2 { font-size: 1.35rem; font-weight: 700; color: #f8fafc; margin: 0; }
-.subtitle { font-size: 0.85rem; color: #94a3b8; margin: 0.25rem 0 0; }
-.filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.search-input { width: 240px; padding: 0.5rem 0.75rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #f8fafc; font-size: 0.85rem; }
-.status-select { padding: 0.5rem 0.75rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #f8fafc; font-size: 0.85rem; }
-.btn-primary { padding: 0.5rem 1rem; border-radius: 6px; background: #6366f1; color: #fff; border: 0; font-weight: 600; cursor: pointer; }
-.table-card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; overflow-x: auto; }
-.data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
-.data-table th { padding: 0.85rem 1rem; background: #0f172a; color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; border-bottom: 1px solid #334155; }
-.data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; vertical-align: middle; }
-.data-table tr:hover td { background: #24344d; }
-.biz-name { display: block; color: #f8fafc; font-weight: 600; }
-.biz-id { display: block; font-size: 0.75rem; color: #64748b; }
-.status-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; background: #334155; color: #cbd5e1; }
-.status-badge.active { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid #22c55e; }
-.status-badge.suspended { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #ef4444; }
+h2 { font-size: 24px; font-weight: 800; color: var(--ink); margin: 0; font-family: 'Manrope', sans-serif; }
+.subtitle { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+.filter-bar { display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: center; }
+.search-input { height: 40px; width: 260px; padding: 0 14px; border-radius: 8px; background: #fff; border: 1px solid var(--line); color: var(--ink); font-size: 13px; font-family: inherit; transition: all 0.15s; }
+.search-input:focus { outline: 2px solid var(--teal-tint); border-color: var(--teal); }
+.custom-dropdown { position: relative; display: inline-block; }
+.dropdown-trigger { height: 40px; min-width: 155px; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font-size: 13px; font-weight: 600; font-family: inherit; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; transition: all 0.15s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+.dropdown-trigger:hover { border-color: #cbd5e1; background: #f8fafb; }
+.dropdown-trigger.open { border-color: var(--teal); outline: 2px solid var(--teal-tint); background: #fff; }
+.chevron { transition: transform 0.2s ease; color: var(--muted); flex-shrink: 0; }
+.dropdown-trigger.open .chevron { transform: rotate(180deg); color: var(--teal); }
+.dropdown-menu { position: absolute; top: calc(100% + 5px); left: 0; min-width: 175px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 25px rgba(16, 41, 54, 0.12); padding: 5px; z-index: 100; animation: dropdownFade 0.12s ease; }
+@keyframes dropdownFade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.dropdown-item { width: 100%; padding: 9px 12px; border: 0; background: transparent; border-radius: 6px; text-align: left; font-size: 13px; font-weight: 600; font-family: inherit; color: var(--ink); display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.12s; }
+.dropdown-item:hover { background: #f4f7f9; color: var(--teal-dark); }
+.dropdown-item.selected { background: var(--teal-tint); color: var(--teal-dark); font-weight: 700; }
+.check-icon { color: var(--teal); font-weight: 800; font-size: 13px; margin-left: 8px; }
+.btn-primary { height: 40px; padding: 0 20px; border-radius: 8px; background: var(--teal); color: #fff; border: 0; font-weight: 700; font-size: 13px; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; justify-content: center; }
+.btn-primary:hover { background: var(--teal-dark); }
+.table-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; box-shadow: var(--shadow); width: 100%; }
+.data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.data-table th { padding: 12px 16px; background: #f8fafb; color: var(--muted); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .05em; border-bottom: 1px solid var(--line); }
+.data-table td { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); color: var(--ink); vertical-align: middle; }
+.data-table tr:hover td { background: #f8fafb; }
+.biz-name { display: block; color: var(--ink); font-weight: 700; font-size: 14px; }
+.biz-id { display: block; font-size: 11px; color: var(--muted); font-family: monospace; margin-top: 2px; }
+.status-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.status-badge.active { background: var(--teal-tint); color: var(--teal-dark); border: 1px solid #b7e8de; }
+.status-badge.suspended { background: var(--red-bg); color: var(--red); border: 1px solid #fed2d2; }
 .plan-info { display: flex; flex-direction: column; gap: 0.15rem; }
-.plan-name { font-weight: 600; color: #f1f5f9; }
-.member-count { font-size: 0.75rem; color: #94a3b8; }
-.action-btn { padding: 0.35rem 0.75rem; border-radius: 5px; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent; cursor: pointer; }
-.action-btn.warn { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: #ef4444; }
-.action-btn.ok { background: rgba(34, 197, 94, 0.15); color: #86efac; border-color: #22c55e; }
-.state-card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 3rem 1.5rem; text-align: center; color: #94a3b8; }
-.spinner { width: 28px; height: 28px; border: 3px solid #334155; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem; }
+.plan-name { font-weight: 700; color: var(--ink); }
+.member-count { font-size: 12px; color: var(--muted); }
+.action-btn { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; }
+.action-btn.warn { background: #fff; color: var(--red); border-color: #fed2d2; }
+.action-btn.warn:hover { background: var(--red-bg); }
+.action-btn.ok { background: #fff; color: var(--teal-dark); border-color: #b7e8de; }
+.action-btn.ok:hover { background: var(--teal-tint); }
+.state-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 3rem 1.5rem; text-align: center; color: var(--muted); box-shadow: var(--shadow); }
+.spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); display: grid; place-items: center; z-index: 50; padding: 1rem; }
-.modal-card { width: 100%; max-width: 480px; background: #1e293b; border: 1px solid #475569; border-radius: 12px; padding: 1.75rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
-.modal-card h3 { margin: 0 0 0.5rem; font-size: 1.2rem; color: #f8fafc; }
-.modal-desc { font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.25rem; }
-.form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.35rem; }
-.modal-input { width: 100%; padding: 0.6rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; font-size: 0.85rem; box-sizing: border-box; }
-.modal-alert { margin-top: 0.75rem; font-size: 0.8rem; color: #f87171; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(10, 28, 36, 0.55); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 50; padding: 1rem; }
+.modal-card { width: 100%; max-width: 480px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.75rem; box-shadow: 0 20px 40px rgba(16, 41, 54, 0.18); color: var(--ink); }
+.modal-card h3 { margin: 0 0 0.5rem; font-size: 18px; font-weight: 800; color: var(--ink); font-family: 'Manrope', sans-serif; }
+.modal-desc { font-size: 13px; color: var(--muted); margin-bottom: 1.25rem; }
+.form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 0.35rem; }
+.modal-input { width: 100%; padding: 8px 12px; border-radius: 8px; background: #fff; border: 1px solid var(--line); color: var(--ink); font-size: 13px; box-sizing: border-box; }
+.modal-input:focus { outline: 2px solid var(--teal-tint); border-color: var(--teal); }
+.modal-alert { margin-top: 0.75rem; font-size: 12px; color: var(--red); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
-.btn-cancel { padding: 0.5rem 1rem; border-radius: 6px; background: transparent; border: 1px solid #475569; color: #cbd5e1; cursor: pointer; }
-.btn-confirm { padding: 0.5rem 1rem; border-radius: 6px; background: #6366f1; border: 0; color: #fff; font-weight: 600; cursor: pointer; }
-.btn-confirm.danger { background: #ef4444; }
+.btn-cancel { padding: 8px 16px; border-radius: 6px; background: #fff; border: 1px solid var(--line); color: var(--ink); font-weight: 600; font-size: 13px; cursor: pointer; }
+.btn-cancel:hover { background: #f8fafb; }
+.btn-confirm { padding: 8px 16px; border-radius: 6px; background: var(--teal); border: 0; color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+.btn-confirm:hover:not(:disabled) { background: var(--teal-dark); }
+.btn-confirm.danger { background: var(--red); }
+.btn-confirm.danger:hover:not(:disabled) { background: #9e2a2a; }
 .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
   `
 })
@@ -195,6 +241,30 @@ export class PlatformWorkspacesComponent implements OnInit {
 
   searchQuery = '';
   statusFilter = '';
+
+  readonly statusDropdownOpen = signal(false);
+  readonly statusOptions = [
+    { value: '', label: 'All Statuses' },
+    { value: 'Active', label: 'Active' },
+    { value: 'Suspended', label: 'Suspended' },
+    { value: 'Closed', label: 'Closed' }
+  ];
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.statusDropdownOpen.set(false);
+  }
+
+  selectStatus(val: string): void {
+    this.statusFilter = val;
+    this.statusDropdownOpen.set(false);
+    this.loadBusinesses();
+  }
+
+  selectedStatusLabel(): string {
+    const opt = this.statusOptions.find(o => o.value === this.statusFilter);
+    return opt ? opt.label : 'All Statuses';
+  }
 
   // Status modal
   readonly statusModalOpen = signal(false);

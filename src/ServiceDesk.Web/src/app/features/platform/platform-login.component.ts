@@ -81,33 +81,33 @@ import { PlatformContextService } from '../../core/platform-context.service';
 </div>
   `,
   styles: `
-:host { display: block; min-height: 100vh; background: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+:host { display: block; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: 'DM Sans', system-ui, sans-serif; }
 .login-wrapper { min-height: 100vh; display: grid; place-items: center; padding: 2rem 1rem; }
-.login-card { width: 100%; max-width: 480px; background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 2.5rem 2rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+.login-card { width: 100%; max-width: 480px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 2.5rem 2rem; box-shadow: var(--shadow); }
 .header { text-align: center; margin-bottom: 2rem; }
-.badge-icon { font-size: 2.2rem; margin-bottom: 0.5rem; }
-h1 { font-size: 1.5rem; font-weight: 700; color: #f8fafc; margin: 0 0 0.5rem; }
-.subtitle { font-size: 0.875rem; color: #94a3b8; line-height: 1.4; margin: 0; }
+.badge-icon { width: 48px; height: 48px; margin: 0 auto 0.75rem; display: grid; place-items: center; border-radius: 12px; background: var(--teal-tint); font-size: 1.6rem; border: 1px solid #b7e8de; }
+h1 { font-size: 1.5rem; font-weight: 800; color: var(--ink); margin: 0 0 0.5rem; font-family: 'Manrope', sans-serif; }
+.subtitle { font-size: 0.875rem; color: var(--muted); line-height: 1.4; margin: 0; }
 .alert { padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.875rem; margin-bottom: 1.5rem; }
-.alert.error { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; }
+.alert.error { background: var(--red-bg); border: 1px solid #fed2d2; color: var(--red); }
 .roles-section { margin-bottom: 1.5rem; }
-.section-label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 0.75rem; }
-.role-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; background: #0f172a; border: 1.5px solid #334155; border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; cursor: pointer; transition: all 0.15s ease; color: inherit; }
-.role-btn:hover { border-color: #6366f1; background: #182234; }
-.role-btn.selected { border-color: #6366f1; background: #1e1b4b; outline: 2px solid #818cf8; }
+.section-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.75rem; }
+.role-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; background: #f8fafb; border: 1.5px solid var(--line); border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; cursor: pointer; transition: all 0.15s ease; color: inherit; }
+.role-btn:hover { border-color: var(--teal); background: #f0f7f6; }
+.role-btn.selected { border-color: var(--teal); background: var(--teal-tint); outline: 2px solid rgba(8, 127, 116, 0.25); }
 .role-meta { display: flex; flex-direction: column; gap: 0.25rem; }
-.role-name { font-size: 0.925rem; font-weight: 600; color: #f8fafc; }
-.role-desc { font-size: 0.775rem; color: #94a3b8; }
-.role-tag { font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 6px; background: #334155; color: #cbd5e1; }
-.role-tag.super { background: rgba(99, 102, 241, 0.25); color: #a5b4fc; border: 1px solid #6366f1; }
-.submit-btn { width: 100%; height: 46px; border: 0; border-radius: 8px; background: #6366f1; color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-.submit-btn:hover:not(:disabled) { background: #4f46e5; }
+.role-name { font-size: 0.925rem; font-weight: 700; color: var(--ink); }
+.role-desc { font-size: 0.775rem; color: var(--muted); }
+.role-tag { font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 6px; background: #e9f0f3; color: var(--navy); }
+.role-tag.super { background: #ccebe5; color: var(--teal-dark); border: 1px solid #65d0c5; }
+.submit-btn { width: 100%; height: 46px; border: 0; border-radius: 8px; background: var(--teal); color: #fff; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+.submit-btn:hover:not(:disabled) { background: var(--teal-dark); }
 .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .footer-links { margin-top: 1.75rem; text-align: center; }
-.back-link { font-size: 0.85rem; color: #94a3b8; text-decoration: none; transition: color 0.15s; }
-.back-link:hover { color: #f8fafc; }
+.back-link { font-size: 0.85rem; color: var(--muted); text-decoration: none; transition: color 0.15s; font-weight: 600; }
+.back-link:hover { color: var(--teal); }
   `
 })
 export class PlatformLoginPage {
