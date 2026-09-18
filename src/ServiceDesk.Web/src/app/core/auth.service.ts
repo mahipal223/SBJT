@@ -1,48 +1,30 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { AuthService as Auth0Service } from '@auth0/auth0-angular';
 
-import { isAuth0Configured } from '../app.config';
-
-/**
- * AuthService wraps Auth0 when configured and falls back to the development
- * mock when Auth0 credentials are not yet filled in.
- *
- * Auth0 mode:  tokens come from @auth0/auth0-angular AuthService.
- * Dev mode:    localStorage flags as before (no real token).
- */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly router = inject(Router);
   private readonly http   = inject(HttpClient);
+  private readonly auth0  = inject(Auth0Service, { optional: true });
 
-  // ── Dev-mode fallback (used when Auth0 is not configured) ──
-  private readonly _devUserId     = signal<string | null>(localStorage.getItem('servicedesk.userId'));
-  private readonly _devBusinessId = signal<string | null>(localStorage.getItem('servicedesk.businessId'));
+  private readonly _userId     = signal<string | null>(sessionStorage.getItem('sd.userId'));
+  private readonly _businessId = signal<string | null>(sessionStorage.getItem('sd.businessId'));
+  private readonly _email      = signal<string | null>(sessionStorage.getItem('sd.email'));
+  private readonly _fullName   = signal<string | null>(sessionStorage.getItem('sd.fullName'));
+  private readonly _businessName = signal<string | null>(sessionStorage.getItem('sd.businessName'));
+  private readonly _role = signal<string | null>(sessionStorage.getItem('sd.role'));
 
-  // ── Auth0-mode signals (populated after /callback exchange) ──
-  private readonly _auth0UserId     = signal<string | null>(sessionStorage.getItem('sd.userId'));
-  private readonly _auth0BusinessId = signal<string | null>(sessionStorage.getItem('sd.businessId'));
-  private readonly _auth0Email      = signal<string | null>(sessionStorage.getItem('sd.email'));
-  private readonly _auth0FullName   = signal<string | null>(sessionStorage.getItem('sd.fullName'));
-
-  readonly isAuth0Mode = isAuth0Configured && (!localStorage.getItem('servicedesk.userId') || !!sessionStorage.getItem('sd.userId'));
-
-  readonly userId     = computed(() => this._auth0UserId()     ?? this._devUserId());
-  readonly businessId = computed(() => this._auth0BusinessId() ?? this._devBusinessId());
-  readonly email      = computed(() => this._auth0Email()      ?? 'owner@northstar.example');
-  readonly fullName   = computed(() => this._auth0FullName()   ?? 'Demo User');
+  readonly userId     = computed(() => this._userId());
+  readonly businessId = computed(() => this._businessId());
+  readonly email      = computed(() => this._email() ?? '');
+  readonly fullName   = computed(() => this._fullName() ?? '');
+  readonly businessName = computed(() => this._businessName() ?? 'Workspace');
+  readonly role = computed(() => this._role() ?? 'Member');
 
   readonly isAuthenticated = computed(() => Boolean(this.userId()));
 
-  // ─────────────────────────────────────────────────────────────
-  // Auth0 post-callback sync
-  // ─────────────────────────────────────────────────────────────
-
-  /**
-   * Called from CallbackPage after the Auth0 code exchange completes.
-   * Syncs the OIDC user to our backend and persists the result in session.
-   */
   syncAfterLogin(): void {
     this.http.post<{
       userId: string;
@@ -57,16 +39,15 @@ export class AuthService {
         sessionStorage.setItem('sd.userId',   result.userId);
         sessionStorage.setItem('sd.email',    result.email);
         sessionStorage.setItem('sd.fullName', result.fullName);
-        this._auth0UserId.set(result.userId);
-        this._auth0Email.set(result.email);
-        this._auth0FullName.set(result.fullName);
+        this._userId.set(result.userId);
+        this._email.set(result.email);
+        this._fullName.set(result.fullName);
 
         if (result.status === 'new_user' || !result.businessId) {
           // First-time user — go to onboarding wizard.
           void this.router.navigate(['/onboarding']);
         } else {
-          sessionStorage.setItem('sd.businessId', result.businessId);
-          this._auth0BusinessId.set(result.businessId);
+          this.activateWorkspace(result.businessId, result.businessName, result.role ?? 'Owner');
           void this.router.navigate(['/app/overview']);
         }
       },
@@ -76,28 +57,39 @@ export class AuthService {
     });
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // Dev-mode helpers (unchanged behaviour for local development)
-  // ─────────────────────────────────────────────────────────────
+  activateWorkspace(businessId: string, businessName?: string | null, role = 'Owner'): void {
+    sessionStorage.setItem('sd.businessId', businessId);
+    this._businessId.set(businessId);
 
-  private static readonly DEV_USER_ID     = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-  private static readonly DEV_BUSINESS_ID = '11111111-1111-1111-1111-111111111111';
+    if (businessName) {
+      sessionStorage.setItem('sd.businessName', businessName);
+      this._businessName.set(businessName);
+    }
 
-  loginAsDemo(): void {
-    localStorage.setItem('servicedesk.userId',     AuthService.DEV_USER_ID);
-    localStorage.setItem('servicedesk.businessId', AuthService.DEV_BUSINESS_ID);
-    this._devUserId.set(AuthService.DEV_USER_ID);
-    this._devBusinessId.set(AuthService.DEV_BUSINESS_ID);
+    if (role) {
+      sessionStorage.setItem('sd.role', role);
+      this._role.set(role);
+    }
   }
 
   logout(): void {
     localStorage.clear();
     sessionStorage.clear();
-    this._devUserId.set(null);
-    this._devBusinessId.set(null);
-    this._auth0UserId.set(null);
-    this._auth0BusinessId.set(null);
-    this._auth0Email.set(null);
-    this._auth0FullName.set(null);
+    this._userId.set(null);
+    this._businessId.set(null);
+    this._email.set(null);
+    this._fullName.set(null);
+    this._businessName.set(null);
+    this._role.set(null);
+
+    if (this.auth0) {
+      this.auth0.logout({
+        logoutParams: {
+          returnTo: `${window.location.origin}/login`,
+        },
+      });
+    } else {
+      void this.router.navigate(['/login']);
+    }
   }
 }

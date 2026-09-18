@@ -1,9 +1,13 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/auth.service';
+import { BusinessProfile, WorkspaceContext } from '../core/api.models';
+import { Job, WorkApiService } from '../core/work-api.service';
 
 interface ScheduledJobCell {
+  id: string;
   title: string;
   time: string;
   tech: string;
@@ -34,6 +38,13 @@ interface ScheduledJobCell {
       <span style="flex:1"></span>
       <button class="btn" (click)="loadJobs()">↻ Refresh</button>
     </div>
+    @if (loading()) {
+      <div class="callout">Loading scheduled jobs…</div>
+    } @else if (error()) {
+      <div class="callout" role="alert">{{ error() }}</div>
+    } @else if (rawJobs().length === 0) {
+      <div class="callout">No jobs are scheduled for this workspace yet.</div>
+    }
     <div class="calendar">
       <div class="time-head"></div>
       @for (day of days(); track day.name) {
@@ -47,7 +58,7 @@ interface ScheduledJobCell {
         @for (job of slot.jobs; track $index) {
           <div class="calendar-cell">
             @if (job) {
-              <a class="job-block" [class.amber]="job.status === 'In progress' || job.title.includes('Drain')" [class.blue]="job.status === 'Scheduled' || job.title.includes('Panel')" routerLink="/app/jobs/detail">
+              <a class="job-block" [class.amber]="job.status === 'InProgress'" [class.blue]="job.status === 'Scheduled'" [routerLink]="['/app/jobs', job.id]">
                 <b>{{ job.title }}</b>
                 <small>{{ job.time }} · {{ job.tech }}</small>
               </a>
@@ -75,8 +86,7 @@ interface ScheduledJobCell {
 `
 })
 export class SchedulePage implements OnInit {
-  private readonly http = inject(HttpClient);
-  private readonly auth = inject(AuthService);
+  private readonly api = inject(WorkApiService);
 
   private readonly currentDate = signal(new Date());
 
@@ -124,31 +134,14 @@ export class SchedulePage implements OnInit {
     });
   });
 
-  readonly rawJobs = signal<any[]>([]);
+  readonly rawJobs = signal<Job[]>([]);
+  readonly loading = signal(false);
+  readonly error = signal('');
 
   readonly slots = computed(() => {
     const timeSlots = ['8 AM', '10 AM', '12 PM', '2 PM', '4 PM'];
     const currentDays = this.days();
     const jobsList = this.rawJobs();
-
-    // Default sample fallback if no API jobs are scheduled for current week
-    const defaultSample: Record<string, (ScheduledJobCell | null)[]> = {
-      '8 AM': [null, null, { title: 'Water heater inspection', time: '8:00 AM', tech: 'Alex', status: 'Scheduled' }, null, null],
-      '10 AM': [
-        { title: 'Filter replacement', time: '10:00 AM', tech: 'Mike', status: 'In progress' },
-        null,
-        { title: 'Kitchen Drain repair', time: '10:00 AM', tech: 'Mike', status: 'Scheduled' },
-        null,
-        { title: 'Brake inspection', time: '10:00 AM', tech: 'Jamie', status: 'Scheduled' }
-      ],
-      '12 PM': [null, null, null, null, null],
-      '2 PM': [null, null, { title: 'Panel safety check', time: '2:00 PM', tech: 'Alex', status: 'Scheduled' }, { title: 'AC tune-up', time: '2:00 PM', tech: 'Mike', status: 'Scheduled' }, null],
-      '4 PM': [null, null, null, { title: 'Sink installation', time: '4:00 PM', tech: 'Alex', status: 'Scheduled' }, null]
-    };
-
-    if (jobsList.length === 0) {
-      return timeSlots.map(t => ({ time: t, jobs: defaultSample[t] || [null, null, null, null, null] }));
-    }
 
     return timeSlots.map(t => {
       const slotHour = parseInt(t, 10) + (t.includes('PM') && !t.includes('12') ? 12 : 0);
@@ -162,9 +155,10 @@ export class SchedulePage implements OnInit {
 
         if (!found) return null;
         return {
+          id: found.id,
           title: found.title,
           time: found.arrivalWindow || t,
-          tech: found.assignedMemberId ? 'Assigned' : 'Alex',
+          tech: found.assignedMemberId ? 'Assigned' : 'Unassigned',
           status: found.status
         } as ScheduledJobCell;
       });
@@ -178,17 +172,17 @@ export class SchedulePage implements OnInit {
   }
 
   loadJobs(): void {
-    const bizId = this.auth.businessId();
-    if (!bizId) return;
-
-    this.http.get<{ items: any[] }>(`/api/v1/businesses/${bizId}/jobs?pageSize=100`).subscribe({
+    this.loading.set(true);
+    this.error.set('');
+    this.api.jobs('', '', 100).subscribe({
       next: res => {
-        if (res?.items) {
-          this.rawJobs.set(res.items);
-        }
+        this.rawJobs.set(res.items ?? []);
+        this.loading.set(false);
       },
       error: () => {
-        // Fallback to sample
+        this.rawJobs.set([]);
+        this.loading.set(false);
+        this.error.set('Scheduled jobs could not be loaded. Try again.');
       }
     });
   }
@@ -222,15 +216,64 @@ export class InvoicesPage{invoices=[{id:'#INV-1048',customer:'Olivia Davis',issu
 @Component({selector:'app-reports',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Business intelligence</p><h1>Reports</h1><p>Understand revenue, jobs, customers, and technician performance.</p></div><div class="page-actions"><button class="btn">Sep 1–30, 2026⌄</button><button class="btn primary">Export report</button></div></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Revenue</span><strong class="stat-value">$18,940</strong><span class="stat-meta">↑ 12.4%</span></article><article class="card stat"><span class="stat-label">Jobs completed</span><strong class="stat-value">68</strong><span class="stat-meta">↑ 8 jobs</span></article><article class="card stat"><span class="stat-label">Average job</span><strong class="stat-value">$278</strong><span class="stat-meta">↑ $18</span></article><article class="card stat"><span class="stat-label">New customers</span><strong class="stat-value">14</strong><span class="stat-meta">↑ 3 customers</span></article></section><section class="grid cols-2 section-gap"><article class="card"><div class="card-head"><h2>Revenue trend</h2><span class="badge">+12.4%</span></div><div class="chart">@for(h of bars;track $index){<span [style.height.%]="h"></span>}</div><div class="chart-labels"><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span></div></article><article class="card"><div class="card-head"><h2>Revenue by service</h2></div><div class="card-body grid"><div class="usage"><div class="usage-head"><b>Plumbing repair</b><span>$7,840 · 41%</span></div><div class="progress"><span style="width:41%"></span></div></div><div class="usage"><div class="usage-head"><b>Installation</b><span>$5,670 · 30%</span></div><div class="progress"><span style="width:30%"></span></div></div><div class="usage"><div class="usage-head"><b>Maintenance</b><span>$3,420 · 18%</span></div><div class="progress"><span style="width:18%"></span></div></div><div class="usage"><div class="usage-head"><b>Other</b><span>$2,010 · 11%</span></div><div class="progress"><span style="width:11%"></span></div></div></div></article></section><div class="callout section-gap"><strong>Advanced reports are included in your Team plan.</strong> Reports enforce your workspace and role permissions before returning business data.</div></main>`,styles:`.chart{height:250px;display:flex;align-items:end;gap:9%;padding:35px 30px 0}.chart span{flex:1;min-width:18px;border-radius:6px 6px 0 0;background:linear-gradient(#43b9ad,var(--teal))}.chart-labels{display:flex;justify-content:space-around;padding:12px 24px 20px;border-top:1px solid var(--line-soft);color:var(--muted);font-size:11px}`})
 export class ReportsPage{bars=[45,62,54,71,68,88]}
 
-@Component({selector:'app-team',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">People & access</p><h1>Team & permissions</h1><p>Add staff when you grow. Returning to solo only deactivates access; history stays intact.</p></div><button class="btn primary">＋ Invite staff</button></header><div class="callout"><strong>One workspace, flexible team size.</strong> Your owner membership remains the same whether you work alone or add employees. No data migration is needed.</div><section class="grid cols-3 section-gap"><article class="card stat"><span class="stat-label">Active staff</span><strong class="stat-value">3 / 5</strong><span class="stat-meta">2 seats available</span></article><article class="card stat"><span class="stat-label">Pending invitations</span><strong class="stat-value">1</strong><span class="stat-meta">Counts toward seat limit</span></article><article class="card stat"><span class="stat-label">Roles configured</span><strong class="stat-value">4</strong><span class="stat-meta">Owner, manager, technician, office</span></article></section><section class="card section-gap"><div class="card-head"><h2>Workspace members</h2><button class="btn small">Manage roles</button></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Team member</th><th>Role</th><th>Job access</th><th>Status</th><th>Last active</th></tr></thead><tbody>@for(m of members;track m.name){<tr><td><span class="person"><span class="avatar">{{m.initials}}</span><span class="cell-main"><strong>{{m.name}}</strong><small>{{m.email}}</small></span></span></td><td>{{m.role}}</td><td>{{m.access}}</td><td><span class="badge" [class.amber]="m.status==='Invited'">{{m.status}}</span></td><td>{{m.last}}</td></tr>}</tbody></table></div></section><section class="card section-gap"><div class="card-head"><h2>Role permissions</h2><span class="muted">Owner permissions cannot be removed</span></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Capability</th><th>Owner</th><th>Manager</th><th>Technician</th><th>Office staff</th></tr></thead><tbody><tr><td>View assigned jobs</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td>Manage customers & jobs</td><td>✓</td><td>✓</td><td>Assigned only</td><td>✓</td></tr><tr><td>View prices & invoices</td><td>✓</td><td>✓</td><td>Optional</td><td>✓</td></tr><tr><td>Manage team & subscription</td><td>✓</td><td>Optional</td><td>—</td><td>—</td></tr></tbody></table></div></section></main>`})
-export class TeamPage{members=[{initials:'AJ',name:'Alex Johnson',email:'alex@northstar.example',role:'Owner',access:'All jobs',status:'Active',last:'Now'},{initials:'MR',name:'Mike Rodriguez',email:'mike@northstar.example',role:'Technician',access:'Assigned only',status:'Active',last:'12 min ago'},{initials:'JL',name:'Jamie Lee',email:'jamie@northstar.example',role:'Office staff',access:'All jobs',status:'Active',last:'1 hr ago'},{initials:'TK',name:'Taylor Kim',email:'taylor@northstar.example',role:'Technician',access:'Assigned only',status:'Invited',last:'—'}]}
+@Component({
+  selector: 'app-team',
+  template: `
+<main class="page">
+  <header class="page-head">
+    <div><p class="eyebrow">People & access</p><h1>Team & permissions</h1><p>Membership details for {{ businessName() }}.</p></div>
+    <button class="btn primary" disabled title="Staff invitations are not available yet">＋ Invite staff</button>
+  </header>
+  @if (error()) {
+    <div class="callout" role="alert">{{ error() }}</div>
+  } @else if (soloMode()) {
+    <div class="callout"><strong>Solo workspace.</strong> Team tools stay hidden from navigation until team mode is enabled.</div>
+  }
+  <section class="grid cols-3 section-gap">
+    <article class="card stat"><span class="stat-label">Active staff</span><strong class="stat-value">1</strong><span class="stat-meta">Workspace owner</span></article>
+    <article class="card stat"><span class="stat-label">Pending invitations</span><strong class="stat-value">0</strong><span class="stat-meta">Invitation workflow not enabled</span></article>
+    <article class="card stat"><span class="stat-label">Current role</span><strong class="stat-value">{{ role() }}</strong><span class="stat-meta">Authenticated membership</span></article>
+  </section>
+  <section class="card section-gap">
+    <div class="card-head"><h2>Workspace member</h2></div>
+    <div class="table-scroll"><table class="data-table"><thead><tr><th>Team member</th><th>Role</th><th>Status</th></tr></thead><tbody><tr><td><span class="person"><span class="avatar">{{ initials() }}</span><span class="cell-main"><strong>{{ auth.fullName() || 'Workspace owner' }}</strong><small>{{ auth.email() }}</small></span></span></td><td>{{ role() }}</td><td><span class="badge">Active</span></td></tr></tbody></table></div>
+  </section>
+</main>`
+})
+export class TeamPage implements OnInit {
+  readonly auth = inject(AuthService);
+  private readonly http = inject(HttpClient);
+
+  readonly businessName = signal(this.auth.businessName());
+  readonly role = signal(this.auth.role());
+  readonly soloMode = signal(false);
+  readonly error = signal('');
+  readonly initials = computed(() => {
+    const name = this.auth.fullName().trim();
+    if (!name) return '?';
+    return name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+  });
+
+  ngOnInit(): void {
+    const businessId = this.auth.businessId();
+    if (!businessId) return;
+    this.http.get<WorkspaceContext>(`/api/v1/businesses/${businessId}/workspace`).subscribe({
+      next: workspace => {
+        this.businessName.set(workspace.businessName);
+        this.role.set(workspace.role);
+        this.soloMode.set(workspace.business.soloMode);
+      },
+      error: () => this.error.set('Workspace membership could not be loaded.')
+    });
+  }
+}
 
 @Component({selector:'app-subscription',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Billing & entitlement</p><h1>Subscription</h1><p>Your API checks these limits before accepting restricted actions.</p></div><button class="btn">Billing history</button></header><section class="split"><div class="grid"><article class="card"><div class="card-head"><div><p class="eyebrow">Current plan</p><h2>Team</h2></div><span class="badge">Active</span></div><div class="card-body"><div class="price"><strong>$49</strong><span>/ month<br><small>Billed monthly</small></span></div><p class="muted">For growing service businesses that need dispatch, permissions, and reports.</p><div class="page-actions"><button class="btn primary">Change plan</button><button class="btn">Manage payment method</button></div></div></article><article class="card"><div class="card-head"><h2>Usage and plan limits</h2><small class="muted">Billing period: Sep 1–30</small></div><div class="card-body grid">@for(u of usage;track u.name){<div class="usage"><div class="usage-head"><b>{{u.name}}</b><span>{{u.display}}</span></div><div class="progress"><span [style.width.%]="u.percent" [style.background]="u.percent>80?'var(--amber)':'var(--teal)'"></span></div><small class="muted">{{u.description}}</small></div>}</div></article></div><aside class="grid"><article class="card"><div class="card-head"><h2>Included features</h2></div><div class="card-body list"><div class="list-row"><span>✓ Estimates</span><b>Enabled</b></div><div class="list-row"><span>✓ Advanced reports</span><b>Enabled</b></div><div class="list-row"><span>✓ Data export</span><b>Enabled</b></div><div class="list-row"><span>✓ Audit history</span><b>365 days</b></div></div></article><article class="card"><div class="card-head"><h2>Next invoice</h2></div><div class="card-body"><strong style="font-size:24px">$49.00</strong><p class="muted">Due October 1, 2026<br>Visa ending in 4242</p></div></article></aside></section><section class="card section-gap"><div class="card-head"><h2>How limit checks work</h2></div><div class="table-scroll"><table class="data-table"><thead><tr><th>User action</th><th>Feature code</th><th>API rule</th><th>Limit display</th></tr></thead><tbody><tr><td>Invite employee</td><td><code>staff.seats</code></td><td>Active + pending must fit limit</td><td>5 staff seats</td></tr><tr><td>Upload job photo</td><td><code>storage.bytes</code></td><td>Used + reserved upload size</td><td>10 GB storage</td></tr><tr><td>Create job</td><td><code>jobs.per_period</code></td><td>Created within billing period</td><td>500 jobs per billing period</td></tr><tr><td>Open advanced reports</td><td><code>reports.advanced.enabled</code></td><td>Entitlement must be enabled</td><td>Advanced reports enabled</td></tr><tr><td>Use estimates</td><td><code>estimates.enabled</code></td><td>Entitlement must be enabled</td><td>Estimates enabled</td></tr></tbody></table></div></section></main>`,styles:`.price{display:flex;align-items:center;gap:12px;margin-bottom:16px}.price>strong{font-family:Manrope;font-size:46px}.price span{color:var(--muted);line-height:1.2}.price small{font-size:10px}code{padding:3px 5px;border-radius:4px;background:#eef3f5;font-size:11px}`})
 export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percent:60,description:'Active users plus pending invitations'},{name:'Jobs this period',display:'84 of 500',percent:17,description:'Resets October 1'},{name:'File storage',display:'2.4 GB of 10 GB',percent:24,description:'Photos, documents, and exports'}]}
 
 @Component({
   selector: 'app-settings',
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   template: `
 <main class="page">
   <header class="page-head">
@@ -239,12 +282,12 @@ export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percen
       <h1>Business settings</h1>
       <p>Identity, billing, security, data, and account controls.</p>
     </div>
-    <button class="btn primary" (click)="save()">Save changes</button>
+    <button class="btn primary" (click)="save()" [disabled]="saving() || (tab() === 'profile' && !isProfileValid())">{{ saving() ? 'Saving…' : 'Save changes' }}</button>
   </header>
 
   @if (savedMsg()) {
     <div class="callout section-gap" style="border-color:var(--teal);background:var(--teal-tint);color:var(--navy);margin-bottom:16px">
-      <strong>Saved:</strong> {{ savedMsg() }}
+      {{ savedMsg() }}
     </div>
   }
 
@@ -258,52 +301,33 @@ export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percen
   </nav>
 
   @if (tab() === 'profile') {
-    <section class="split">
-      <div class="grid">
+    @if (profileLoading()) {
+      <div class="callout">Loading business profile…</div>
+    } @else if (profileError()) {
+      <div class="callout" role="alert">{{ profileError() }}</div>
+    } @else if (profile(); as business) {
+      <section class="split">
         <article class="card">
           <div class="card-head"><h2>Business profile</h2></div>
-          <form class="card-body form-grid">
-            <div class="field wide"><label>Business name</label><input value="Northstar Services LLC"></div>
-            <div class="field"><label>Business type</label><select><option>Plumbing</option><option>Electrical</option><option>Automotive service</option></select></div>
-            <div class="field"><label>Business phone</label><input value="(512) 555-0100"></div>
-            <div class="field wide"><label>Address</label><input value="1200 South Lamar Blvd, Austin, TX 78704"></div>
-            <div class="field"><label>Time zone</label><select><option>Central Time (US & Canada)</option></select></div>
-            <div class="field"><label>Currency</label><select><option>USD — US Dollar</option></select></div>
+          <form class="card-body form-grid" #businessForm="ngForm">
+            <div class="field wide"><label for="settings-name">Business name</label><input id="settings-name" name="name" [(ngModel)]="business.name" required maxlength="200"></div>
+            <div class="field"><label for="settings-industry">Business type</label><input id="settings-industry" name="industry" [(ngModel)]="business.industry" required maxlength="32"></div>
+            <div class="field"><label for="settings-phone">Business phone</label><input id="settings-phone" name="phone" [(ngModel)]="business.phone" pattern="[0-9()+ .-]{7,20}"></div>
+            <div class="field wide"><label for="settings-address">Street address</label><input id="settings-address" name="address" [(ngModel)]="business.address" maxlength="250"></div>
+            <div class="field"><label for="settings-city">City</label><input id="settings-city" name="city" [(ngModel)]="business.city" maxlength="100"></div>
+            <div class="field"><label for="settings-state">State</label><input id="settings-state" name="state" [(ngModel)]="business.state" pattern="[A-Za-z]{2}" maxlength="2"></div>
+            <div class="field"><label for="settings-zip">ZIP</label><input id="settings-zip" name="zip" [(ngModel)]="business.zip" pattern="[0-9]{5}(-[0-9]{4})?" maxlength="10"></div>
+            <div class="field"><label for="settings-timezone">Time zone</label><input id="settings-timezone" name="timeZone" [(ngModel)]="business.timeZone" required maxlength="80"></div>
+            <div class="field"><label for="settings-currency">Currency</label><input id="settings-currency" name="currency" [(ngModel)]="business.currency" pattern="[A-Z]{3}" maxlength="3"></div>
+            @if (businessForm.invalid) { <div class="field wide"><small class="muted">Correct invalid profile fields before saving.</small></div> }
           </form>
         </article>
-        <article class="card">
-          <div class="card-head"><h2>Data & privacy</h2></div>
-          <div class="card-body list">
-            <div class="list-row"><span class="cell-main"><strong>Export workspace data</strong><small>Customers, jobs, line items, invoices, and audit history</small></span><button class="btn small">Request export</button></div>
-            <div class="list-row"><span class="cell-main"><strong>Backup protection</strong><small>Encrypted daily backups · 30-day rolling retention</small></span><span class="badge">Healthy</span></div>
-            <div class="list-row"><span class="cell-main"><strong>Audit log</strong><small>Review access and changes in this workspace</small></span><button class="btn small">View audit</button></div>
-          </div>
-        </article>
-      </div>
-      <aside class="grid">
-        <article class="card">
-          <div class="card-head"><h2>Email & notifications</h2></div>
-          <div class="card-body list">
-            <div class="list-row"><span class="cell-main"><strong>Custom outbound SMTP</strong><small>Send invoices and estimates from your own domain</small></span><a class="btn small" routerLink="/app/settings/smtp">Configure</a></div>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-head"><h2>Invoice defaults</h2></div>
-          <div class="card-body grid">
-            <div class="field"><label>Payment terms</label><select><option>Due in 14 days</option></select></div>
-            <div class="field"><label>Sales tax</label><input value="8.25%"></div>
-            <div class="field"><label>Invoice prefix</label><input value="INV-"></div>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-head"><h2>Security</h2></div>
-          <div class="card-body list">
-            <div class="list-row"><span class="cell-main"><strong>Multi-factor authentication</strong><small>Required for owners and admins</small></span><button class="toggle on" aria-label="Toggle MFA"></button></div>
-            <div class="list-row"><span class="cell-main"><strong>Session timeout</strong><small>After 8 hours of inactivity</small></span><button class="btn small">Edit</button></div>
-          </div>
-        </article>
-      </aside>
-    </section>
+        <aside class="grid">
+          <article class="card"><div class="card-head"><h2>Email delivery</h2></div><div class="card-body list"><div class="list-row"><span class="cell-main"><strong>Custom outbound SMTP</strong><small>Send invoices and estimates from your own domain</small></span><a class="btn small" routerLink="/app/settings/smtp">Configure</a></div></div></article>
+          <article class="card"><div class="card-head"><h2>Workspace mode</h2></div><div class="card-body"><strong>{{ business.soloMode ? 'Solo' : 'Team' }}</strong><p class="muted">Workspace mode is set during onboarding.</p></div></article>
+        </aside>
+      </section>
+    }
   }
 
   @if (tab() === 'notifications') {
@@ -373,16 +397,30 @@ export class SettingsPage implements OnInit {
 
   readonly tab = signal<'profile' | 'notifications'>('profile');
   readonly savedMsg = signal('');
+  readonly saving = signal(false);
+  readonly profileLoading = signal(true);
+  readonly profileError = signal('');
+  readonly profile = signal<BusinessProfile | null>(null);
 
   readonly jobAssigned = signal(true);
   readonly invoiceIssued = signal(true);
   readonly paymentReceived = signal(true);
   readonly dailyDigest = signal(false);
-  readonly recipientEmail = signal('owner@northstar.example');
+  readonly recipientEmail = signal(this.auth.email());
 
   ngOnInit(): void {
     const bizId = this.auth.businessId();
     if (bizId) {
+      this.http.get<BusinessProfile>(`/api/v1/businesses/${bizId}`).subscribe({
+        next: profile => {
+          this.profile.set(profile);
+          this.profileLoading.set(false);
+        },
+        error: () => {
+          this.profileLoading.set(false);
+          this.profileError.set('Business profile could not be loaded.');
+        }
+      });
       this.http.get<{
         jobAssignedEmail: boolean;
         invoiceIssuedEmail: boolean;
@@ -410,17 +448,60 @@ export class SettingsPage implements OnInit {
   }
 
   save(): void {
-    this.savePreferences();
+    if (this.tab() === 'profile') {
+      this.saveProfile();
+    } else {
+      this.savePreferences();
+    }
+  }
+
+  isProfileValid(): boolean {
+    const value = this.profile();
+    if (!value || !value.name.trim() || !value.industry.trim() || !value.timeZone.trim()) return false;
+    if (value.phone && !/^[0-9()+ .-]{7,20}$/.test(value.phone)) return false;
+    if (value.state && !/^[A-Za-z]{2}$/.test(value.state)) return false;
+    if (value.zip && !/^\d{5}(-\d{4})?$/.test(value.zip)) return false;
+    return /^[A-Z]{3}$/.test(value.currency);
+  }
+
+  saveProfile(): void {
+    const businessId = this.auth.businessId();
+    const profile = this.profile();
+    if (!businessId || !profile || !profile.name.trim()) return;
+
+    this.saving.set(true);
+    this.savedMsg.set('');
+    this.http.patch<BusinessProfile>(`/api/v1/businesses/${businessId}`, {
+      name: profile.name.trim(),
+      industry: profile.industry,
+      phone: profile.phone || null,
+      address: profile.address || null,
+      city: profile.city || null,
+      state: profile.state || null,
+      zip: profile.zip || null,
+      timeZone: profile.timeZone,
+      currency: profile.currency
+    }).subscribe({
+      next: updated => {
+        this.profile.set(updated);
+        this.auth.activateWorkspace(updated.id, updated.name, this.auth.role());
+        this.saving.set(false);
+        this.savedMsg.set('Business profile saved.');
+      },
+      error: err => {
+        this.saving.set(false);
+        this.savedMsg.set(err?.error?.detail || 'Business profile could not be saved.');
+      }
+    });
   }
 
   savePreferences(): void {
     const bizId = this.auth.businessId();
     if (!bizId) {
-      this.savedMsg.set('Workspace preferences updated successfully.');
-      setTimeout(() => this.savedMsg.set(''), 4000);
       return;
     }
 
+    this.saving.set(true);
     this.http.patch(`/api/v1/businesses/${bizId}/notifications/preferences`, {
       jobAssignedEmail: this.jobAssigned(),
       invoiceIssuedEmail: this.invoiceIssued(),
@@ -429,11 +510,13 @@ export class SettingsPage implements OnInit {
       alertEmailRecipient: this.recipientEmail().trim() || null
     }).subscribe({
       next: () => {
+        this.saving.set(false);
         this.savedMsg.set('Notification preferences saved successfully.');
         setTimeout(() => this.savedMsg.set(''), 4000);
       },
       error: () => {
-        this.savedMsg.set('Notification preferences saved locally.');
+        this.saving.set(false);
+        this.savedMsg.set('Notification preferences could not be saved.');
         setTimeout(() => this.savedMsg.set(''), 4000);
       }
     });

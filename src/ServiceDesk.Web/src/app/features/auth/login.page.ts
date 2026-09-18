@@ -1,8 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService as Auth0Service } from '@auth0/auth0-angular';
 import { AuthService } from '../../core/auth.service';
-import { isAuth0Configured } from '../../app.config';
 
 @Component({
   selector: 'app-login-page',
@@ -140,25 +140,6 @@ import { isAuth0Configured } from '../../app.config';
               <button type="button" class="link-btn" (click)="mode.set('login')">Sign in →</button>
             }
           </p>
-
-          <!-- Dev mode fallback shown only when Auth0 is not configured -->
-          @if (!isAuth0Configured) {
-            <div class="dev-zone" id="dev-login-section">
-              <div class="dev-badge">⚡ LOCAL DEV MODE</div>
-              <p class="dev-label">Auth0 is not configured yet. Sign in instantly below:</p>
-              <button id="btn-dev-login" type="button" class="dev-btn" (click)="continueAsDemo()">
-                Log in as Demo Owner (Northstar Services) →
-              </button>
-              <div class="dev-creds">
-                <div class="dev-cred-row"><span class="cred-k">Business:</span> <span class="cred-v">Northstar Services</span></div>
-                <div class="dev-cred-row"><span class="cred-k">Role:</span> <span class="cred-v">Owner (Full Access)</span></div>
-                <div class="dev-cred-row"><span class="cred-k">Email:</span> <span class="cred-v">owner@northstar.example</span></div>
-              </div>
-              <p class="dev-hint">
-                To enable live Google / Email authentication, fill in <code>AUTH0_DOMAIN</code> and <code>AUTH0_CLIENT_ID</code> in <code>app.config.ts</code>.
-              </p>
-            </div>
-          }
         </div>
       </section>
     </main>
@@ -477,6 +458,7 @@ import { isAuth0Configured } from '../../app.config';
 export class LoginPage {
   protected readonly auth = inject(AuthService);
   protected readonly router = inject(Router);
+  protected readonly auth0 = inject(Auth0Service, { optional: true });
 
   readonly mode = signal<'login' | 'signup'>('login');
   readonly showPassword = signal(false);
@@ -488,64 +470,62 @@ export class LoginPage {
   password = '';
   fullName = '';
 
-  /** True when Auth0 Domain/ClientID have been filled in app.config.ts */
-  readonly isAuth0Configured = isAuth0Configured;
-
   signInWithGoogle(): void {
-    if (!this.isAuth0Configured) {
-      // In local dev mode without Auth0, log in directly as demo
-      this.continueAsDemo();
+    if (!this.auth0) {
+      this.errorMsg.set('Authentication service unavailable.');
       return;
     }
     this.errorMsg.set('');
     this.googleLoading.set(true);
 
-    try {
-      // Import Auth0 service lazily to avoid errors when not configured.
-      import('@auth0/auth0-angular').then(({ AuthService: Auth0Service }) => {
-        // This only works if Auth0 is configured. If not, show dev hint.
+    this.auth0.loginWithRedirect({
+      authorizationParams: {
+        connection: 'google-oauth2',
+      },
+    }).subscribe({
+      error: (err: unknown) => {
         this.googleLoading.set(false);
-        this.errorMsg.set('Auth0 is not configured yet. Fill in app.config.ts first.');
-      }).catch(() => {
-        this.googleLoading.set(false);
-        this.errorMsg.set('Auth0 is not configured. Use the dev login below.');
-      });
-    } catch {
-      this.googleLoading.set(false);
-      this.errorMsg.set('Auth0 is not configured. Use the dev login below.');
-    }
+        this.errorMsg.set(err instanceof Error ? err.message : 'Google authentication redirect failed.');
+      },
+    });
   }
 
   submitEmail(): void {
     this.errorMsg.set('');
-    if (!this.email || !this.password) {
-      this.errorMsg.set('Please enter your email and password.');
+    if (!this.email) {
+      this.errorMsg.set('Please enter your email.');
       return;
     }
+
+    if (!this.auth0) {
+      this.errorMsg.set('Authentication service unavailable.');
+      return;
+    }
+
     this.emailLoading.set(true);
-
-    if (!this.isAuth0Configured) {
-      // In dev mode, clicking submit logs the developer directly in as demo owner!
-      setTimeout(() => {
+    this.auth0.loginWithRedirect({
+      authorizationParams: {
+        login_hint: this.email,
+        screen_hint: this.mode() === 'signup' ? 'signup' : undefined,
+      },
+    }).subscribe({
+      error: (err: unknown) => {
         this.emailLoading.set(false);
-        this.continueAsDemo();
-      }, 300);
-      return;
-    }
-
-    // Auth0 Universal Login handles email+password on the /callback redirect.
-    setTimeout(() => {
-      this.emailLoading.set(false);
-      this.errorMsg.set('Auth0 is not configured yet. Use the dev login below.');
-    }, 600);
+        this.errorMsg.set(err instanceof Error ? err.message : 'Authentication redirect failed.');
+      },
+    });
   }
 
   forgotPassword(): void {
-    this.errorMsg.set('Password reset is handled by Auth0. Configure Auth0 to enable it.');
-  }
-
-  continueAsDemo(): void {
-    this.auth.loginAsDemo();
-    void this.router.navigate(['/app/overview']);
+    if (this.auth0) {
+      this.auth0.loginWithRedirect({
+        authorizationParams: {
+          screen_hint: 'reset-password',
+          login_hint: this.email || undefined,
+        },
+      });
+    } else {
+      this.errorMsg.set('Password reset is handled by Auth0. Configure Auth0 to enable it.');
+    }
   }
 }

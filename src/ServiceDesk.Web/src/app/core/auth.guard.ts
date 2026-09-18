@@ -22,3 +22,12 @@ export const authGuard: CanActivateFn = () => {
 
   return router.createUrlTree(['/login']);
 };
+
+export const workspaceGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  return auth.businessId()
+    ? true
+    : router.createUrlTree(['/onboarding']);
+};

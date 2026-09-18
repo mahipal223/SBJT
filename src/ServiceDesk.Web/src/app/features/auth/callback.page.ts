@@ -1,4 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService as Auth0Service } from '@auth0/auth0-angular';
+import { filter, switchMap, take } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 
 /**
@@ -40,10 +43,30 @@ import { AuthService } from '../../core/auth.service';
 })
 export class CallbackPage implements OnInit {
   private readonly auth = inject(AuthService);
+  private readonly auth0 = inject(Auth0Service, { optional: true });
+  private readonly router = inject(Router);
 
   ngOnInit(): void {
-    // Auth0 SDK has already exchanged the code for tokens at this point.
-    // Sync the authenticated user with our backend.
-    this.auth.syncAfterLogin();
+    if (this.auth0) {
+      this.auth0.isLoading$.pipe(
+        filter(loading => !loading),
+        take(1),
+        switchMap(() => this.auth0!.isAuthenticated$),
+        take(1)
+      ).subscribe({
+        next: (isAuth) => {
+          if (isAuth) {
+            this.auth.syncAfterLogin();
+          } else {
+            void this.router.navigate(['/login']);
+          }
+        },
+        error: () => {
+          void this.router.navigate(['/login']);
+        }
+      });
+    } else {
+      this.auth.syncAfterLogin();
+    }
   }
 }

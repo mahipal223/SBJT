@@ -78,7 +78,7 @@ COMMIT;
 GO
 `;
 write('01-schema.sql',sql);
-let sec=`-- Apply AFTER 01-schema.sql. Missing/wrong session context denies tenant access.\nSET ANSI_NULLS ON;\nSET QUOTED_IDENTIFIER ON;\nGO\nCREATE FUNCTION security.TenantPredicate(@BusinessId uniqueidentifier)\nRETURNS TABLE WITH SCHEMABINDING\nAS RETURN SELECT 1 AS Allowed\nWHERE @BusinessId = TRY_CONVERT(uniqueidentifier,SESSION_CONTEXT(N'BusinessId'));\nGO\n`;
+let sec=`-- Apply AFTER 01-schema.sql. Missing/wrong session context denies tenant access.\nSET ANSI_NULLS ON;\nSET QUOTED_IDENTIFIER ON;\nGO\nCREATE FUNCTION security.TenantPredicate(@BusinessId uniqueidentifier)\nRETURNS TABLE WITH SCHEMABINDING\nAS RETURN SELECT 1 AS Allowed\nWHERE @BusinessId = TRY_CONVERT(uniqueidentifier,SESSION_CONTEXT(N'BusinessId'))\n   OR TRY_CONVERT(int,SESSION_CONTEXT(N'IsPlatformAdmin')) = 1;\nGO\n`;
 for(const t of [...tables.filter(t=>t.tenant),{schema:'platform',name:'Businesses',root:true}]){const c=t.root?'Id':'BusinessId';sec+=`CREATE SECURITY POLICY security.${t.name}TenantPolicy\nADD FILTER PREDICATE security.TenantPredicate(${c}) ON ${t.schema}.${t.name},\nADD BLOCK PREDICATE security.TenantPredicate(${c}) ON ${t.schema}.${t.name} AFTER INSERT,\nADD BLOCK PREDICATE security.TenantPredicate(${c}) ON ${t.schema}.${t.name} AFTER UPDATE\nWITH (STATE=ON,SCHEMABINDING=ON);\nGO\n`;}
 sec+=`CREATE ROLE servicedesk_app;
 GO

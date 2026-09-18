@@ -99,7 +99,7 @@ const TIMEZONES = [
           <section class="onboard-card" aria-labelledby="step2-title">
             <h1 id="step2-title">Tell us about your business</h1>
             <p class="sub">This information appears on estimates, invoices and customer receipts.</p>
-            <form class="profile-form" novalidate>
+            <form class="profile-form" #profileForm="ngForm">
               <div class="field-full">
                 <label for="biz-name">Business name <span class="req">*</span></label>
                 <input id="biz-name" type="text" [(ngModel)]="form.businessName" name="businessName"
@@ -108,7 +108,11 @@ const TIMEZONES = [
               <div class="field">
                 <label for="biz-phone">Business phone</label>
                 <input id="biz-phone" type="tel" [(ngModel)]="form.phone" name="phone"
+                       #phone="ngModel" pattern="[0-9()+ .-]{7,20}"
                        placeholder="(512) 555-0100" autocomplete="tel" />
+                @if (phone.invalid && phone.touched) {
+                  <small class="field-error">Enter a valid US phone number.</small>
+                }
               </div>
               <div class="field">
                 <label for="biz-tz">Time zone</label>
@@ -131,12 +135,20 @@ const TIMEZONES = [
               <div class="field field-sm">
                 <label for="biz-state">State</label>
                 <input id="biz-state" type="text" [(ngModel)]="form.state" name="state"
+                       #state="ngModel" pattern="[A-Za-z]{2}"
                        placeholder="TX" maxlength="2" autocomplete="address-level1" />
+                @if (state.invalid && state.touched) {
+                  <small class="field-error">Use a two-letter state code.</small>
+                }
               </div>
               <div class="field field-sm">
                 <label for="biz-zip">ZIP</label>
                 <input id="biz-zip" type="text" [(ngModel)]="form.zip" name="zip"
+                       #zip="ngModel" pattern="[0-9]{5}(-[0-9]{4})?"
                        placeholder="78704" maxlength="10" autocomplete="postal-code" />
+                @if (zip.invalid && zip.touched) {
+                  <small class="field-error">Use a 5-digit ZIP or ZIP+4.</small>
+                }
               </div>
             </form>
             <div class="step-footer">
@@ -145,7 +157,7 @@ const TIMEZONES = [
                 id="btn-step2-next"
                 type="button"
                 class="btn-primary"
-                [disabled]="!form.businessName.trim()"
+                [disabled]="profileForm.invalid || !form.businessName.trim()"
                 (click)="next()">
                 Continue →
               </button>
@@ -165,7 +177,7 @@ const TIMEZONES = [
                 class="team-tile"
                 [class.selected]="form.teamSize === 'solo'"
                 (click)="form.teamSize = 'solo'"
-                aria-pressed="form.teamSize === 'solo'">
+                [attr.aria-pressed]="form.teamSize === 'solo'">
                 <span class="team-icon">👤</span>
                 <strong>Just me</strong>
                 <p>Solo operator. Jobs auto-assign to you. Team menus stay hidden.</p>
@@ -176,7 +188,7 @@ const TIMEZONES = [
                 class="team-tile"
                 [class.selected]="form.teamSize === 'team'"
                 (click)="form.teamSize = 'team'"
-                aria-pressed="form.teamSize === 'team'">
+                [attr.aria-pressed]="form.teamSize === 'team'">
                 <span class="team-icon">👥</span>
                 <strong>I have a team</strong>
                 <p>Multi-technician dispatch, assignments and role-based access unlocked.</p>
@@ -301,6 +313,7 @@ const TIMEZONES = [
     .field-full, .field, .field-sm { display: grid; gap: 6px; }
     label { font-size: 13px; font-weight: 600; color: #3d5462; }
     .req { color: #b43b3b; }
+    .field-error { color: #991b1b; font-size: 12px; }
     input, select {
       height: 42px;
       padding: 0 12px;
@@ -428,14 +441,16 @@ export class OnboardingPage {
       soloMode:    this.form.teamSize === 'solo',
     }).subscribe({
       next: (result) => {
-        sessionStorage.setItem('sd.businessId', result.businessId);
+        this.auth.activateWorkspace(result.businessId, result.businessName, 'Owner');
         this.saving.set(false);
         void this.router.navigate(['/app/overview']);
       },
       error: (err) => {
         this.saving.set(false);
+        const detail = err?.error?.detail || err?.error?.title || err?.message;
+        const status = err?.status ? `[${err.status}] ` : '';
         this.errorMsg.set(
-          err?.error?.detail ?? 'Could not create your workspace. Please try again.'
+          detail ? `${status}${detail}` : 'Could not create your workspace. Please try again.'
         );
       },
     });

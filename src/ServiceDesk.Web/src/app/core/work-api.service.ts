@@ -219,8 +219,8 @@ export class WorkApiService {
   customers(search = '') { return this.http.get<PageResult<Customer>>(`${this.root}/customers`, { params: new HttpParams().set('search', search) }); }
   customer(id: string) { return this.http.get<Customer>(`${this.root}/customers/${id}`); }
   createCustomer(command: CreateCustomer) { return this.http.post<Customer>(`${this.root}/customers`, command); }
-  jobs(search = '', status = '') {
-    let params = new HttpParams().set('search', search);
+  jobs(search = '', status = '', pageSize = 25) {
+    let params = new HttpParams().set('search', search).set('pageSize', pageSize);
     if (status) params = params.set('status', status);
     return this.http.get<PageResult<Job>>(`${this.root}/jobs`, { params });
   }

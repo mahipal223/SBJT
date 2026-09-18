@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth.guard';
+import { authGuard, workspaceGuard } from './core/auth.guard';
 import { platformAdminGuard } from './core/platform-admin.guard';
 import { LoginPage } from './features/auth/login.page';
 import { CallbackPage } from './features/auth/callback.page';
@@ -27,7 +27,7 @@ export const routes: Routes = [
   {
     path: 'app',
     component: AppShell,
-    canActivate: [authGuard],
+    canActivate: [authGuard, workspaceGuard],
     children: [
       { path: 'overview', component: DashboardLivePage },
       { path: 'customers', component: CustomersLivePage },

@@ -66,7 +66,8 @@ public sealed class DbMembershipResolver(
                     WHERE m.UserId = @UserId AND m.BusinessId = @BusinessId;
                     """;
 
-                var rows = await baseDAL.ExecutePlatformQueryAsync(
+                var rows = await baseDAL.ExecuteQueryAsync(
+                    businessId,
                     "Membership.Resolve",
                     sql,
                     reader => new MemberPermissionRow(

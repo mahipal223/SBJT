@@ -244,7 +244,7 @@ public sealed class BaseDAL
         try
         {
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-            await ClearTenantContextAsync(connection, cancellationToken).ConfigureAwait(false);
+            await SetPlatformContextAsync(connection, cancellationToken).ConfigureAwait(false);
             return connection;
         }
         catch
@@ -256,16 +256,53 @@ public sealed class BaseDAL
 
     public static async Task ClearTenantContextAsync(
         SqlConnection connection,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        SqlTransaction? transaction = null)
     {
         const string sql = """
             EXEC sys.sp_set_session_context
                 @key = N'BusinessId',
                 @value = NULL,
                 @read_only = 0;
+            EXEC sys.sp_set_session_context
+                @key = N'IsPlatformAdmin',
+                @value = 0,
+                @read_only = 0;
             """;
 
         await using var command = connection.CreateCommand();
+        if (transaction is not null)
+        {
+            command.Transaction = transaction;
+        }
+
+        command.CommandText = sql;
+        command.CommandTimeout = DefaultCommandTimeoutSeconds;
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task SetPlatformContextAsync(
+        SqlConnection connection,
+        CancellationToken cancellationToken,
+        SqlTransaction? transaction = null)
+    {
+        const string sql = """
+            EXEC sys.sp_set_session_context
+                @key = N'BusinessId',
+                @value = NULL,
+                @read_only = 0;
+            EXEC sys.sp_set_session_context
+                @key = N'IsPlatformAdmin',
+                @value = 1,
+                @read_only = 0;
+            """;
+
+        await using var command = connection.CreateCommand();
+        if (transaction is not null)
+        {
+            command.Transaction = transaction;
+        }
+
         command.CommandText = sql;
         command.CommandTimeout = DefaultCommandTimeoutSeconds;
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -355,12 +392,17 @@ public sealed class BaseDAL
         }
     }
 
-    private static async Task SetTenantContextAsync(
+    public static async Task SetTenantContextAsync(
         SqlConnection connection,
         Guid businessId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        SqlTransaction? transaction = null)
     {
         const string sql = """
+            EXEC sys.sp_set_session_context
+                @key = N'IsPlatformAdmin',
+                @value = 0,
+                @read_only = 0;
             EXEC sys.sp_set_session_context
                 @key = N'BusinessId',
                 @value = @BusinessId,
@@ -368,6 +410,11 @@ public sealed class BaseDAL
             """;
 
         await using var command = connection.CreateCommand();
+        if (transaction is not null)
+        {
+            command.Transaction = transaction;
+        }
+
         command.CommandText = sql;
         command.CommandTimeout = DefaultCommandTimeoutSeconds;
         command.Parameters.Add(new SqlParameter("@BusinessId", SqlDbType.UniqueIdentifier)

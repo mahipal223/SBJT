@@ -1,11 +1,14 @@
 -- Apply AFTER 01-schema.sql. Missing/wrong session context denies tenant access.
+use ServiceDeskDev;
+go;
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 CREATE FUNCTION security.TenantPredicate(@BusinessId uniqueidentifier)
 RETURNS TABLE WITH SCHEMABINDING
 AS RETURN SELECT 1 AS Allowed
-WHERE @BusinessId = TRY_CONVERT(uniqueidentifier,SESSION_CONTEXT(N'BusinessId'));
+WHERE @BusinessId = TRY_CONVERT(uniqueidentifier,SESSION_CONTEXT(N'BusinessId'))
+   OR TRY_CONVERT(int,SESSION_CONTEXT(N'IsPlatformAdmin')) = 1;
 GO
 CREATE SECURITY POLICY security.MembersTenantPolicy
 ADD FILTER PREDICATE security.TenantPredicate(BusinessId) ON app.Members,

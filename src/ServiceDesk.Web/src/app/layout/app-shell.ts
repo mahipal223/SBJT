@@ -1,6 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, ElementRef, HostListener, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { WorkspaceContext } from '../core/api.models';
 
 @Component({
   selector: 'app-shell',
@@ -8,45 +10,42 @@ import { AuthService } from '../core/auth.service';
   template: `
 <div class="app-layout">
   @if (drawer()) {
-    <button class="scrim" aria-label="Close menu" (click)="drawer.set(false)"></button>
+    <button class="scrim" aria-label="Close menu" (click)="close()"></button>
   }
-  <aside class="app-sidebar" [class.open]="drawer()">
+  <aside id="workspace-navigation" class="app-sidebar" [class.open]="drawer()">
     <div class="brand-row">
       <a class="brand" routerLink="/app/overview" (click)="close()"><span>S</span> ServiceDesk</a>
-      <button class="close-menu" (click)="close()">×</button>
+      <button class="close-menu" aria-label="Close menu" (click)="close(true)">×</button>
     </div>
-    <button class="workspace-picker">
-      <span class="workspace-logo">NS</span>
-      <span><strong>Northstar Services</strong><small>Austin, TX · Team</small></span>
-      <b>⌄</b>
-    </button>
+    <div class="workspace-picker">
+      <span class="workspace-logo">{{ workspaceInitials() }}</span>
+      <span><strong>{{ workspaceName() }}</strong><small>{{ workspaceDescription() }}</small></span>
+    </div>
     <nav aria-label="Workspace navigation">
-      @for (group of navigation; track group.title) {
+      @for (group of navigation(); track group.title) {
         <p>{{ group.title }}</p>
         @for (item of group.items; track item.path) {
           <a [routerLink]="item.path" routerLinkActive="active" (click)="close()">
             <span class="nav-icon">{{ item.icon }}</span>{{ item.label }}
-            @if (item.count) {
-              <em>{{ item.count }}</em>
-            }
           </a>
         }
       }
     </nav>
     <div class="sidebar-footer">
       <div class="plan-mini">
-        <span><b>Team plan</b><small>3 of 5 seats used</small></span>
+        <span><b>Subscription</b><small>View plan and usage</small></span>
         <a routerLink="/app/subscription" (click)="close()">Manage</a>
       </div>
       <button class="user-card" type="button" (click)="logout()" title="Click to sign out">
         <span class="avatar">{{ userInitials() }}</span>
-        <span><strong>{{ auth.fullName() }}</strong><small>Owner · Sign out</small></span>
+        <span><strong>{{ auth.fullName() || 'Signed-in user' }}</strong><small>{{ auth.role() }} · Sign out</small></span>
       </button>
     </div>
   </aside>
   <section class="app-content">
     <header class="topbar">
-      <button class="menu-button" (click)="open()" aria-label="Open menu">☰</button>
+      <button #menuButton class="menu-button" (click)="open()" aria-label="Open menu"
+              aria-controls="workspace-navigation" [attr.aria-expanded]="drawer()">☰</button>
       <div class="top-search">
         ⌕ <span>Search customers, jobs, invoices…</span><kbd>⌘ K</kbd>
       </div>
@@ -78,7 +77,7 @@ import { AuthService } from '../core/auth.service';
 .brand { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 19px; font-weight: 800; text-decoration: none; }
 .brand > span { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 8px; color: var(--navy); background: #65d0c5; font-size: 16px; }
 .close-menu { display: none; border: 0; color: #fff; background: transparent; font-size: 28px; cursor: pointer; }
-.workspace-picker { width: 100%; display: grid; grid-template-columns: 35px 1fr auto; align-items: center; gap: 10px; margin: 22px 0; padding: 10px; border: 1px solid #31505d; border-radius: 10px; color: #fff; background: #173846; text-align: left; cursor: pointer; }
+.workspace-picker { width: 100%; display: grid; grid-template-columns: 35px 1fr; align-items: center; gap: 10px; margin: 22px 0; padding: 10px; border: 1px solid #31505d; border-radius: 10px; color: #fff; background: #173846; text-align: left; }
 .workspace-logo { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 8px; color: #14323e; background: #ccebe5; font-size: 11px; font-weight: 800; }
 .workspace-picker span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
 .workspace-picker strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
@@ -134,28 +133,43 @@ nav em { margin-left: auto; min-width: 20px; padding: 2px 6px; border-radius: 10
 }
 `
 })
-export class AppShell {
+export class AppShell implements OnInit {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
+
+  @ViewChild('menuButton') private menuButton?: ElementRef<HTMLButtonElement>;
 
   readonly drawer = signal(false);
+  readonly workspace = signal<WorkspaceContext | null>(null);
+
+  readonly workspaceName = computed(() => this.workspace()?.business.name ?? this.auth.businessName());
+  readonly workspaceInitials = computed(() => {
+    const words = this.workspaceName().trim().split(/\s+/).filter(Boolean);
+    return words.slice(0, 2).map(word => word[0]).join('').toUpperCase() || 'W';
+  });
+  readonly workspaceDescription = computed(() => {
+    const business = this.workspace()?.business;
+    if (!business) return 'Loading workspace…';
+    return `${business.industry} · ${business.soloMode ? 'Solo' : 'Team'}`;
+  });
 
   readonly userInitials = computed(() => {
     const name = this.auth.fullName();
-    if (!name) return 'AJ';
+    if (!name) return '?';
     const parts = name.trim().split(/\s+/);
     return parts.length >= 2
       ? (parts[0][0] + parts[1][0]).toUpperCase()
       : name.substring(0, 2).toUpperCase();
   });
 
-  readonly navigation = [
+  private readonly allNavigation = [
     {
       title: 'Operate',
       items: [
         { label: 'Overview', path: '/app/overview', icon: '⌂' },
         { label: 'Customers', path: '/app/customers', icon: '◎' },
-        { label: 'Jobs', path: '/app/jobs', icon: '▣', count: '6' },
+        { label: 'Jobs', path: '/app/jobs', icon: '▣' },
         { label: 'Schedule', path: '/app/schedule', icon: '□' }
       ]
     },
@@ -163,7 +177,7 @@ export class AppShell {
       title: 'Money',
       items: [
         { label: 'Estimates', path: '/app/estimates', icon: '≋' },
-        { label: 'Invoices', path: '/app/invoices', icon: '＄', count: '3' },
+        { label: 'Invoices', path: '/app/invoices', icon: '＄' },
         { label: 'Services & parts', path: '/app/catalog', icon: '◇' },
         { label: 'Reports', path: '/app/reports', icon: '↗' }
       ]
@@ -178,6 +192,12 @@ export class AppShell {
     }
   ];
 
+  readonly navigation = computed(() => this.allNavigation.map(group => ({
+    ...group,
+    items: group.items.filter(item =>
+      item.path !== '/app/team' || this.workspace()?.business.soloMode !== true)
+  })));
+
   readonly mobileNavigation = [
     { label: 'Home', path: '/app/overview', icon: '⌂' },
     { label: 'Jobs', path: '/app/jobs', icon: '▣' },
@@ -186,8 +206,30 @@ export class AppShell {
     { label: 'More', path: '/app/settings', icon: '•••' }
   ];
 
+  ngOnInit(): void {
+    const businessId = this.auth.businessId();
+    if (!businessId) return;
+
+    this.http.get<WorkspaceContext>(`/api/v1/businesses/${businessId}/workspace`).subscribe({
+      next: workspace => {
+        this.workspace.set(workspace);
+        this.auth.activateWorkspace(workspace.businessId, workspace.businessName, workspace.role);
+      }
+    });
+  }
+
   open() { this.drawer.set(true); }
-  close() { this.drawer.set(false); }
+  close(returnFocus = false) {
+    this.drawer.set(false);
+    if (returnFocus) {
+      queueMicrotask(() => this.menuButton?.nativeElement.focus());
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  closeOnEscape(): void {
+    if (this.drawer()) this.close(true);
+  }
 
   logout() {
     this.auth.logout();

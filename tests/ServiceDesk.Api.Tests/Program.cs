@@ -1,4 +1,5 @@
 using System.Text;
+using System.ComponentModel.DataAnnotations;
 using ServiceDesk.Application.Financials;
 using ServiceDesk.Application.Security;
 using ServiceDesk.Application.Subscriptions;
@@ -563,6 +564,25 @@ var createdBiz = await bizStore.CreateAsync(
 Require(createdBiz.Name == "Apex Plumbing", "Business created with correct name");
 Require(createdBiz.Industry == "Plumbing", "Business created with correct industry");
 Require(createdBiz.Status == "Active", "New business starts as Active");
+
+var invalidBusiness = new CreateBusinessCommand(
+    "QA Invalid",
+    "General",
+    "abc",
+    null,
+    null,
+    "INVALID",
+    "abc",
+    "America/Chicago",
+    true);
+var validationResults = new List<ValidationResult>();
+var isValidBusiness = Validator.TryValidateObject(
+    invalidBusiness,
+    new ValidationContext(invalidBusiness),
+    validationResults,
+    validateAllProperties: true);
+Require(!isValidBusiness, "Malformed onboarding profile is rejected by the API contract");
+Require(validationResults.Count >= 3, "Phone, state, and ZIP validation errors are reported");
 
 var fetchedBiz = await bizStore.GetAsync(createdBiz.Id, CancellationToken.None);
 Require(fetchedBiz is not null && fetchedBiz.Id == createdBiz.Id, "Business can be fetched by ID");

@@ -65,6 +65,10 @@ public sealed class BusinessService(
             "Businesses.Provision",
             async (connection, transaction, ct) =>
             {
+                // Ensure platform and tenant context is set for the new workspace so RLS block predicates pass
+                await BaseDAL.SetPlatformContextAsync(connection, ct, transaction).ConfigureAwait(false);
+                await BaseDAL.SetTenantContextAsync(connection, businessId, ct, transaction).ConfigureAwait(false);
+
                 // 1. Ensure user row exists in auth.Users
                 const string upsertUserSql = """
                     IF NOT EXISTS (SELECT 1 FROM auth.Users WHERE Id = @UserId)
@@ -198,7 +202,8 @@ public sealed class BusinessService(
             WHERE b.Id = @BusinessId;
             """;
 
-        return await baseDAL.ExecutePlatformSingleAsync(
+        return await baseDAL.ExecuteSingleAsync(
+            businessId,
             "Businesses.Get",
             sql,
             reader => MapProfile(reader),
@@ -244,10 +249,10 @@ public sealed class BusinessService(
             WHERE Id = @BusinessId;
             """;
 
-        await baseDAL.ExecutePlatformQueryAsync(
+        await baseDAL.ExecuteNonQueryAsync(
+            businessId,
             "Businesses.Update",
             sql,
-            _ => true,
             [
                 new SqlParameter("@BusinessId", SqlDbType.UniqueIdentifier) { Value = businessId },
                 new SqlParameter("@Name", SqlDbType.NVarChar, 200) { Value = updatedName },
@@ -298,7 +303,8 @@ public sealed class BusinessService(
             WHERE m.BusinessId = @BusinessId AND m.UserId = @UserId AND m.Status = 'Active';
             """;
 
-        var rows = await baseDAL.ExecutePlatformQueryAsync(
+        var rows = await baseDAL.ExecuteQueryAsync(
+            businessId,
             "Businesses.GetMemberWorkspace",
             memberSql,
             reader => new
@@ -388,6 +394,11 @@ public sealed class BusinessService(
             "plumbing" => "Plumbing",
             "autoservice" or "auto" or "automotive" => "AutoService",
             "electrical" => "Electrical",
+            "hvac" => "HVAC",
+            "general" or "generaltrade" => "GeneralTrade",
+            "landscaping" => "Landscaping",
+            "cleaning" or "cleaningservices" => "CleaningServices",
+            "roofing" => "Roofing",
             _ => "Other"
         };
     }

@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $apiProject = Join-Path $root 'src\ServiceDesk.Api\ServiceDesk.Api.csproj'
-$seedFile = Join-Path $root 'outputs\backend-spec\06-development-data.sql'
+$seedFile = Join-Path $root 'docs\backend-spec\06-development-data.sql'
 $administratorPassword = Read-Host 'SQL administrator password' -AsSecureString
 $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($administratorPassword)
 $plainAdministratorPassword = $null

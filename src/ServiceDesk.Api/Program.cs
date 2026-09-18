@@ -37,15 +37,37 @@ var auth0Audience = builder.Configuration["Auth0:Audience"];
 var hasAuth0Config = !string.IsNullOrWhiteSpace(auth0Authority)
                      && !auth0Authority.Contains("FILL_IN");
 
+const string smartAuthScheme = "SmartAuth";
+
 var authBuilder = builder.Services.AddAuthentication(options =>
 {
-    // Use JWT Bearer as default; fall back to dev scheme if not configured yet.
-    options.DefaultAuthenticateScheme = hasAuth0Config
-        ? JwtBearerDefaults.AuthenticationScheme
-        : DevelopmentAuthenticationDefaults.Scheme;
+    options.DefaultAuthenticateScheme = smartAuthScheme;
     options.DefaultChallengeScheme = hasAuth0Config
         ? JwtBearerDefaults.AuthenticationScheme
         : DevelopmentAuthenticationDefaults.Scheme;
+});
+
+authBuilder.AddPolicyScheme(smartAuthScheme, "Bearer or Dev Header", options =>
+{
+    options.ForwardDefaultSelector = context =>
+    {
+        var authHeader = context.Request.Headers.Authorization.ToString();
+        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return JwtBearerDefaults.AuthenticationScheme;
+        }
+
+        if (builder.Environment.IsDevelopment() &&
+            (context.Request.Headers.ContainsKey(DevelopmentAuthenticationDefaults.UserHeader) ||
+             context.Request.Headers.ContainsKey(DevelopmentAuthenticationDefaults.PlatformAdminHeader)))
+        {
+            return DevelopmentAuthenticationDefaults.Scheme;
+        }
+
+        return hasAuth0Config
+            ? JwtBearerDefaults.AuthenticationScheme
+            : DevelopmentAuthenticationDefaults.Scheme;
+    };
 });
 
 if (hasAuth0Config)

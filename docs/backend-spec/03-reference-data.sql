@@ -1,4 +1,6 @@
 -- Roles are fixed for MVP; custom roles are deferred. No production prices are seeded.
+use ServiceDeskDev;
+go;
 SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 INSERT auth.Roles(Code,Name) VALUES (N'Owner',N'Business owner'),(N'Manager',N'Office manager'),(N'Technician',N'Technician');

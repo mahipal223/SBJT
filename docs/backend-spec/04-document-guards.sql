@@ -1,5 +1,8 @@
 -- Apply after schema/security/reference data. These are database backstops;
 -- API transactions still enforce authorization, totals, approval and seat rules.
+
+use ServiceDeskDev;
+go;
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
