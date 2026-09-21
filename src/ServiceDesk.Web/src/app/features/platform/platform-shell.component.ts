@@ -100,6 +100,12 @@ import { PlatformContextService } from '../../core/platform-context.service';
           <span class="nav-icon">📋</span> Platform Audit Log
         </a>
       }
+
+      @if (platformContext.canManageSmtp()) {
+        <a routerLink="/platform-admin/smtp" routerLinkActive="active" (click)="drawerOpen.set(false)">
+          <span class="nav-icon">✉️</span> Platform SMTP
+        </a>
+      }
     </nav>
 
     <!-- Footer actions -->

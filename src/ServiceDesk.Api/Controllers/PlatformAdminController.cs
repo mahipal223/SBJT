@@ -169,4 +169,114 @@ public sealed class PlatformAdminController(
         var events = await platformAdmin.GetAdminAuditEventsAsync(limit, cancellationToken);
         return Ok(events);
     }
+
+    // ─── Platform SMTP Settings ───────────────────────────────────────────────
+
+    [HttpGet("smtp")]
+    [Authorize(Policy = Permissions.PlatformOperationsAdmin)]
+    public ActionResult<PlatformSmtpSettingsResponse> GetPlatformSmtp(
+        [FromServices] Microsoft.Extensions.Configuration.IConfiguration configuration)
+    {
+        return Ok(new PlatformSmtpSettingsResponse(
+            Host: configuration["PlatformSmtp:Host"] ?? "",
+            Port: int.TryParse(configuration["PlatformSmtp:Port"], out var p) ? p : 587,
+            Username: configuration["PlatformSmtp:Username"] ?? "",
+            FromEmail: configuration["PlatformSmtp:FromEmail"] ?? "",
+            FromName: configuration["PlatformSmtp:FromName"] ?? "ServiceDesk",
+            EnableSsl: bool.TryParse(configuration["PlatformSmtp:EnableSsl"], out var ssl) ? ssl : true,
+            IsConfigured: !string.IsNullOrWhiteSpace(configuration["PlatformSmtp:Host"])
+        ));
+    }
+
+    [HttpPut("smtp")]
+    [Authorize(Policy = Permissions.PlatformOperationsAdmin)]
+    public IActionResult SavePlatformSmtp(
+        [FromBody] SavePlatformSmtpRequest request,
+        [FromServices] Microsoft.Extensions.Configuration.IConfigurationRoot? configRoot)
+    {
+        // In production, these should be written to environment variables or secrets manager.
+        // For development with appsettings.Development.json, we write back via in-memory config.
+        // The API MUST be restarted after save for changes to take effect (standard config pattern).
+        if (string.IsNullOrWhiteSpace(request.Host))
+            return Problem(statusCode: 400, title: "Validation failed",
+                detail: "Host is required.", extensions: new Dictionary<string, object?> { ["code"] = "validation_failed" });
+
+        if (string.IsNullOrWhiteSpace(request.FromEmail) || !request.FromEmail.Contains('@'))
+            return Problem(statusCode: 400, title: "Validation failed",
+                detail: "A valid From Email is required.", extensions: new Dictionary<string, object?> { ["code"] = "validation_failed" });
+
+        // Write to appsettings.Development.json
+        var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.Development.json");
+        if (!System.IO.File.Exists(settingsPath))
+            settingsPath = Path.Combine(Directory.GetCurrentDirectory(), "appsettings.Development.json");
+
+        if (System.IO.File.Exists(settingsPath))
+        {
+            var json = System.IO.File.ReadAllText(settingsPath);
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            var dict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json) ?? [];
+
+            dict["PlatformSmtp"] = new
+            {
+                Host = request.Host,
+                Port = request.Port <= 0 ? 587 : request.Port,
+                Username = request.Username ?? "",
+                Password = request.Password ?? "",
+                FromEmail = request.FromEmail,
+                FromName = string.IsNullOrWhiteSpace(request.FromName) ? "ServiceDesk" : request.FromName,
+                EnableSsl = request.EnableSsl,
+            };
+
+            System.IO.File.WriteAllText(settingsPath,
+                System.Text.Json.JsonSerializer.Serialize(dict, IndentedJsonOptions));
+        }
+
+        return NoContent();
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
+
+    [HttpPost("smtp/test")]
+    [Authorize(Policy = Permissions.PlatformOperationsAdmin)]
+    public async Task<ActionResult<PlatformSmtpTestResult>> TestPlatformSmtp(
+        [FromBody] TestPlatformSmtpRequest request,
+        [FromServices] ServiceDesk.Infrastructure.Notifications.IEmailSender emailSender,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.TargetEmail) || !request.TargetEmail.Contains('@'))
+            return Problem(statusCode: 400, title: "Validation failed",
+                detail: "A valid target email address is required.", extensions: new Dictionary<string, object?> { ["code"] = "validation_failed" });
+
+        try
+        {
+            await emailSender.SendTestEmailAsync(
+                request.Host, request.Port <= 0 ? 587 : request.Port,
+                request.Username ?? "", request.Password ?? "",
+                request.FromEmail, request.FromName ?? "ServiceDesk",
+                request.EnableSsl, request.TargetEmail, cancellationToken);
+
+            return Ok(new PlatformSmtpTestResult(true, $"Test email sent successfully to {request.TargetEmail}."));
+        }
+        catch (Exception ex)
+        {
+            return Ok(new PlatformSmtpTestResult(false, $"SMTP connection failed: {ex.Message}"));
+        }
+    }
 }
+
+// ─── Platform SMTP contracts ──────────────────────────────────────────────────
+
+public sealed record PlatformSmtpSettingsResponse(
+    string Host, int Port, string Username,
+    string FromEmail, string FromName, bool EnableSsl, bool IsConfigured);
+
+public sealed record SavePlatformSmtpRequest(
+    string Host, int Port, string? Username, string? Password,
+    string FromEmail, string? FromName, bool EnableSsl);
+
+public sealed record TestPlatformSmtpRequest(
+    string Host, int Port, string? Username, string? Password,
+    string FromEmail, string? FromName, bool EnableSsl, string TargetEmail);
+
+public sealed record PlatformSmtpTestResult(bool Success, string Message);
+

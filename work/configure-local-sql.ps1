@@ -25,7 +25,9 @@ try {
     [void]$seedCommand.ExecuteNonQuery()
 
     $runtimePasswordBytes = New-Object byte[] 36
-    [Security.Cryptography.RandomNumberGenerator]::Fill($runtimePasswordBytes)
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($runtimePasswordBytes)
+    $rng.Dispose()
     $runtimePassword = [Convert]::ToBase64String($runtimePasswordBytes)
     $escapedRuntimePassword = $runtimePassword.Replace("'", "''")
     $loginSql = @"

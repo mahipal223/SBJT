@@ -1,8 +1,25 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, AuthTokenResponse } from '../../core/auth.service';
+import { GOOGLE_CLIENT_ID } from '../../app.config';
+
+// Declare the global Google Identity Services API loaded via index.html
+declare const google: {
+  accounts: {
+    id: {
+      initialize(config: {
+        client_id: string;
+        callback: (response: { credential: string }) => void;
+        auto_select?: boolean;
+        cancel_on_tap_outside?: boolean;
+      }): void;
+      prompt(notification?: (n: { isNotDisplayed(): boolean; isSkippedMoment(): boolean }) => void): void;
+      renderButton(parent: HTMLElement, options: object): void;
+    };
+  };
+};
 
 interface ProblemDetails {
   title?: string;
@@ -77,14 +94,18 @@ interface ProblemDetails {
                 }
               </button>
 
-              <!-- Apple Sign-In -->
+              <!-- Apple Sign-In — hidden until Apple developer account is configured.
+                   The method and button are preserved for future implementation.
+                   To enable: remove the 'apple-btn-hidden' class below. -->
               <button
                 id="btn-apple-signin"
                 type="button"
-                class="social-btn apple-btn"
+                class="social-btn apple-btn apple-btn-hidden"
                 [disabled]="emailLoading() || googleLoading()"
                 (click)="signInWithApple()"
-                aria-label="Continue with Apple">
+                aria-label="Continue with Apple"
+                aria-hidden="true"
+                tabindex="-1">
                 <svg width="20" height="20" viewBox="0 0 170 170" aria-hidden="true" fill="currentColor">
                   <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.05-7.64-7.85-11.87-14.42-6.3-9.77-11.16-20.78-14.57-33.02-3.41-12.24-5.12-23.75-5.12-34.52 0-14.13 3.68-26.04 11.05-35.73 7.37-9.68 16.59-14.6 27.67-14.75 4.35 0 9.28 1.13 14.79 3.4 5.51 2.27 9.17 3.44 10.98 3.52 1.63 0 5.48-1.25 11.55-3.76 6.07-2.5 11.16-3.65 15.27-3.45 15.65.88 27.31 6.58 35 17.11-13.72 8.35-20.44 19.53-20.15 33.56.29 11.08 4.35 20.35 12.18 27.81 7.83 7.46 17.07 11.57 27.71 12.33-2.61 7.72-5.77 15.54-9.48 23.47zM119.22 33.02c0-7.39 2.67-14.32 8.01-20.78 5.34-6.46 12-10.74 19.98-12.24.22 1.96.33 3.7.33 5.22 0 7.39-2.72 14.39-8.16 21-5.44 6.61-12.18 10.98-20.22 12.07-.15-1.96-.22-3.72-.22-5.27z"/>
                 </svg>
@@ -404,6 +425,11 @@ interface ProblemDetails {
       background: #1e293b;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    /* Hidden until Apple developer account is configured.
+       Remove this rule to show the Apple Sign-In button. */
+    .apple-btn-hidden {
+      display: none !important;
+    }
     .social-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -591,10 +617,11 @@ interface ProblemDetails {
     @keyframes spin { to { transform: rotate(360deg); } }
   `,
 })
-export class LoginPage {
+export class LoginPage implements OnInit {
   protected readonly auth = inject(AuthService);
   protected readonly router = inject(Router);
   protected readonly http = inject(HttpClient);
+  private  readonly route = inject(ActivatedRoute);
 
   readonly mode = signal<'login' | 'signup' | 'verify_otp'>('login');
   readonly showPassword = signal(false);
@@ -612,6 +639,16 @@ export class LoginPage {
   password = '';
   fullName = '';
   otp = '';
+
+  ngOnInit(): void {
+    // Show a friendly error if Google cancelled or failed during callback.
+    const err = this.route.snapshot.queryParamMap.get('error');
+    if (err === 'google_cancelled') {
+      this.errorMsg.set('Google Sign-In was cancelled. Please try again.');
+    } else if (err === 'google_failed') {
+      this.errorMsg.set('Google Sign-In failed. Please try again or use email.');
+    }
+  }
 
   // Real-time password complexity checklist
   hasLength(): boolean { return this.password.length >= 8; }
@@ -792,12 +829,34 @@ export class LoginPage {
 
   signInWithGoogle(): void {
     this.errorMsg.set('');
-    this.infoMsg.set('Google Sign-In integration ready.');
+    this.googleLoading.set(true);
+
+    // Standard OAuth 2.0 Authorization Code Flow.
+    // Google redirects back to /callback?code=...&state=google_oauth
+    // The CallbackPage will POST { code, redirectUri } to /api/v1/auth/google.
+    const redirectUri = `${window.location.origin}/callback`;
+    const params = new URLSearchParams({
+      client_id:     GOOGLE_CLIENT_ID,
+      redirect_uri:  redirectUri,
+      response_type: 'code',
+      scope:         'openid email profile',
+      state:         'google_oauth',
+      access_type:   'online',
+      prompt:        'select_account',
+    });
+
+    window.location.href =
+      `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
 
+  // TODO: Apple Sign-In — future implementation.
+  // Requires Apple Developer account + Sign in with Apple capability.
+  // Backend endpoint is ready at POST /api/v1/auth/apple.
+  // When implementing: load AppleID.auth JS SDK, call AppleID.auth.signIn(),
+  // extract identityToken from response, POST to /api/v1/auth/apple.
   signInWithApple(): void {
     this.errorMsg.set('');
-    this.infoMsg.set('Apple Sign-In connect ready. Database identity schema configured.');
+    // Apple Sign-In not yet enabled — button is hidden in UI.
   }
 
   private startCooldown(): void {

@@ -46,8 +46,16 @@ public sealed record VerifyEmailOtpRequest(
 public sealed record ResendEmailOtpRequest(
     string Email);
 
+/// <summary>
+/// Supports two Google Sign-In flows:
+/// 1. <c>IdToken</c> – direct id_token from Google One Tap / GSI implicit flow.
+/// 2. <c>Code</c> + <c>RedirectUri</c> – authorization code exchanged server-side
+///    via Google's token endpoint (standard OAuth 2.0 PKCE / code flow).
+/// </summary>
 public sealed record GoogleLoginRequest(
-    string IdToken);
+    string? IdToken,
+    string? Code,
+    string? RedirectUri);
 
 public sealed record AppleLoginRequest(
     string IdentityToken,

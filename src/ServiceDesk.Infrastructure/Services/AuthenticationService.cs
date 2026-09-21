@@ -1,4 +1,6 @@
 using System.Data;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using Google.Apis.Auth;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -234,11 +236,23 @@ public sealed class AuthenticationService(
 
     public async Task<AuthTokenResponse> GoogleLoginAsync(GoogleLoginRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.IdToken))
+        // ── Resolve id_token: either provided directly or obtained via code exchange ──
+        string? idToken = request.IdToken;
+
+        if (string.IsNullOrWhiteSpace(idToken))
         {
-            throw new AuthRuleException("validation_failed", "Google ID token is required.");
+            // Authorization Code Flow: exchange code for id_token via Google's token endpoint.
+            if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.RedirectUri))
+            {
+                throw new AuthRuleException("validation_failed",
+                    "Provide either a Google id_token or an authorization code with redirect_uri.");
+            }
+
+            idToken = await ExchangeGoogleCodeForIdTokenAsync(
+                request.Code, request.RedirectUri, cancellationToken).ConfigureAwait(false);
         }
 
+        // ── Validate id_token using Google's library ───────────────────────────────────
         GoogleJsonWebSignature.Payload payload;
         try
         {
@@ -249,7 +263,7 @@ public sealed class AuthenticationService(
                 settings.Audience = [googleClientId];
             }
 
-            payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings).ConfigureAwait(false);
+            payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -514,4 +528,71 @@ public sealed class AuthenticationService(
 
         return providers;
     }
+
+    /// <summary>
+    /// Exchanges a Google authorization code for an id_token by calling
+    /// Google's token endpoint. The id_token is then validated normally
+    /// by <see cref="GoogleJsonWebSignature.ValidateAsync"/>.
+    /// </summary>
+    private async Task<string> ExchangeGoogleCodeForIdTokenAsync(
+        string code,
+        string redirectUri,
+        CancellationToken cancellationToken)
+    {
+        var clientId = configuration["Google:ClientId"] ?? string.Empty;
+        var clientSecret = configuration["Google:ClientSecret"] ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+        {
+            throw new AuthRuleException("configuration_error",
+                "Google OAuth client is not configured on the server.");
+        }
+
+        using var http = new HttpClient();
+        var form = new Dictionary<string, string>
+        {
+            ["code"] = code,
+            ["client_id"] = clientId,
+            ["client_secret"] = clientSecret,
+            ["redirect_uri"] = redirectUri,
+            ["grant_type"] = "authorization_code",
+        };
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await http.PostAsync(
+                "https://oauth2.googleapis.com/token",
+                new FormUrlEncodedContent(form),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogGoogleValidationFailed(logger, ex);
+            throw new AuthRuleException("invalid_token", "Failed to contact Google authentication server.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            LogGoogleValidationFailed(logger, null);
+            throw new AuthRuleException("invalid_token", "Google rejected the authorization code.");
+        }
+
+        var tokenResponse = await response.Content
+            .ReadFromJsonAsync<GoogleTokenResponse>(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(tokenResponse?.IdToken))
+        {
+            throw new AuthRuleException("invalid_token", "Google token response did not contain an id_token.");
+        }
+
+        return tokenResponse.IdToken;
+    }
+
+    private sealed record GoogleTokenResponse(
+        [property: JsonPropertyName("id_token")] string? IdToken,
+        [property: JsonPropertyName("access_token")] string? AccessToken,
+        [property: JsonPropertyName("token_type")] string? TokenType,
+        [property: JsonPropertyName("expires_in")] int? ExpiresIn);
 }

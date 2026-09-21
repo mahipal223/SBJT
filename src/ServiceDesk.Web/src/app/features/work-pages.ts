@@ -165,13 +165,10 @@ export class CustomerFormLivePage {
 
   save(){
     this.submitted.set(true);
-    if (!this.runValidation()) {
-      this.error.set('Please fix the highlighted errors before saving.');
-      return;
-    }
+    this.error.set('');
+    if (!this.runValidation()) return;
     if(this.saving())return;
     this.saving.set(true);
-    this.error.set('');
     this.api.createCustomer(this.model).subscribe({
       next:c=>this.router.navigate(['/app/customers',c.id]),
       error:e=>{this.error.set(messageFrom(e));this.saving.set(false)}

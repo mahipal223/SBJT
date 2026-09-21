@@ -1,12 +1,16 @@
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ServiceDesk.Infrastructure.Data;
 
 namespace ServiceDesk.Infrastructure.Notifications;
 
-public sealed class DynamicEmailSender(BaseDAL baseDAL, ILogger<DynamicEmailSender> logger) : IEmailSender
+public sealed class DynamicEmailSender(
+    BaseDAL baseDAL,
+    IConfiguration configuration,
+    ILogger<DynamicEmailSender> logger) : IEmailSender
 {
     private static readonly Action<ILogger, string, int, string, Guid, Exception?> LogCustomSmtpDispatch =
         LoggerMessage.Define<string, int, string, Guid>(
@@ -62,31 +66,59 @@ public sealed class DynamicEmailSender(BaseDAL baseDAL, ILogger<DynamicEmailSend
         if (config is not null && !string.IsNullOrWhiteSpace(config.Host))
         {
             LogCustomSmtpDispatch(logger, config.Host, config.Port, recipientEmail, businessId, null);
-
-            using var client = new SmtpClient(config.Host, config.Port)
-            {
-                EnableSsl = config.EnableSsl,
-                Credentials = new NetworkCredential(config.Username, config.Password),
-                Timeout = 15000
-            };
-
-            using var message = new MailMessage
-            {
-                From = new MailAddress(config.FromEmail, config.FromName),
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = true
-            };
-            message.To.Add(recipientEmail);
-
-            await client.SendMailAsync(message, cancellationToken).ConfigureAwait(false);
+            await SendViaSmtpAsync(config.Host, config.Port, config.Username, config.Password,
+                config.FromEmail, config.FromName, config.EnableSsl, recipientEmail, subject, body,
+                cancellationToken).ConfigureAwait(false);
             LogCustomSmtpSuccess(logger, recipientEmail, null);
         }
         else
         {
-            // Platform fallback / developer logging
-            LogPlatformFallback(logger, recipientEmail, businessId, subject, null);
+            // Fall back to platform-level SMTP configured in appsettings / environment variables.
+            var platformHost = configuration["PlatformSmtp:Host"];
+            if (!string.IsNullOrWhiteSpace(platformHost))
+            {
+                var platformPort = int.TryParse(configuration["PlatformSmtp:Port"], out var pp) ? pp : 587;
+                var platformUser = configuration["PlatformSmtp:Username"] ?? "";
+                var platformPass = configuration["PlatformSmtp:Password"] ?? "";
+                var platformFrom = configuration["PlatformSmtp:FromEmail"] ?? "";
+                var platformFromName = configuration["PlatformSmtp:FromName"] ?? "ServiceDesk";
+                var platformSsl = bool.TryParse(configuration["PlatformSmtp:EnableSsl"], out var pssl) ? pssl : true;
+
+                LogCustomSmtpDispatch(logger, platformHost, platformPort, recipientEmail, businessId, null);
+                await SendViaSmtpAsync(platformHost, platformPort, platformUser, platformPass,
+                    platformFrom, platformFromName, platformSsl, recipientEmail, subject, body,
+                    cancellationToken).ConfigureAwait(false);
+                LogCustomSmtpSuccess(logger, recipientEmail, null);
+            }
+            else
+            {
+                // No SMTP configured anywhere — log only (developer fallback).
+                LogPlatformFallback(logger, recipientEmail, businessId, subject, null);
+            }
         }
+    }
+
+    private static async Task SendViaSmtpAsync(
+        string host, int port, string username, string password,
+        string fromEmail, string fromName, bool enableSsl,
+        string recipientEmail, string subject, string body,
+        CancellationToken cancellationToken)
+    {
+        using var client = new SmtpClient(host, port)
+        {
+            EnableSsl = enableSsl,
+            Credentials = new NetworkCredential(username, password),
+            Timeout = 15000
+        };
+        using var message = new MailMessage
+        {
+            From = new MailAddress(fromEmail, fromName),
+            Subject = subject,
+            Body = body,
+            IsBodyHtml = true
+        };
+        message.To.Add(recipientEmail);
+        await client.SendMailAsync(message, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> SendTestEmailAsync(

@@ -244,3 +244,64 @@ GO
 -- granted service principals/procedures. Never grant db_owner to the API.
 -- RLS is a tenant boundary, not a staff permission or authentication system.
 -- The API validates membership BEFORE setting BusinessId. See tenant-boundaries.md.
+GO
+
+-- ─── Outbox Processing Procedures (Cross-tenant background delivery) ─────────
+CREATE OR ALTER PROCEDURE app.sp_GetPendingOutboxMessages
+WITH EXECUTE AS OWNER
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP 50
+        BusinessId,
+        Id,
+        EventType,
+        Payload,
+        Attempts
+    FROM app.OutboxMessages
+    WHERE ProcessedAt IS NULL
+      AND NextAttemptAt <= SYSUTCDATETIME()
+      AND Attempts < 5
+    ORDER BY NextAttemptAt ASC;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE app.sp_MarkOutboxMessageProcessed
+    @BusinessId uniqueidentifier,
+    @Id uniqueidentifier
+WITH EXECUTE AS OWNER
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE app.OutboxMessages
+    SET ProcessedAt = SYSUTCDATETIME(),
+        UpdatedAt = SYSUTCDATETIME()
+    WHERE BusinessId = @BusinessId
+      AND Id = @Id;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE app.sp_RecordOutboxMessageFailure
+    @BusinessId uniqueidentifier,
+    @Id uniqueidentifier
+WITH EXECUTE AS OWNER
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE app.OutboxMessages
+    SET Attempts = Attempts + 1,
+        NextAttemptAt = DATEADD(minute, CASE WHEN Attempts >= 5 THEN 60 ELSE POWER(2, Attempts + 1) END, SYSUTCDATETIME()),
+        UpdatedAt = SYSUTCDATETIME()
+    WHERE BusinessId = @BusinessId
+      AND Id = @Id;
+END;
+GO
+
+GRANT EXECUTE ON app.sp_GetPendingOutboxMessages TO servicedesk_app;
+GRANT EXECUTE ON app.sp_MarkOutboxMessageProcessed TO servicedesk_app;
+GRANT EXECUTE ON app.sp_RecordOutboxMessageFailure TO servicedesk_app;
+GO
+

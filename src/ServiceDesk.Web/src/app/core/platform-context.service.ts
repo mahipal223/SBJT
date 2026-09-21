@@ -29,6 +29,7 @@ export class PlatformContextService {
   readonly canViewMetrics = computed(() => this.hasPermission('platform:OperationsAdmin'));
   readonly canViewBackups = computed(() => this.hasPermission('platform:OperationsAdmin'));
   readonly canViewAudit = computed(() => this.hasPermission('platform:OperationsAdmin'));
+  readonly canManageSmtp = computed(() => this.hasPermission('platform:OperationsAdmin'));
 
   hasPermission(permission: string): boolean {
     return this.operator()?.permissions?.includes(permission) ?? false;

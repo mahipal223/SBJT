@@ -1,21 +1,32 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService as Auth0Service } from '@auth0/auth0-angular';
-import { filter, switchMap, take } from 'rxjs';
-import { AuthService } from '../../core/auth.service';
+import { HttpClient } from '@angular/common/http';
+import { AuthService, AuthTokenResponse } from '../../core/auth.service';
 
 /**
- * Handles the Auth0 PKCE authorization code redirect.
- * Auth0 redirects here after login with ?code=... and ?state=...
- * The Auth0 SDK exchanges the code for tokens automatically.
- * This component then calls syncAfterLogin() to register the user in our backend.
+ * OAuth callback landing page.
+ *
+ * Google redirects here after the user selects their account:
+ *   http://localhost:4200/callback?code=...&state=google_oauth
+ *
+ * This page:
+ *  1. Reads the ?code and ?state params from the URL.
+ *  2. If state === 'google_oauth', POSTs { code, redirectUri } to /api/v1/auth/google.
+ *  3. The API exchanges the code with Google's token endpoint, validates the id_token,
+ *     and returns a native ServiceDesk JWT.
+ *  4. On success, calls handleAuthSuccess() → navigate to /app or /onboarding.
  */
 @Component({
   selector: 'app-callback-page',
+  imports: [],
   template: `
     <div class="callback-screen" role="status" aria-live="polite">
       <div class="spinner-ring" aria-hidden="true"></div>
-      <p>Signing you in…</p>
+      @if (statusMsg()) {
+        <p>{{ statusMsg() }}</p>
+      } @else {
+        <p>Signing you in…</p>
+      }
     </div>
   `,
   styles: `
@@ -42,31 +53,52 @@ import { AuthService } from '../../core/auth.service';
   `,
 })
 export class CallbackPage implements OnInit {
-  private readonly auth = inject(AuthService);
-  private readonly auth0 = inject(Auth0Service, { optional: true });
+  private readonly auth   = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly http   = inject(HttpClient);
+
+  readonly statusMsg = signal('Signing you in…');
 
   ngOnInit(): void {
-    if (this.auth0) {
-      this.auth0.isLoading$.pipe(
-        filter(loading => !loading),
-        take(1),
-        switchMap(() => this.auth0!.isAuthenticated$),
-        take(1)
-      ).subscribe({
-        next: (isAuth) => {
-          if (isAuth) {
-            this.auth.syncAfterLogin();
-          } else {
-            void this.router.navigate(['/login']);
-          }
-        },
-        error: () => {
-          void this.router.navigate(['/login']);
-        }
-      });
-    } else {
+    const params = new URLSearchParams(window.location.search);
+    const code   = params.get('code');
+    const state  = params.get('state');
+    const error  = params.get('error');
+
+    // ── Google OAuth callback ───────────────────────────────────────────────
+    if (state === 'google_oauth') {
+      if (error) {
+        // User denied consent or an error occurred.
+        void this.router.navigate(['/login'], {
+          queryParams: { error: 'google_cancelled' },
+        });
+        return;
+      }
+
+      if (code) {
+        const redirectUri = `${window.location.origin}/callback`;
+        this.http.post<AuthTokenResponse>('/api/v1/auth/google', {
+          code,
+          redirectUri,
+        }).subscribe({
+          next: (res) => {
+            this.auth.handleAuthSuccess(res);
+          },
+          error: () => {
+            void this.router.navigate(['/login'], {
+              queryParams: { error: 'google_failed' },
+            });
+          },
+        });
+        return;
+      }
+    }
+
+    // ── Fallback: already authenticated ────────────────────────────────────
+    if (this.auth.isAuthenticated()) {
       this.auth.syncAfterLogin();
+    } else {
+      void this.router.navigate(['/login']);
     }
   }
 }

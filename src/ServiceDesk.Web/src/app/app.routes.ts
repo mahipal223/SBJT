@@ -18,7 +18,7 @@ import { ReportsLivePage } from './features/reports-live.page';
 export const routes: Routes = [
   // ── Public auth routes ──────────────────────────────────────────────────────
   { path: 'login', component: LoginPage },
-  { path: 'callback', component: CallbackPage },           // Auth0 PKCE callback
+  { path: 'callback', component: CallbackPage },           // Google OAuth callback (GSI popup handles token exchange in LoginPage)
 
   // ── Onboarding wizard (authenticated, no existing workspace yet) ────────────
   { path: 'onboarding', component: OnboardingPage, canActivate: [authGuard] },
@@ -94,6 +94,11 @@ export const routes: Routes = [
             path: 'audit',
             loadComponent: () =>
               import('./features/platform/audit-page.component').then(m => m.PlatformAuditComponent),
+          },
+          {
+            path: 'smtp',
+            loadComponent: () =>
+              import('./features/platform/smtp-page.component').then(m => m.PlatformSmtpComponent),
           },
           { path: '', pathMatch: 'full', redirectTo: 'overview' },
         ],
