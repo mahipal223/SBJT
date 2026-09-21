@@ -6,7 +6,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { NgSelectComponent } from '@ng-select/ng-select';
 import { CatalogItem, Customer, Estimate, Invoice, Job, JobItemSet, WorkApiService } from '../core/work-api.service';
-import { ARRIVAL_WINDOWS, STATE_CITIES, US_STATES_AND_PROVINCES } from '../core/reference-data';
+import { ARRIVAL_WINDOWS, STATE_CITIES, US_STATES_AND_PROVINCES, CATALOG_UNITS } from '../core/reference-data';
 
 const messageFrom = (error: unknown) => error instanceof HttpErrorResponse
   ? error.error?.detail || 'The server could not complete the request.'
@@ -195,7 +195,7 @@ export class JobsLivePage {
   statusCount(status:string){return this.jobs().filter(x=>x.status===status).length} customerName(id:string){return this.customers().find(x=>x.id===id)?.name||'Customer'} label(value:string){return value.replace(/([a-z])([A-Z])/g,'$1 $2')}
 }
 
-@Component({selector:'app-job-form-live',imports:[RouterLink,FormsModule,NgSelectComponent],template:`
+@Component({selector:'app-job-form-live',imports:[RouterLink,FormsModule,NgSelectComponent,CurrencyPipe],template:`
 <main class="page"><header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/jobs">Jobs</a><span class="crumb-sep">/</span><span class="crumb-current">New job</span></nav><h1>Create job</h1><p>Schedule now or save as an unscheduled request.</p></div><a class="btn" routerLink="/app/jobs">Cancel</a></header><section class="card"><div class="card-head"><h2>Job details</h2><span class="badge blue">{{model.scheduledDate ? 'Scheduled' : 'Draft'}}</span></div>
 <form class="card-body form-grid" (ngSubmit)="save(false)" novalidate>
   <div class="field wide" [class.has-error]="hasError('customerId')">
@@ -280,6 +280,51 @@ export class JobsLivePage {
     </div>
   </div>
 
+  <div class="field wide" style="background:#f8fafb;border:1px solid var(--line);border-radius:10px;padding:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <label style="font-weight:700;margin:0">Initial service / diagnostic fee <span class="muted" style="font-weight:400">(Optional)</span></label>
+      @if(selectedInitialService){
+        <button type="button" class="btn small" style="padding:2px 8px;font-size:12px" (click)="clearInitialService()">✕ Clear service</button>
+      }
+    </div>
+    <p class="muted" style="font-size:13px;margin:0 0 10px">Attach standard dispatch or diagnostic pricing directly to this job. You decide your rate.</p>
+
+    @if(catalogServices().length){
+      <div class="quick-chips" style="margin-bottom:12px">
+        <span class="chips-label">Catalog services:</span>
+        @for(item of catalogServices(); track item.id){
+          <button type="button" class="chip-btn"
+            [class.active]="selectedInitialService?.catalogItemId === item.id"
+            (click)="selectInitialCatalogService(item)">
+            {{selectedInitialService?.catalogItemId === item.id ? '✔ ' : '＋ '}}{{item.name}} ({{item.unitPrice|currency}})
+          </button>
+        }
+        <button type="button" class="chip-btn"
+          [class.active]="isCustomInitialService"
+          (click)="selectCustomInitialService()">
+          {{isCustomInitialService ? '✔ ' : '＋ '}}Custom service...
+        </button>
+      </div>
+    }
+
+    @if(selectedInitialService){
+      <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; gap:12px; align-items:end; margin-top:10px; background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px;">
+        <div class="field">
+          <label for="init-service-name">Service description</label>
+          <input id="init-service-name" name="initServiceName" [(ngModel)]="selectedInitialService.description" placeholder="e.g. Diagnostic Call">
+        </div>
+        <div class="field">
+          <label for="init-service-rate">Your rate ($) *</label>
+          <input id="init-service-rate" name="initServiceRate" type="number" step="0.01" min="0" [(ngModel)]="selectedInitialService.unitPrice" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label for="init-service-qty">Qty</label>
+          <input id="init-service-qty" name="initServiceQty" type="number" step="1" min="1" [(ngModel)]="selectedInitialService.quantity">
+        </div>
+      </div>
+    }
+  </div>
+
   <div class="field wide"><label for="description">Customer request / internal instructions</label><textarea id="description" name="description" rows="3" [(ngModel)]="model.description" placeholder="Notes, gate codes, access instructions..."></textarea></div>
 
   @if(success()){<div class="wide callout" style="background:#e6f7f5;border-color:var(--teal);color:var(--teal);display:flex;align-items:center;justify-content:space-between"><span>✅ {{success()}}</span><button type="button" class="btn small" (click)="success.set('')">✕</button></div>}
@@ -343,6 +388,16 @@ export class JobsLivePage {
 export class JobFormLivePage {
   private api=inject(WorkApiService);private router=inject(Router);private route=inject(ActivatedRoute);
   customers=signal<Customer[]>([]);
+  catalogServices=signal<CatalogItem[]>([]);
+  selectedInitialService: {
+    catalogItemId?: string;
+    description: string;
+    unitPrice: number;
+    quantity: number;
+    unit: string;
+    itemType: string;
+  } | null = null;
+  isCustomInitialService = false;
   saving=signal(false);
   error=signal('');
   success=signal('');
@@ -387,6 +442,10 @@ export class JobFormLivePage {
       this.model.customerId = prefillCustomer;
     }
     this.api.customers().subscribe({next:r=>this.customers.set(r.items),error:e=>this.error.set(messageFrom(e))});
+    this.api.catalog().subscribe({
+      next: r => this.catalogServices.set(r.items.filter(i => i.itemType === 'Service' || i.itemType === 'Labor' || !i.itemType)),
+      error: () => {}
+    });
   }
 
   openQuickCustomerModal(): void {
@@ -555,6 +614,50 @@ export class JobFormLivePage {
     return this.hasError(field) ? (this.errors()[field] || '') : '';
   }
 
+  selectInitialCatalogService(item: CatalogItem): void {
+    if (this.selectedInitialService?.catalogItemId === item.id) {
+      this.clearInitialService();
+      return;
+    }
+    this.isCustomInitialService = false;
+    this.selectedInitialService = {
+      catalogItemId: item.id,
+      description: item.name,
+      unitPrice: item.unitPrice,
+      quantity: 1,
+      unit: item.unit || 'hr',
+      itemType: item.itemType || 'Service'
+    };
+  }
+
+  selectCustomInitialService(): void {
+    if (this.isCustomInitialService) {
+      this.clearInitialService();
+      return;
+    }
+    this.isCustomInitialService = true;
+    this.selectedInitialService = {
+      description: 'Initial Diagnostic / Service Call',
+      unitPrice: 0,
+      quantity: 1,
+      unit: 'hr',
+      itemType: 'Service'
+    };
+  }
+
+  clearInitialService(): void {
+    this.isCustomInitialService = false;
+    this.selectedInitialService = null;
+  }
+
+  private resetForm(): void {
+    this.model = { customerId: null, title: '', description: '', priority: 'Normal', scheduledDate: '', arrivalWindow: '' };
+    this.clearInitialService();
+    this.submitted.set(false);
+    this.touched.set({});
+    this.errors.set({});
+  }
+
   save(createAnother = false){
     this.submitted.set(true);
     this.error.set('');
@@ -565,15 +668,40 @@ export class JobFormLivePage {
     const command={...this.model,customerId:this.model.customerId!,scheduledDate:this.model.scheduledDate||undefined};
     this.api.createJob(command).subscribe({
       next:j=>{
-        this.saving.set(false);
-        if (createAnother) {
-          this.success.set(`Job #${j.jobNumber} ("${j.title}") created successfully! Ready for next job.`);
-          this.model = {customerId:null,title:'',description:'',priority:'Normal',scheduledDate:'',arrivalWindow:''};
-          this.submitted.set(false);
-          this.touched.set({});
-          this.errors.set({});
+        if (this.selectedInitialService && this.selectedInitialService.description.trim()) {
+          const initItem = {
+            catalogItemId: this.selectedInitialService.catalogItemId || undefined,
+            itemType: this.selectedInitialService.itemType || 'Service',
+            description: this.selectedInitialService.description.trim(),
+            quantity: Number(this.selectedInitialService.quantity) || 1,
+            unit: this.selectedInitialService.unit || 'hr',
+            unitPrice: Number(this.selectedInitialService.unitPrice) || 0,
+            discountAmount: 0,
+            taxAmount: 0
+          };
+          this.api.replaceJobItems(j.id, [initItem]).subscribe({
+            next: () => {
+              this.saving.set(false);
+              if (createAnother) {
+                this.success.set(`Job #${j.jobNumber} ("${j.title}") created with initial service! Ready for next job.`);
+                this.resetForm();
+              } else {
+                this.router.navigate(['/app/jobs', j.id]);
+              }
+            },
+            error: () => {
+              this.saving.set(false);
+              this.router.navigate(['/app/jobs', j.id]);
+            }
+          });
         } else {
-          this.router.navigate(['/app/jobs',j.id]);
+          this.saving.set(false);
+          if (createAnother) {
+            this.success.set(`Job #${j.jobNumber} ("${j.title}") created successfully! Ready for next job.`);
+            this.resetForm();
+          } else {
+            this.router.navigate(['/app/jobs', j.id]);
+          }
         }
       },
       error:e=>{this.error.set(messageFrom(e));this.saving.set(false)}
@@ -658,70 +786,127 @@ export class CustomerLivePage {
 <section class="split"><div class="grid"><article class="card"><div class="card-head"><h2>Work summary</h2><span class="badge blue">{{label(j.status)}}</span></div><div class="card-body"><p>{{j.description||'No work instructions were entered.'}}</p><div class="list"><div class="list-row"><span class="muted">Priority</span><strong>{{j.priority}}</strong></div><div class="list-row"><span class="muted">Scheduled</span><strong>{{j.scheduledDate||'Unscheduled'}}</strong></div><div class="list-row"><span class="muted">Arrival window</span><strong>{{j.arrivalWindow||'—'}}</strong></div></div></div></article>
 
 <article class="card"><div class="card-head"><h2>Services & materials</h2></div><div class="card-body">
-  <div class="quick-chips" style="margin-bottom:14px">
-    <span class="chips-label">1-Click presets:</span>
-    <button type="button" class="chip-btn" (click)="addQuickItem('Diagnostic Fee', 'Service', 95, 'service')">＋ Diagnostic ($95)</button>
-    <button type="button" class="chip-btn" (click)="addQuickItem('Standard Labor 1hr', 'Labor', 85, 'hr')">＋ Labor 1hr ($85)</button>
-    <button type="button" class="chip-btn" (click)="addQuickItem('System Tune-up & Inspection', 'Service', 120, 'service')">＋ Tune-up ($120)</button>
-    <button type="button" class="chip-btn" (click)="addQuickItem('Air Filter Standard', 'Part', 35, 'unit')">＋ Filter ($35)</button>
-  </div>
-
-  <div style="display:flex;gap:8px;margin-bottom:12px">
-    <button type="button" class="btn small" [class.primary]="itemMode()==='catalog'" (click)="itemMode.set('catalog')">From catalog</button>
-    <button type="button" class="btn small" [class.primary]="itemMode()==='custom'" (click)="itemMode.set('custom')">＋ Custom part / one-off</button>
-  </div>
-
-  @if(itemMode()==='catalog'){
-    <div class="form-grid">
-      <div class="field"><label for="job-catalog-item">Catalog item</label>
-        <ng-select id="job-catalog-item"
-          [items]="catalog()"
-          bindLabel="name"
-          bindValue="id"
-          [(ngModel)]="selectedCatalogId"
-          placeholder="Search parts or services...">
-          <ng-template ng-option-tmp let-item="item">
-            <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-              <span><strong>{{item.name}}</strong> <small class="badge small" [class.blue]="item.itemType==='Part'">{{item.itemType}}</small></span>
-              <strong>{{item.unitPrice|currency}}</strong>
-            </div>
-          </ng-template>
-        </ng-select>
-      </div>
-      <div class="field"><label for="job-item-quantity">Quantity</label><input id="job-item-quantity" type="number" min=".001" step="1" [(ngModel)]="quantity"></div>
-      <div class="wide"><button class="btn primary" (click)="addItem()" [disabled]="!selectedCatalogId">＋ Add to job</button></div>
+  @if(catalogServices().length){
+    <div class="quick-chips" style="margin-bottom:14px">
+      <span class="chips-label">Quick services:</span>
+      @for(c of catalogServices(); track c.id){
+        <button type="button" class="chip-btn" (click)="pickCatalogPreset(c)">＋ {{c.name}} ({{c.unitPrice|currency}})</button>
+      }
     </div>
   }
-  @else {
-    <div class="form-grid">
-      <div class="field wide"><label for="custom-desc">Description *</label><input id="custom-desc" [(ngModel)]="customDesc" placeholder="e.g. 3/4 inch Brass Ball Valve purchased on-site"></div>
-      <div class="field"><label for="custom-type">Type</label><ng-select id="custom-type" [items]="['Part', 'Labor', 'Service']" [clearable]="false" [searchable]="false" [(ngModel)]="customType"></ng-select></div>
-      <div class="field"><label for="custom-qty">Qty</label><input id="custom-qty" type="number" step="1" min="1" [(ngModel)]="customQty"></div>
-      <div class="field"><label for="custom-unit">Unit</label><input id="custom-unit" [(ngModel)]="customUnit" placeholder="unit, hr, ft"></div>
-      <div class="field"><label for="custom-price">Unit price ($)</label><input id="custom-price" type="number" step="0.01" min="0" [(ngModel)]="customPrice"></div>
-      <div class="wide"><button class="btn primary" (click)="addCustomItem()" [disabled]="!customDesc.trim() || customPrice < 0">＋ Add custom item</button></div>
+
+  <div style="margin-bottom:14px">
+    <label for="unified-item-search" style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">
+      Search catalog or type custom part / service:
+    </label>
+    <ng-select id="unified-item-search"
+      [items]="catalog()"
+      bindLabel="name"
+      [addTag]="addCustomTag"
+      addTagText="＋ Add custom:"
+      [ngModel]="selectedItemForCombobox"
+      (ngModelChange)="onComboboxSelect($event)"
+      placeholder="Type to search catalog parts, or enter a custom item name...">
+      <ng-template ng-option-tmp let-item="item">
+        <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+          <span>
+            <strong>{{item.name}}</strong>
+            <small class="badge small" [class.blue]="item.itemType==='Part'" [class.amber]="item.itemType==='Labor'">{{item.itemType}}</small>
+          </span>
+          <strong>{{item.unitPrice|currency}}</strong>
+        </div>
+      </ng-template>
+    </ng-select>
+  </div>
+
+  @if(activeEntry){
+    <div class="form-grid" style="background:#f8fafb;border:1px solid var(--teal, #008080);border-radius:10px;padding:16px;margin-bottom:16px;">
+      <div class="wide" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:-4px">
+        <strong style="color:var(--text);font-size:14px">
+          {{activeEntry.isCustom ? '＋ New custom item / one-off' : '✔ Catalog item: ' + activeEntry.name}}
+        </strong>
+        <button type="button" class="btn small" style="padding:2px 8px;font-size:12px" (click)="cancelActiveEntry()">✕ Cancel</button>
+      </div>
+
+      <div class="field wide">
+        <label for="entry-desc">Description *</label>
+        <input id="entry-desc" [(ngModel)]="activeEntry.name" placeholder="Item or service description">
+      </div>
+
+      <div class="field">
+        <label for="entry-type">Type</label>
+        <ng-select id="entry-type" [items]="['Part', 'Labor', 'Service']" [clearable]="false" [searchable]="false" [(ngModel)]="activeEntry.itemType"></ng-select>
+      </div>
+
+      <div class="field">
+        <label for="entry-qty">Quantity</label>
+        <input id="entry-qty" type="number" step="1" min="0.01" [(ngModel)]="activeEntry.quantity">
+      </div>
+
+      <div class="field">
+        <label for="entry-unit">Unit</label>
+        <ng-select id="entry-unit" [items]="catalogUnits" [clearable]="false" [(ngModel)]="activeEntry.unit" placeholder="unit"></ng-select>
+      </div>
+
+      <div class="field">
+        <label for="entry-rate">Your rate ($) *</label>
+        <input id="entry-rate" type="number" step="0.01" min="0" [(ngModel)]="activeEntry.unitPrice" placeholder="0.00">
+      </div>
+
+      @if(activeEntry.isCustom){
+        <div class="wide" style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <input type="checkbox" id="save-catalog-check" [(ngModel)]="activeEntry.saveToCatalog">
+          <label for="save-catalog-check" style="font-size:13px;cursor:pointer;margin:0">Save this item to catalog for future jobs</label>
+        </div>
+      }
+
+      <div class="wide" style="display:flex;gap:10px;margin-top:6px">
+        <button type="button" class="btn primary" (click)="commitActiveEntry()" [disabled]="!activeEntry.name.trim() || activeEntry.quantity <= 0 || activeEntry.unitPrice < 0" id="add-to-job-btn">
+          ＋ Add to job
+        </button>
+        <button type="button" class="btn" (click)="cancelActiveEntry()">Cancel</button>
+      </div>
     </div>
   }
 
   @if(items().items.length){
     <div class="table-scroll section-gap">
-      <table class="data-table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead><tbody>
-        @for(i of items().items;track $index){
+      <table class="data-table">
+        <thead>
           <tr>
-            <td><strong>{{i.description}}</strong><br><small class="muted">{{i.itemType}}</small></td>
-            <td>
-              <div style="display:inline-flex;align-items:center;gap:6px">
-                <button type="button" class="btn small" style="padding:2px 8px;min-height:28px" (click)="adjustQuantity($index, -1)">−</button>
-                <strong>{{i.quantity}}</strong> <small class="muted">{{i.unit}}</small>
-                <button type="button" class="btn small" style="padding:2px 8px;min-height:28px" (click)="adjustQuantity($index, 1)">＋</button>
-              </div>
-            </td>
-            <td>{{i.unitPrice|currency}}</td>
-            <td class="money">{{i.lineTotal|currency}}</td>
-            <td><button class="btn small danger" (click)="removeItem($index)">Remove</button></td>
+            <th>Item</th>
+            <th>Type</th>
+            <th style="min-width:140px">Quantity</th>
+            <th style="min-width:110px">Rate ($)</th>
+            <th>Line Total</th>
+            <th style="width:50px"></th>
           </tr>
-        }
-      </tbody></table>
+        </thead>
+        <tbody>
+          @for(i of items().items; track $index){
+            <tr>
+              <td><strong>{{i.description}}</strong></td>
+              <td><span class="badge small" [class.blue]="i.itemType==='Part'" [class.amber]="i.itemType==='Labor'">{{i.itemType}}</span></td>
+              <td>
+                <div style="display:inline-flex;align-items:center;gap:4px">
+                  <button type="button" class="btn small" style="padding:2px 8px;min-height:28px" (click)="adjustQuantity($index, -1)">−</button>
+                  <input type="number" min="0.01" step="1" [ngModel]="i.quantity" (ngModelChange)="updateItemQuantity($index, $event)" style="width:60px;text-align:center;padding:2px 4px;height:28px;font-size:13px;margin:0 2px" />
+                  <span class="muted" style="font-size:12px">{{i.unit}}</span>
+                  <button type="button" class="btn small" style="padding:2px 8px;min-height:28px" (click)="adjustQuantity($index, 1)">＋</button>
+                </div>
+              </td>
+              <td>
+                <div style="display:inline-flex;align-items:center;gap:4px">
+                  <span>$</span>
+                  <input type="number" min="0" step="0.01" [ngModel]="i.unitPrice" (ngModelChange)="updateItemPrice($index, $event)" style="width:80px;padding:2px 6px;height:28px;font-size:13px" />
+                </div>
+              </td>
+              <td class="money">{{i.lineTotal|currency}}</td>
+              <td><button type="button" class="btn small danger" (click)="removeItem($index)" title="Remove item">✕</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
   }
 </div></article></div>
@@ -755,13 +940,39 @@ export class CustomerLivePage {
   <small class="muted">Invoices track balances and payment status. Once created, click View invoice to review or settle.</small>
 </div></article></aside></section>}</main>`})
 export class JobLivePage {
-  private api=inject(WorkApiService);private router=inject(Router);private id=inject(ActivatedRoute).snapshot.paramMap.get('id')!;job=signal<Job|null>(null);customer=signal<Customer|null>(null);catalog=signal<CatalogItem[]>([]);items=signal<JobItemSet>({items:[],subtotal:0,discountTotal:0,taxTotal:0,total:0});existingInvoice=signal<Invoice|null>(null);existingEstimates=signal<Estimate[]>([]);loading=signal(true);savingItems=signal(false);statusSaving=signal(false);financialSaving=signal(false);error=signal('');success=signal('');selectedCatalogId='';quantity=1;
-  readonly itemMode = signal<'catalog'|'custom'>('catalog');
-  customDesc = '';
-  customType = 'Part';
-  customQty = 1;
-  customUnit = 'unit';
-  customPrice = 0;
+  private api=inject(WorkApiService);
+  private router=inject(Router);
+  private id=inject(ActivatedRoute).snapshot.paramMap.get('id')!;
+  job=signal<Job|null>(null);
+  customer=signal<Customer|null>(null);
+  catalog=signal<CatalogItem[]>([]);
+  items=signal<JobItemSet>({items:[],subtotal:0,discountTotal:0,taxTotal:0,total:0});
+  existingInvoice=signal<Invoice|null>(null);
+  existingEstimates=signal<Estimate[]>([]);
+  loading=signal(true);
+  savingItems=signal(false);
+  statusSaving=signal(false);
+  financialSaving=signal(false);
+  error=signal('');
+  success=signal('');
+
+  readonly catalogUnits = CATALOG_UNITS;
+  selectedItemForCombobox: any = null;
+  activeEntry: {
+    catalogItemId?: string;
+    isCustom: boolean;
+    name: string;
+    itemType: 'Part' | 'Labor' | 'Service';
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    saveToCatalog?: boolean;
+  } | null = null;
+
+  readonly catalogServices = computed(() =>
+    this.catalog().filter(i => i.itemType === 'Service' || i.itemType === 'Labor').slice(0, 5)
+  );
+
   constructor(){
     this.api.catalog().subscribe({next:r=>this.catalog.set(r.items),error:()=>{}});
     this.api.jobItems(this.id).subscribe({next:r=>this.items.set(r),error:()=>{}});
@@ -774,41 +985,116 @@ export class JobLivePage {
       error:e=>{this.error.set(messageFrom(e));this.loading.set(false)}
     });
   }
+
   private loadFinancials(){
     this.api.invoices().subscribe({next:r=>this.existingInvoice.set(r.find(x=>x.jobId===this.id)||null),error:()=>{}});
     this.api.estimates().subscribe({next:r=>this.existingEstimates.set(r.filter(x=>x.jobId===this.id)),error:()=>{}});
   }
-  addItem(){const c=this.catalog().find(x=>x.id===this.selectedCatalogId);if(!c||this.quantity<=0)return;const next=[...this.items().items,{catalogItemId:c.id,itemType:c.itemType,description:c.name,quantity:this.quantity,unit:c.unit,unitPrice:c.unitPrice,discountAmount:0,taxAmount:0}];this.saveItems(next);this.selectedCatalogId='';this.quantity=1}
-  addQuickItem(description: string, itemType: string, unitPrice: number, unit = 'unit'){
-    const next = [...this.items().items, {
-      catalogItemId: undefined,
-      itemType,
-      description,
+
+  addCustomTag = (term: string) => {
+    return {
+      id: '',
+      name: term,
+      itemType: 'Part',
+      unitPrice: 0,
+      unit: 'unit',
+      isCustom: true
+    };
+  };
+
+  onComboboxSelect(item: any) {
+    if (!item) {
+      this.selectedItemForCombobox = null;
+      return;
+    }
+    if (typeof item === 'string') {
+      item = this.addCustomTag(item);
+    }
+    this.activeEntry = {
+      catalogItemId: item.isCustom ? undefined : item.id,
+      isCustom: !!item.isCustom,
+      name: item.name,
+      itemType: (item.itemType as any) || (item.isCustom ? 'Part' : 'Service'),
       quantity: 1,
-      unit,
-      unitPrice,
+      unit: item.unit || 'unit',
+      unitPrice: Number(item.unitPrice) || 0,
+      saveToCatalog: false
+    };
+    this.selectedItemForCombobox = null;
+  }
+
+  pickCatalogPreset(c: CatalogItem) {
+    this.activeEntry = {
+      catalogItemId: c.id,
+      isCustom: false,
+      name: c.name,
+      itemType: (c.itemType as any) || 'Service',
+      quantity: 1,
+      unit: c.unit || 'hr',
+      unitPrice: c.unitPrice,
+      saveToCatalog: false
+    };
+  }
+
+  cancelActiveEntry() {
+    this.activeEntry = null;
+    this.selectedItemForCombobox = null;
+  }
+
+  commitActiveEntry() {
+    if (!this.activeEntry || !this.activeEntry.name.trim() || this.activeEntry.quantity <= 0 || this.activeEntry.unitPrice < 0) return;
+    const entry = this.activeEntry;
+    const nextItem = {
+      catalogItemId: entry.catalogItemId,
+      itemType: entry.itemType,
+      description: entry.name.trim(),
+      quantity: Number(entry.quantity),
+      unit: entry.unit || 'unit',
+      unitPrice: Number(entry.unitPrice),
       discountAmount: 0,
       taxAmount: 0
-    }];
+    };
+    const next = [...this.items().items, nextItem];
+    this.saveItems(next);
+
+    if (entry.isCustom && entry.saveToCatalog) {
+      this.api.createCatalogItem({
+        name: entry.name.trim(),
+        itemType: entry.itemType,
+        unit: entry.unit || 'unit',
+        unitCost: 0,
+        unitPrice: Number(entry.unitPrice),
+        taxCategory: 'Standard'
+      }).subscribe({
+        next: created => {
+          this.catalog.update(list => [...list, created]);
+        },
+        error: () => {}
+      });
+    }
+
+    this.activeEntry = null;
+    this.selectedItemForCombobox = null;
+  }
+
+  updateItemQuantity(index: number, newQty: any) {
+    const qty = Number(newQty);
+    if (isNaN(qty) || qty <= 0) return;
+    const current = this.items().items;
+    if (!current[index]) return;
+    const next = current.map((item, i) => i === index ? { ...item, quantity: qty } : item);
     this.saveItems(next);
   }
-  addCustomItem(){
-    if (!this.customDesc.trim() || this.customQty <= 0 || this.customPrice < 0) return;
-    const next = [...this.items().items, {
-      catalogItemId: undefined,
-      itemType: this.customType,
-      description: this.customDesc.trim(),
-      quantity: this.customQty,
-      unit: this.customUnit || 'unit',
-      unitPrice: this.customPrice,
-      discountAmount: 0,
-      taxAmount: 0
-    }];
+
+  updateItemPrice(index: number, newPrice: any) {
+    const price = Number(newPrice);
+    if (isNaN(price) || price < 0) return;
+    const current = this.items().items;
+    if (!current[index]) return;
+    const next = current.map((item, i) => i === index ? { ...item, unitPrice: price } : item);
     this.saveItems(next);
-    this.customDesc = '';
-    this.customQty = 1;
-    this.customPrice = 0;
   }
+
   adjustQuantity(index: number, delta: number){
     const current = this.items().items;
     if (!current[index]) return;
@@ -820,6 +1106,7 @@ export class JobLivePage {
     const next = current.map((item, i) => i === index ? { ...item, quantity: newQty } : item);
     this.saveItems(next);
   }
+
   removeItem(index:number){this.saveItems(this.items().items.filter((_,i)=>i!==index))}
   private saveItems(next:JobItemSet['items']){this.savingItems.set(true);this.error.set('');this.api.replaceJobItems(this.id,next).subscribe({next:r=>{this.items.set(r);this.job.update(j=>j?{...j,total:r.total}:j);this.savingItems.set(false)},error:e=>{this.error.set(messageFrom(e));this.savingItems.set(false)}})}
   changeStatus(status:string){this.statusSaving.set(true);this.error.set('');this.success.set('');this.api.changeJobStatus(this.id,status).subscribe({next:j=>{this.job.set(j);this.statusSaving.set(false);this.success.set(`Job changed to ${this.label(j.status)}.`);this.loadFinancials();},error:e=>{this.error.set(messageFrom(e));this.statusSaving.set(false)}})}
