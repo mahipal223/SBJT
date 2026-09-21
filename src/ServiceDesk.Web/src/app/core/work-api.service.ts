@@ -243,11 +243,12 @@ export class WorkApiService {
   createPublicEstimateLink(estimateId: string) { return this.http.post<PublicEstimateLink>(`${this.root}/estimates/${estimateId}/public-link`, {}); }
   publicEstimate(token: string) { return this.http.get<PublicEstimate>(`/api/v1/public/estimates/${encodeURIComponent(token)}`); }
   decidePublicEstimate(token: string, decision: string, approverName: string, approverEmail: string) { return this.http.post<EstimateDecision>(`/api/v1/public/estimates/${encodeURIComponent(token)}/decision`, { decision, approverName, approverEmail }); }
+  decideEstimate(estimateId: string, decision: 'Approved' | 'Declined', approverName?: string, approverEmail?: string) { return this.http.post<EstimateDecision>(`${this.root}/estimates/${estimateId}/decision`, { decision, approverName, approverEmail }); }
   invoices(status = '') { return this.http.get<Invoice[]>(`${this.root}/invoices`, { params: status ? new HttpParams().set('status', status) : undefined }); }
   invoice(invoiceId: string) { return this.http.get<Invoice>(`${this.root}/invoices/${invoiceId}`); }
   createInvoice(jobId: string) { return this.http.post<Invoice>(`${this.root}/jobs/${jobId}/invoices`, {}); }
   issueInvoice(invoiceId: string, issuedOn: string, dueOn: string) { return this.http.post<Invoice>(`${this.root}/invoices/${invoiceId}/issue`, { issuedOn, dueOn }); }
-  recordPayment(invoiceId: string, amount: number, method = 'Cash') { return this.http.post(`${this.root}/invoices/${invoiceId}/payments`, { amount, method }); }
+  recordPayment(invoiceId: string, amount: number, method = 'Cash', externalReference?: string) { return this.http.post(`${this.root}/invoices/${invoiceId}/payments`, { amount, method, externalReference }); }
   getSmtpSettings() { return this.http.get<SmtpSettings>(`${this.root}/settings/smtp`); }
   saveSmtpSettings(command: SaveSmtpSettings) { return this.http.put<SmtpSettings>(`${this.root}/settings/smtp`, command); }
   testSmtpSettings(targetEmail: string) { return this.http.post<TestSmtpResult>(`${this.root}/settings/smtp/test`, { targetEmail }); }

@@ -583,19 +583,48 @@ export class JobFormLivePage {
 
 @Component({selector:'app-customer-live',imports:[RouterLink,DatePipe,CurrencyPipe],template:`
 <main class="page">@if(loading()){<div class="card card-body muted">Loading customer…</div>}@else if(error()){<div class="card card-body callout error-text">{{error()}}</div>}@else if(customer();as c){<header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/customers">Customers</a><span class="crumb-sep">/</span><span class="crumb-current">{{c.name}}</span></nav><div class="person"><span class="avatar">{{initials(c.name)}}</span><div><h1>{{c.name}}</h1><p>{{c.customerType}} customer · added {{c.createdAt|date:'MMM yyyy'}}</p></div></div></div><div class="page-actions"><a class="btn primary" [routerLink]="['/app/jobs/new']" [queryParams]="{customerId: c.id}">＋ Create job</a></div></header><section class="split"><article class="card"><div class="card-head"><h2>Contact details</h2></div><div class="card-body form-grid"><div><small class="muted">PHONE</small><p>{{c.phone}}</p></div><div><small class="muted">EMAIL</small><p>{{c.email||'Not provided'}}</p></div><div class="wide"><small class="muted">SERVICE ADDRESS</small><p>{{c.addressLine1}}, {{c.city}}, {{c.stateCode}} {{c.postalCode}}</p></div></div></article><aside class="card"><div class="card-head"><h2>Account</h2></div><div class="card-body"><span class="badge">Active</span><p class="muted">{{c.companyName||'Individual customer'}}</p></div></aside></section>
-<section class="card section-gap"><div class="card-head"><h2>Jobs for {{c.name}}</h2><a class="btn small primary" [routerLink]="['/app/jobs/new']" [queryParams]="{customerId: c.id}">＋ New job</a></div>
-@if(!customerJobs().length){<div class="card-body muted">No jobs created yet for this customer.</div>}@else{
-<div class="table-scroll"><table class="data-table"><thead><tr><th>Job</th><th>Schedule</th><th>Priority</th><th>Status</th><th>Total</th></tr></thead><tbody>
-@for(j of customerJobs();track j.id){<tr><td><a class="cell-main link" [routerLink]="['/app/jobs',j.id]"><strong>#{{j.jobNumber}} · {{j.title}}</strong><small>{{j.description||'No description'}}</small></a></td><td>{{j.scheduledDate||'Unscheduled'}}</td><td>{{j.priority}}</td><td><span class="badge" [class.amber]="j.status==='InProgress'" [class.blue]="j.status==='Scheduled'" [class.gray]="j.status==='Draft'" [class.teal]="j.status==='Completed'">{{label(j.status)}}</span></td><td class="money">{{j.total|currency}}</td></tr>}
-</tbody></table></div>}</section>}</main>`})
+<section class="card section-gap">
+  <div class="card-head" style="border-bottom: 1px solid var(--line); display:flex; gap:8px; align-items:center;">
+    <button type="button" class="tab-btn" [class.active]="activeTab()==='jobs'" (click)="activeTab.set('jobs')">Jobs ({{customerJobs().length}})</button>
+    <button type="button" class="tab-btn" [class.active]="activeTab()==='estimates'" (click)="activeTab.set('estimates')">Estimates ({{customerEstimates().length}})</button>
+    <button type="button" class="tab-btn" [class.active]="activeTab()==='invoices'" (click)="activeTab.set('invoices')">Invoices ({{customerInvoices().length}})</button>
+    <span style="flex:1"></span>
+    @if(activeTab()==='jobs'){<a class="btn small primary" [routerLink]="['/app/jobs/new']" [queryParams]="{customerId: c.id}">＋ New job</a>}
+  </div>
+  @if(activeTab()==='jobs'){
+    @if(!customerJobs().length){<div class="card-body muted">No jobs created yet for this customer.</div>}@else{
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Job</th><th>Schedule</th><th>Priority</th><th>Status</th><th>Total</th></tr></thead><tbody>
+        @for(j of customerJobs();track j.id){<tr><td><a class="cell-main link" [routerLink]="['/app/jobs',j.id]"><strong>#{{j.jobNumber}} · {{j.title}}</strong><small>{{j.description||'No description'}}</small></a></td><td>{{j.scheduledDate||'Unscheduled'}}</td><td>{{j.priority}}</td><td><span class="badge" [class.amber]="j.status==='InProgress'" [class.blue]="j.status==='Scheduled'" [class.gray]="j.status==='Draft'" [class.teal]="j.status==='Completed'">{{label(j.status)}}</span></td><td class="money">{{j.total|currency}}</td></tr>}
+      </tbody></table></div>
+    }
+  }
+  @else if(activeTab()==='estimates'){
+    @if(!customerEstimates().length){<div class="card-body muted">No estimates found for this customer.</div>}@else{
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Estimate</th><th>Created</th><th>Expires</th><th>Status</th><th>Total</th></tr></thead><tbody>
+        @for(e of customerEstimates();track e.id){<tr><td><a class="cell-main link" [routerLink]="['/app/estimates',e.id]"><strong>#{{e.estimateNumber}}</strong><small>{{e.items.length}} line items (rev {{e.revision}})</small></a></td><td>{{e.createdAt|date:'MMM d, y'}}</td><td>{{e.validUntil|date:'MMM d, y'}}</td><td><span class="badge" [class.gray]="e.status==='Draft'" [class.amber]="e.status==='Sent'" [class.teal]="e.status==='Approved'">{{e.status}}</span></td><td class="money">{{e.total|currency}}</td></tr>}
+      </tbody></table></div>
+    }
+  }
+  @else if(activeTab()==='invoices'){
+    @if(!customerInvoices().length){<div class="card-body muted">No invoices found for this customer.</div>}@else{
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Invoice</th><th>Issued</th><th>Status</th><th>Total</th><th>Balance</th></tr></thead><tbody>
+        @for(inv of customerInvoices();track inv.id){<tr><td><a class="cell-main link" [routerLink]="['/app/invoices',inv.id]"><strong>#{{inv.invoiceNumber}}</strong><small>{{inv.items.length}} line items</small></a></td><td>{{inv.issuedOn?(inv.issuedOn|date:'MMM d, y'):'Draft'}}</td><td><span class="badge" [class.gray]="inv.status==='Draft'" [class.teal]="inv.paymentStatus==='Paid'" [class.red]="inv.isOverdue">{{inv.paymentStatus==='Paid'?'Paid':inv.status}}</span></td><td class="money">{{inv.total|currency}}</td><td class="money">{{inv.balance|currency}}</td></tr>}
+      </tbody></table></div>
+    }
+  }
+</section>}</main>`,
+  styles: `.tab-btn{background:none;border:none;padding:10px 14px;font-weight:700;font-size:14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}.tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);}`
+})
 export class CustomerLivePage {
-  private api=inject(WorkApiService);customer=signal<Customer|null>(null);customerJobs=signal<Job[]>([]);loading=signal(true);error=signal('');
+  private api=inject(WorkApiService);customer=signal<Customer|null>(null);customerJobs=signal<Job[]>([]);customerEstimates=signal<Estimate[]>([]);customerInvoices=signal<Invoice[]>([]);activeTab=signal<'jobs'|'estimates'|'invoices'>('jobs');loading=signal(true);error=signal('');
   constructor(){
     const id=inject(ActivatedRoute).snapshot.paramMap.get('id')!;
     this.api.customer(id).subscribe({
       next:c=>{
         this.customer.set(c);
         this.api.jobs().subscribe({next:r=>this.customerJobs.set(r.items.filter(j=>j.customerId===id)),error:()=>{}});
+        this.api.estimates().subscribe({next:r=>this.customerEstimates.set(r.filter(e=>e.customerName===c.name)),error:()=>{}});
+        this.api.invoices().subscribe({next:r=>this.customerInvoices.set(r.filter(i=>i.customerName===c.name)),error:()=>{}});
         this.loading.set(false);
       },
       error:e=>{this.error.set(messageFrom(e));this.loading.set(false)}
@@ -609,8 +638,14 @@ export class CustomerLivePage {
 <main class="page">@if(loading()){<div class="card card-body muted">Loading job…</div>}@else if(error()&&!job()){<div class="card card-body callout error-text">{{error()}}</div>}@else if(job();as j){
 <header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/jobs">Jobs</a><span class="crumb-sep">/</span><span class="crumb-current">#{{j.jobNumber}}</span></nav><div class="title-with-badge"><h1>Job #{{j.jobNumber}} · {{j.title}}</h1><span class="badge" [class.amber]="j.status==='InProgress'" [class.blue]="j.status==='Scheduled'" [class.gray]="j.status==='Draft'" [class.teal]="j.status==='Completed'">{{label(j.status)}}</span></div><p><a class="link" [routerLink]="['/app/customers', j.customerId]">{{customer()?.name||'Customer'}}</a> · {{customer()?.addressLine1}}</p></div>
 <div class="page-actions">
-  @if(j.status==='Draft'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('Scheduled')">Schedule job</button>}
-  @else if(j.status==='Scheduled'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('InProgress')">Start job</button>}
+  @if(j.status==='Draft'){
+    <button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('Scheduled')">Schedule job</button>
+    <button class="btn" [disabled]="statusSaving()||financialSaving()" (click)="completeAndInvoice()">Complete & create invoice</button>
+  }
+  @else if(j.status==='Scheduled'){
+    <button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('InProgress')">Start job</button>
+    <button class="btn" [disabled]="statusSaving()||financialSaving()" (click)="completeAndInvoice()">Complete & create invoice</button>
+  }
   @else if(j.status==='InProgress'){
     <button class="btn primary" [disabled]="statusSaving()||financialSaving()" (click)="completeAndInvoice()">Complete & create invoice</button>
     <button class="btn" [disabled]="statusSaving()" (click)="changeStatus('Completed')">Mark complete</button>
@@ -621,26 +656,76 @@ export class CustomerLivePage {
 </div></header>
 @if(error()){<div class="callout error-text">{{error()}}</div>}@if(success()){<div class="callout">{{success()}}</div>}
 <section class="split"><div class="grid"><article class="card"><div class="card-head"><h2>Work summary</h2><span class="badge blue">{{label(j.status)}}</span></div><div class="card-body"><p>{{j.description||'No work instructions were entered.'}}</p><div class="list"><div class="list-row"><span class="muted">Priority</span><strong>{{j.priority}}</strong></div><div class="list-row"><span class="muted">Scheduled</span><strong>{{j.scheduledDate||'Unscheduled'}}</strong></div><div class="list-row"><span class="muted">Arrival window</span><strong>{{j.arrivalWindow||'—'}}</strong></div></div></div></article>
-<article class="card"><div class="card-head"><h2>Services & materials</h2></div><div class="card-body"><div class="form-grid">
-  <div class="field"><label for="job-catalog-item">Catalog item</label>
-    <ng-select id="job-catalog-item"
-      [items]="catalog()"
-      bindLabel="name"
-      bindValue="id"
-      [(ngModel)]="selectedCatalogId"
-      placeholder="Search parts or services...">
-      <ng-template ng-option-tmp let-item="item">
-        <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-          <span><strong>{{item.name}}</strong> <small class="badge small" [class.blue]="item.itemType==='Part'">{{item.itemType}}</small></span>
-          <strong>{{item.unitPrice|currency}}</strong>
-        </div>
-      </ng-template>
-    </ng-select>
+
+<article class="card"><div class="card-head"><h2>Services & materials</h2></div><div class="card-body">
+  <div class="quick-chips" style="margin-bottom:14px">
+    <span class="chips-label">1-Click presets:</span>
+    <button type="button" class="chip-btn" (click)="addQuickItem('Diagnostic Fee', 'Service', 95, 'service')">＋ Diagnostic ($95)</button>
+    <button type="button" class="chip-btn" (click)="addQuickItem('Standard Labor 1hr', 'Labor', 85, 'hr')">＋ Labor 1hr ($85)</button>
+    <button type="button" class="chip-btn" (click)="addQuickItem('System Tune-up & Inspection', 'Service', 120, 'service')">＋ Tune-up ($120)</button>
+    <button type="button" class="chip-btn" (click)="addQuickItem('Air Filter Standard', 'Part', 35, 'unit')">＋ Filter ($35)</button>
   </div>
-  <div class="field"><label for="job-item-quantity">Quantity</label><input id="job-item-quantity" type="number" min=".001" step="1" [(ngModel)]="quantity"></div>
-  <div class="wide"><button class="btn" (click)="addItem()" [disabled]="!selectedCatalogId">＋ Add to job</button></div>
-</div>
-@if(items().items.length){<div class="table-scroll section-gap"><table class="data-table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead><tbody>@for(i of items().items;track $index){<tr><td>{{i.description}}</td><td>{{i.quantity}} {{i.unit}}</td><td>{{i.unitPrice|currency}}</td><td class="money">{{i.lineTotal|currency}}</td><td><button class="btn small danger" (click)="removeItem($index)">Remove</button></td></tr>}</tbody></table></div>}</div></article></div>
+
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <button type="button" class="btn small" [class.primary]="itemMode()==='catalog'" (click)="itemMode.set('catalog')">From catalog</button>
+    <button type="button" class="btn small" [class.primary]="itemMode()==='custom'" (click)="itemMode.set('custom')">＋ Custom part / one-off</button>
+  </div>
+
+  @if(itemMode()==='catalog'){
+    <div class="form-grid">
+      <div class="field"><label for="job-catalog-item">Catalog item</label>
+        <ng-select id="job-catalog-item"
+          [items]="catalog()"
+          bindLabel="name"
+          bindValue="id"
+          [(ngModel)]="selectedCatalogId"
+          placeholder="Search parts or services...">
+          <ng-template ng-option-tmp let-item="item">
+            <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+              <span><strong>{{item.name}}</strong> <small class="badge small" [class.blue]="item.itemType==='Part'">{{item.itemType}}</small></span>
+              <strong>{{item.unitPrice|currency}}</strong>
+            </div>
+          </ng-template>
+        </ng-select>
+      </div>
+      <div class="field"><label for="job-item-quantity">Quantity</label><input id="job-item-quantity" type="number" min=".001" step="1" [(ngModel)]="quantity"></div>
+      <div class="wide"><button class="btn primary" (click)="addItem()" [disabled]="!selectedCatalogId">＋ Add to job</button></div>
+    </div>
+  }
+  @else {
+    <div class="form-grid">
+      <div class="field wide"><label for="custom-desc">Description *</label><input id="custom-desc" [(ngModel)]="customDesc" placeholder="e.g. 3/4 inch Brass Ball Valve purchased on-site"></div>
+      <div class="field"><label for="custom-type">Type</label><ng-select id="custom-type" [items]="['Part', 'Labor', 'Service']" [clearable]="false" [searchable]="false" [(ngModel)]="customType"></ng-select></div>
+      <div class="field"><label for="custom-qty">Qty</label><input id="custom-qty" type="number" step="1" min="1" [(ngModel)]="customQty"></div>
+      <div class="field"><label for="custom-unit">Unit</label><input id="custom-unit" [(ngModel)]="customUnit" placeholder="unit, hr, ft"></div>
+      <div class="field"><label for="custom-price">Unit price ($)</label><input id="custom-price" type="number" step="0.01" min="0" [(ngModel)]="customPrice"></div>
+      <div class="wide"><button class="btn primary" (click)="addCustomItem()" [disabled]="!customDesc.trim() || customPrice < 0">＋ Add custom item</button></div>
+    </div>
+  }
+
+  @if(items().items.length){
+    <div class="table-scroll section-gap">
+      <table class="data-table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead><tbody>
+        @for(i of items().items;track $index){
+          <tr>
+            <td><strong>{{i.description}}</strong><br><small class="muted">{{i.itemType}}</small></td>
+            <td>
+              <div style="display:inline-flex;align-items:center;gap:6px">
+                <button type="button" class="btn small" style="padding:2px 8px;min-height:28px" (click)="adjustQuantity($index, -1)">−</button>
+                <strong>{{i.quantity}}</strong> <small class="muted">{{i.unit}}</small>
+                <button type="button" class="btn small" style="padding:2px 8px;min-height:28px" (click)="adjustQuantity($index, 1)">＋</button>
+              </div>
+            </td>
+            <td>{{i.unitPrice|currency}}</td>
+            <td class="money">{{i.lineTotal|currency}}</td>
+            <td><button class="btn small danger" (click)="removeItem($index)">Remove</button></td>
+          </tr>
+        }
+      </tbody></table>
+    </div>
+  }
+</div></article></div>
+
 <aside class="grid"><article class="card"><div class="card-head"><h2>Job total</h2></div><div class="card-body list"><div class="list-row"><span>Subtotal</span><strong>{{items().subtotal|currency}}</strong></div><div class="list-row"><span>Discount</span><strong>{{items().discountTotal|currency}}</strong></div><div class="list-row"><span>Tax</span><strong>{{items().taxTotal|currency}}</strong></div><div class="list-row"><strong>Total</strong><strong class="stat-value">{{items().total|currency}}</strong></div>@if(savingItems()){<span class="muted">Saving line items…</span>}</div></article>
 <article class="card"><div class="card-head"><h2>Financial documents</h2></div><div class="card-body grid">
   @if(existingInvoice(); as inv){
@@ -648,12 +733,12 @@ export class CustomerLivePage {
       <span class="muted">Generated invoice:</span>
       <a class="doc-pill" [routerLink]="['/app/invoices', inv.id]">
         <span><strong>#{{inv.invoiceNumber}}</strong> · {{inv.total|currency}}</span>
-        <span class="badge" [class.gray]="inv.status==='Draft'" [class.red]="inv.isOverdue">{{inv.paymentStatus==='Paid'?'Paid':inv.status}}</span>
+        <span class="badge" [class.gray]="inv.status==='Draft'" [class.red]="inv.isOverdue" [class.teal]="inv.paymentStatus==='Paid'">{{inv.paymentStatus==='Paid'?'Paid':inv.status}}</span>
       </a>
     </div>
     <a class="btn primary" [routerLink]="['/app/invoices', inv.id]" id="view-invoice-btn">View invoice (#{{inv.invoiceNumber}} · {{inv.paymentStatus==='Paid'?'Paid':inv.status}})</a>
   }@else{
-    <button class="btn primary" [disabled]="financialSaving()||j.status!=='Completed'" (click)="createInvoice()" id="create-invoice-btn">Create invoice</button>
+    <button class="btn primary" [disabled]="financialSaving()" (click)="createInvoice()" id="create-invoice-btn">Create invoice</button>
   }
   @if(existingEstimates().length){
     <div class="associated-docs">
@@ -661,16 +746,22 @@ export class CustomerLivePage {
       @for(est of existingEstimates();track est.id){
         <a class="doc-pill" [routerLink]="['/app/estimates', est.id]">
           <span><strong>#{{est.estimateNumber}}</strong> (rev {{est.revision}}) · {{est.total|currency}}</span>
-          <span class="badge" [class.gray]="est.status==='Draft'" [class.amber]="est.status==='Sent'">{{est.status}}</span>
+          <span class="badge" [class.gray]="est.status==='Draft'" [class.amber]="est.status==='Sent'" [class.teal]="est.status==='Approved'">{{est.status}}</span>
         </a>
       }
     </div>
   }
   <button class="btn" [disabled]="financialSaving()||!items().items.length" (click)="createEstimate()" id="create-estimate-btn">{{existingEstimates().length?'＋ Create revision estimate':'Create estimate'}}</button>
-  <small class="muted">Invoices require a completed job. Once created, click View invoice to review or settle.</small>
+  <small class="muted">Invoices track balances and payment status. Once created, click View invoice to review or settle.</small>
 </div></article></aside></section>}</main>`})
 export class JobLivePage {
   private api=inject(WorkApiService);private router=inject(Router);private id=inject(ActivatedRoute).snapshot.paramMap.get('id')!;job=signal<Job|null>(null);customer=signal<Customer|null>(null);catalog=signal<CatalogItem[]>([]);items=signal<JobItemSet>({items:[],subtotal:0,discountTotal:0,taxTotal:0,total:0});existingInvoice=signal<Invoice|null>(null);existingEstimates=signal<Estimate[]>([]);loading=signal(true);savingItems=signal(false);statusSaving=signal(false);financialSaving=signal(false);error=signal('');success=signal('');selectedCatalogId='';quantity=1;
+  readonly itemMode = signal<'catalog'|'custom'>('catalog');
+  customDesc = '';
+  customType = 'Part';
+  customQty = 1;
+  customUnit = 'unit';
+  customPrice = 0;
   constructor(){
     this.api.catalog().subscribe({next:r=>this.catalog.set(r.items),error:()=>{}});
     this.api.jobItems(this.id).subscribe({next:r=>this.items.set(r),error:()=>{}});
@@ -688,10 +779,69 @@ export class JobLivePage {
     this.api.estimates().subscribe({next:r=>this.existingEstimates.set(r.filter(x=>x.jobId===this.id)),error:()=>{}});
   }
   addItem(){const c=this.catalog().find(x=>x.id===this.selectedCatalogId);if(!c||this.quantity<=0)return;const next=[...this.items().items,{catalogItemId:c.id,itemType:c.itemType,description:c.name,quantity:this.quantity,unit:c.unit,unitPrice:c.unitPrice,discountAmount:0,taxAmount:0}];this.saveItems(next);this.selectedCatalogId='';this.quantity=1}
+  addQuickItem(description: string, itemType: string, unitPrice: number, unit = 'unit'){
+    const next = [...this.items().items, {
+      catalogItemId: undefined,
+      itemType,
+      description,
+      quantity: 1,
+      unit,
+      unitPrice,
+      discountAmount: 0,
+      taxAmount: 0
+    }];
+    this.saveItems(next);
+  }
+  addCustomItem(){
+    if (!this.customDesc.trim() || this.customQty <= 0 || this.customPrice < 0) return;
+    const next = [...this.items().items, {
+      catalogItemId: undefined,
+      itemType: this.customType,
+      description: this.customDesc.trim(),
+      quantity: this.customQty,
+      unit: this.customUnit || 'unit',
+      unitPrice: this.customPrice,
+      discountAmount: 0,
+      taxAmount: 0
+    }];
+    this.saveItems(next);
+    this.customDesc = '';
+    this.customQty = 1;
+    this.customPrice = 0;
+  }
+  adjustQuantity(index: number, delta: number){
+    const current = this.items().items;
+    if (!current[index]) return;
+    const newQty = current[index].quantity + delta;
+    if (newQty <= 0) {
+      this.removeItem(index);
+      return;
+    }
+    const next = current.map((item, i) => i === index ? { ...item, quantity: newQty } : item);
+    this.saveItems(next);
+  }
   removeItem(index:number){this.saveItems(this.items().items.filter((_,i)=>i!==index))}
   private saveItems(next:JobItemSet['items']){this.savingItems.set(true);this.error.set('');this.api.replaceJobItems(this.id,next).subscribe({next:r=>{this.items.set(r);this.job.update(j=>j?{...j,total:r.total}:j);this.savingItems.set(false)},error:e=>{this.error.set(messageFrom(e));this.savingItems.set(false)}})}
   changeStatus(status:string){this.statusSaving.set(true);this.error.set('');this.success.set('');this.api.changeJobStatus(this.id,status).subscribe({next:j=>{this.job.set(j);this.statusSaving.set(false);this.success.set(`Job changed to ${this.label(j.status)}.`);this.loadFinancials();},error:e=>{this.error.set(messageFrom(e));this.statusSaving.set(false)}})}
-  completeAndInvoice(){this.statusSaving.set(true);this.error.set('');this.api.changeJobStatus(this.id,'Completed').subscribe({next:()=>{this.statusSaving.set(false);this.createInvoice();},error:e=>{this.error.set(messageFrom(e));this.statusSaving.set(false)}})}
+  completeAndInvoice(){
+    if(this.job()?.status === 'Completed'){
+      this.createInvoice();
+      return;
+    }
+    this.statusSaving.set(true);
+    this.error.set('');
+    this.api.changeJobStatus(this.id,'Completed').subscribe({
+      next:(updated)=>{
+        this.job.set(updated);
+        this.statusSaving.set(false);
+        this.createInvoice();
+      },
+      error:e=>{
+        this.error.set(messageFrom(e));
+        this.statusSaving.set(false);
+      }
+    });
+  }
   createEstimate(){const valid=new Date();valid.setDate(valid.getDate()+30);this.financialSaving.set(true);this.error.set('');this.api.createEstimate(this.id,valid.toISOString().slice(0,10)).subscribe({next:est=>this.router.navigate(['/app/estimates',est.id]),error:e=>{this.error.set(messageFrom(e));this.financialSaving.set(false)}})}
   createInvoice(){this.financialSaving.set(true);this.error.set('');this.api.createInvoice(this.id).subscribe({next:inv=>this.router.navigate(['/app/invoices',inv.id]),error:e=>{this.error.set(messageFrom(e));this.financialSaving.set(false)}})}
   label(value:string){return value.replace(/([a-z])([A-Z])/g,'$1 $2')}

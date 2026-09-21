@@ -114,6 +114,7 @@ public interface IFinancialService
     Task<PublicEstimateLinkRecord> CreatePublicEstimateLinkAsync(Guid businessId, Guid estimateId, CancellationToken cancellationToken = default);
     Task<PublicEstimateRecord> GetPublicEstimateAsync(string token, CancellationToken cancellationToken = default);
     Task<EstimateDecisionRecord> DecidePublicEstimateAsync(string token, EstimateDecisionCommand command, CancellationToken cancellationToken = default);
+    Task<EstimateDecisionRecord> RecordEstimateDecisionAsync(Guid businessId, Guid estimateId, EstimateDecisionCommand command, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<InvoiceRecord>> ListInvoicesAsync(Guid businessId, string? status, CancellationToken cancellationToken = default);
     Task<InvoiceRecord> GetInvoiceAsync(Guid businessId, Guid invoiceId, CancellationToken cancellationToken = default);
     Task<InvoiceRecord> CreateInvoiceAsync(Guid businessId, Guid jobId, CancellationToken cancellationToken = default);

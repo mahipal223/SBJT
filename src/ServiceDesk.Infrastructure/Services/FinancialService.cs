@@ -603,6 +603,105 @@ public sealed class FinancialService(
             cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<EstimateDecisionRecord> RecordEstimateDecisionAsync(
+        Guid businessId,
+        Guid estimateId,
+        EstimateDecisionCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var decision = command.Decision?.Trim();
+        var approverName = string.IsNullOrWhiteSpace(command.ApproverName) ? "Customer (Staff Recorded)" : command.ApproverName.Trim();
+        var approverEmail = string.IsNullOrWhiteSpace(command.ApproverEmail) ? "direct@servicedesk.local" : command.ApproverEmail.Trim();
+        if (decision is not ("Approved" or "Declined"))
+        {
+            throw new FinancialRuleException("validation_failed", "Decision must be Approved or Declined.");
+        }
+
+        var actor = RequireTenantContext();
+        var decisionId = Guid.NewGuid();
+
+        return await baseDAL.ExecuteInTransactionAsync(
+            businessId,
+            "Estimates.RecordDecision",
+            async (connection, transaction, cancellation) =>
+            {
+                const string selectSql = """
+                    SELECT Id, Status, ValidUntil
+                    FROM app.Estimates WITH (UPDLOCK, HOLDLOCK)
+                    WHERE BusinessId = @BusinessId AND Id = @EstimateId;
+                    """;
+                string status;
+                DateOnly validUntil;
+                await using (var select = BaseDAL.BuildCommand(connection, transaction, selectSql, parameters:
+                [UniqueIdentifier("@BusinessId", businessId), UniqueIdentifier("@EstimateId", estimateId)]))
+                await using (var reader = await select.ExecuteReaderAsync(cancellation).ConfigureAwait(false))
+                {
+                    if (!await reader.ReadAsync(cancellation).ConfigureAwait(false))
+                    {
+                        throw new FinancialRuleException("resource_not_found", "The estimate was not found.");
+                    }
+                    status = reader.GetString(1);
+                    validUntil = DateOnly.FromDateTime(reader.GetDateTime(2));
+                }
+
+                if (status is not ("Draft" or "Sent"))
+                {
+                    throw new FinancialRuleException("invalid_transition", $"An estimate in '{status}' status cannot be decided.");
+                }
+                if (validUntil < DateOnly.FromDateTime(DateTime.UtcNow))
+                {
+                    throw new FinancialRuleException("estimate_expired", "This estimate has expired.");
+                }
+
+                const string insertSql = """
+                    DELETE FROM app.EstimateDecisions WHERE BusinessId = @BusinessId AND EstimateId = @EstimateId;
+
+                    INSERT app.EstimateDecisions
+                        (BusinessId, Id, EstimateId, Decision, ApproverName, ApproverEmail, EvidenceReference)
+                    VALUES
+                        (@BusinessId, @DecisionId, @EstimateId, @Decision, @ApproverName, @ApproverEmail,
+                         N'in-app:' + CONVERT(nvarchar(36), @DecisionId));
+
+                    UPDATE app.Estimates
+                    SET Status = @Decision, UpdatedAt = SYSUTCDATETIME()
+                    WHERE BusinessId = @BusinessId AND Id = @EstimateId;
+
+                    UPDATE app.PublicLinks
+                    SET ConsumedAt = SYSUTCDATETIME(), UpdatedAt = SYSUTCDATETIME()
+                    WHERE BusinessId = @BusinessId AND EstimateId = @EstimateId AND ConsumedAt IS NULL;
+
+                    INSERT app.AuditEvents
+                        (BusinessId, ActorUserId, Action, EntityType, EntityId, CorrelationId, Changes)
+                    VALUES
+                        (@BusinessId, @UserId, N'estimate.decision_recorded', N'Estimate', @EstimateId,
+                         CONVERT(nvarchar(100), NEWID()),
+                         (SELECT @Decision AS decision, @ApproverName AS approverName, N'InApp' AS channel FOR JSON PATH, WITHOUT_ARRAY_WRAPPER));
+                    """;
+
+                await using var insert = BaseDAL.BuildCommand(connection, transaction, insertSql, parameters:
+                [
+                    UniqueIdentifier("@BusinessId", businessId),
+                    UniqueIdentifier("@DecisionId", decisionId),
+                    UniqueIdentifier("@EstimateId", estimateId),
+                    UniqueIdentifier("@UserId", actor.UserId),
+                    VarChar("@Decision", decision, 32),
+                    NVarChar("@ApproverName", approverName, 200),
+                    NVarChar("@ApproverEmail", approverEmail, 254)
+                ]);
+                await insert.ExecuteNonQueryAsync(cancellation).ConfigureAwait(false);
+
+                return new EstimateDecisionRecord(
+                    decisionId,
+                    estimateId,
+                    decision,
+                    approverName,
+                    approverEmail,
+                    DateTimeOffset.UtcNow);
+            },
+            IsolationLevel.Serializable,
+            cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<IReadOnlyList<InvoiceRecord>> ListInvoicesAsync(
         Guid businessId,
         string? status,

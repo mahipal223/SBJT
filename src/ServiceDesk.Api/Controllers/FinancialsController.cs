@@ -152,6 +152,24 @@ public sealed class FinancialsController(
         }
     }
 
+    [HttpPost("estimates/{estimateId:guid}/decision")]
+    [Authorize(Policy = Permissions.EstimatesManage)]
+    public async Task<ActionResult<EstimateDecisionRecord>> RecordDecision(
+        Guid businessId,
+        Guid estimateId,
+        EstimateDecisionCommand command,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await financialService.RecordEstimateDecisionAsync(businessId, estimateId, command, cancellationToken));
+        }
+        catch (FinancialRuleException exception)
+        {
+            return FinancialProblem(exception);
+        }
+    }
+
     [HttpGet("invoices")]
     [Authorize(Policy = Permissions.InvoicesManage)]
     public async Task<ActionResult<IReadOnlyList<InvoiceRecord>>> ListInvoices(
