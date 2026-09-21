@@ -196,29 +196,52 @@ export class JobsLivePage {
 }
 
 @Component({selector:'app-job-form-live',imports:[RouterLink,FormsModule,NgSelectComponent],template:`
-<main class="page"><header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/jobs">Jobs</a><span class="crumb-sep">/</span><span class="crumb-current">New job</span></nav><h1>Create job</h1><p>Schedule now or save as an unscheduled request.</p></div><a class="btn" routerLink="/app/jobs">Cancel</a></header><section class="card"><div class="card-head"><h2>Job details</h2><span class="badge blue">Draft</span></div>
-<form class="card-body form-grid" (ngSubmit)="save()" novalidate>
+<main class="page"><header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/jobs">Jobs</a><span class="crumb-sep">/</span><span class="crumb-current">New job</span></nav><h1>Create job</h1><p>Schedule now or save as an unscheduled request.</p></div><a class="btn" routerLink="/app/jobs">Cancel</a></header><section class="card"><div class="card-head"><h2>Job details</h2><span class="badge blue">{{model.scheduledDate ? 'Scheduled' : 'Draft'}}</span></div>
+<form class="card-body form-grid" (ngSubmit)="save(false)" novalidate>
   <div class="field wide" [class.has-error]="hasError('customerId')">
-    <label for="customerId">Customer *</label>
+    <div class="field-header-row">
+      <label for="customerId">Customer *</label>
+      <button type="button" class="btn-inline-action" (click)="openQuickCustomerModal()">
+        ＋ New customer
+      </button>
+    </div>
     <ng-select id="customerId" name="customerId"
       [items]="customers()"
       bindLabel="name"
       bindValue="id"
       [(ngModel)]="model.customerId"
       (blur)="markTouched('customerId')"
-      (change)="onInput('customerId')"
-      placeholder="Search customer by name or address...">
+      (change)="onCustomerSelected()"
+      placeholder="Search customer by name, phone, or address...">
       <ng-template ng-option-tmp let-item="item">
-        <div><strong>{{item.name}}</strong> · <small class="muted">{{item.addressLine1}}, {{item.city}}</small></div>
+        <div><strong>{{item.name}}</strong> · <small class="muted">{{item.phone}} · {{item.addressLine1}}, {{item.city}}</small></div>
       </ng-template>
     </ng-select>
     @if(hasError('customerId')){<span class="field-error" id="customer-error">{{errorMessage('customerId')}}</span>}
+    @if(selectedCustomer(); as sc){
+      <div class="customer-preview-card">
+        <span class="preview-avatar">{{sc.name[0]}}</span>
+        <div class="preview-info">
+          <strong>{{sc.name}}</strong>
+          <span>📞 {{sc.phone}} · 📍 {{sc.addressLine1}}, {{sc.city}} {{sc.stateCode}}</span>
+        </div>
+        <button type="button" class="btn-clear-customer" (click)="clearCustomer()" title="Remove selection">✕</button>
+      </div>
+    }
   </div>
+
   <div class="field wide" [class.has-error]="hasError('title')">
     <label for="title">Job title *</label>
     <input id="title" name="title" [(ngModel)]="model.title" (blur)="markTouched('title')" (input)="onInput('title')" placeholder="e.g. Water heater inspection">
+    <div class="quick-chips">
+      <span class="chips-label">Quick fill:</span>
+      @for(t of titleSuggestions; track t){
+        <button type="button" class="chip-btn" [class.active]="model.title===t" (click)="setTitle(t)">{{t}}</button>
+      }
+    </div>
     @if(hasError('title')){<span class="field-error" id="title-error">{{errorMessage('title')}}</span>}
   </div>
+
   <div class="field">
     <label for="priority">Priority</label>
     <ng-select id="priority" name="priority"
@@ -228,7 +251,19 @@ export class JobsLivePage {
       [(ngModel)]="model.priority">
     </ng-select>
   </div>
-  <div class="field"><label for="scheduledDate">Date</label><input id="scheduledDate" name="scheduledDate" type="date" [(ngModel)]="model.scheduledDate"></div>
+
+  <div class="field">
+    <label for="scheduledDate">Date</label>
+    <input id="scheduledDate" name="scheduledDate" type="date" [(ngModel)]="model.scheduledDate" (change)="onDateChange()">
+    <div class="quick-chips">
+      <span class="chips-label">Quick date:</span>
+      <button type="button" class="chip-btn" [class.active]="isToday()" (click)="setDateToday()">Today</button>
+      <button type="button" class="chip-btn" [class.active]="isTomorrow()" (click)="setDateTomorrow()">Tomorrow</button>
+      <button type="button" class="chip-btn" [class.active]="isNextMonday()" (click)="setDateNextMonday()">Next Mon</button>
+      <button type="button" class="chip-btn" [class.active]="!model.scheduledDate" (click)="clearDate()">Unscheduled</button>
+    </div>
+  </div>
+
   <div class="field wide">
     <label for="arrivalWindow">Arrival window</label>
     <ng-select id="arrivalWindow" name="arrivalWindow"
@@ -237,21 +272,114 @@ export class JobsLivePage {
       [(ngModel)]="model.arrivalWindow"
       placeholder="Select arrival window or type custom time (e.g. 9:00 AM – 10:30 AM)...">
     </ng-select>
+    <div class="quick-chips">
+      <span class="chips-label">Preset window:</span>
+      <button type="button" class="chip-btn" [class.active]="model.arrivalWindow==='8:00 AM – 12:00 PM'" (click)="setWindow('8:00 AM – 12:00 PM')">Morning (8-12)</button>
+      <button type="button" class="chip-btn" [class.active]="model.arrivalWindow==='12:00 PM – 4:00 PM'" (click)="setWindow('12:00 PM – 4:00 PM')">Afternoon (12-4)</button>
+      <button type="button" class="chip-btn" [class.active]="model.arrivalWindow==='4:00 PM – 8:00 PM'" (click)="setWindow('4:00 PM – 8:00 PM')">Evening (4-8)</button>
+    </div>
   </div>
-  <div class="field wide"><label for="description">Customer request / internal instructions</label><textarea id="description" name="description" rows="4" [(ngModel)]="model.description"></textarea></div>
+
+  <div class="field wide"><label for="description">Customer request / internal instructions</label><textarea id="description" name="description" rows="3" [(ngModel)]="model.description" placeholder="Notes, gate codes, access instructions..."></textarea></div>
+
+  @if(success()){<div class="wide callout" style="background:#e6f7f5;border-color:var(--teal);color:var(--teal);display:flex;align-items:center;justify-content:space-between"><span>✅ {{success()}}</span><button type="button" class="btn small" (click)="success.set('')">✕</button></div>}
   @if(error()){<div class="wide callout error-text" id="job-form-error">{{error()}}</div>}
-  <div class="wide page-actions"><button class="btn primary" type="submit" [disabled]="saving()" id="submit-job-btn">{{saving()?'Creating…':model.scheduledDate?'Create & schedule job':'Save unscheduled'}}</button><a class="btn" routerLink="/app/jobs">Cancel</a></div>
-</form></section></main>`})
+
+  <div class="wide page-actions">
+    <button class="btn primary" type="submit" [disabled]="saving()" id="submit-job-btn">{{saving()?'Creating…':model.scheduledDate?'Create & schedule job':'Save unscheduled'}}</button>
+    <button class="btn" type="button" [disabled]="saving()" (click)="save(true)" id="submit-add-another-btn">Save & create another</button>
+    <a class="btn" routerLink="/app/jobs">Cancel</a>
+  </div>
+</form></section>
+
+<!-- Quick Add Customer Modal -->
+@if(showQuickCustomerModal()){
+  <div class="quick-modal-backdrop" (click)="closeQuickCustomerModal()">
+    <div class="quick-modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>＋ Quick Add Customer</h3>
+        <button type="button" class="modal-close-btn" (click)="closeQuickCustomerModal()">✕</button>
+      </div>
+      <form (ngSubmit)="saveQuickCustomer()" novalidate>
+        <div class="modal-body form-grid">
+          <div class="field wide" [class.has-error]="quickCustomerSubmitted() && !quickCustomer.name.trim()">
+            <label for="qc-name">Full name *</label>
+            <input id="qc-name" name="qcName" [(ngModel)]="quickCustomer.name" placeholder="e.g. Sarah Miller" autocomplete="name">
+            @if(quickCustomerSubmitted() && !quickCustomer.name.trim()){<span class="field-error">Name is required</span>}
+          </div>
+          <div class="field" [class.has-error]="quickCustomerSubmitted() && !quickCustomer.phone.trim()">
+            <label for="qc-phone">Phone *</label>
+            <input id="qc-phone" name="qcPhone" [(ngModel)]="quickCustomer.phone" placeholder="e.g. (512) 555-0100" autocomplete="tel">
+            @if(quickCustomerSubmitted() && !quickCustomer.phone.trim()){<span class="field-error">Phone is required</span>}
+          </div>
+          <div class="field">
+            <label for="qc-email">Email (Optional)</label>
+            <input id="qc-email" name="qcEmail" type="email" [(ngModel)]="quickCustomer.email" placeholder="customer@example.com" autocomplete="email">
+          </div>
+          <div class="field wide" [class.has-error]="quickCustomerSubmitted() && !quickCustomer.addressLine1.trim()">
+            <label for="qc-addr">Service address *</label>
+            <input id="qc-addr" name="qcAddr" [(ngModel)]="quickCustomer.addressLine1" placeholder="e.g. 100 Main Street" autocomplete="street-address">
+            @if(quickCustomerSubmitted() && !quickCustomer.addressLine1.trim()){<span class="field-error">Address is required</span>}
+          </div>
+          <div class="field">
+            <label for="qc-city">City</label>
+            <input id="qc-city" name="qcCity" [(ngModel)]="quickCustomer.city" placeholder="Austin">
+          </div>
+          <div class="field">
+            <label for="qc-zip">ZIP</label>
+            <input id="qc-zip" name="qcZip" [(ngModel)]="quickCustomer.postalCode" placeholder="78701">
+          </div>
+          @if(quickCustomerError()){<div class="wide callout error-text">{{quickCustomerError()}}</div>}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" (click)="closeQuickCustomerModal()">Cancel</button>
+          <button type="submit" class="btn primary" [disabled]="quickCustomerSaving()">{{quickCustomerSaving() ? 'Saving…' : 'Save & select'}}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+</main>`})
 export class JobFormLivePage {
   private api=inject(WorkApiService);private router=inject(Router);private route=inject(ActivatedRoute);
   customers=signal<Customer[]>([]);
   saving=signal(false);
   error=signal('');
+  success=signal('');
   submitted=signal(false);
   touched=signal<Record<string,boolean>>({});
   errors=signal<Record<string,string>>({});
   model={customerId:null as string | null,title:'',description:'',priority:'Normal',scheduledDate:'',arrivalWindow:''};
   readonly arrivalWindows = ARRIVAL_WINDOWS;
+
+  readonly selectedCustomer = computed(() =>
+    this.customers().find(c => c.id === this.model.customerId) || null
+  );
+
+  readonly titleSuggestions = [
+    'Diagnostic Call',
+    'Annual Maintenance',
+    'Emergency Repair',
+    'Water Heater Inspection',
+    'System Tune-up',
+    'Installation'
+  ];
+
+  readonly showQuickCustomerModal = signal(false);
+  readonly quickCustomerSaving = signal(false);
+  readonly quickCustomerSubmitted = signal(false);
+  readonly quickCustomerError = signal('');
+  quickCustomer = {
+    customerType: 'Residential',
+    name: '',
+    phone: '',
+    email: '',
+    companyName: '',
+    addressLine1: '',
+    city: 'Austin',
+    stateCode: 'TX',
+    postalCode: '78701'
+  };
 
   constructor(){
     const prefillCustomer = this.route.snapshot.queryParamMap.get('customerId');
@@ -259,6 +387,132 @@ export class JobFormLivePage {
       this.model.customerId = prefillCustomer;
     }
     this.api.customers().subscribe({next:r=>this.customers.set(r.items),error:e=>this.error.set(messageFrom(e))});
+  }
+
+  openQuickCustomerModal(): void {
+    this.quickCustomer = {
+      customerType: 'Residential',
+      name: '',
+      phone: '',
+      email: '',
+      companyName: '',
+      addressLine1: '',
+      city: 'Austin',
+      stateCode: 'TX',
+      postalCode: '78701'
+    };
+    this.quickCustomerError.set('');
+    this.quickCustomerSubmitted.set(false);
+    this.showQuickCustomerModal.set(true);
+  }
+
+  closeQuickCustomerModal(): void {
+    this.showQuickCustomerModal.set(false);
+  }
+
+  saveQuickCustomer(): void {
+    this.quickCustomerSubmitted.set(true);
+    this.quickCustomerError.set('');
+
+    if (!this.quickCustomer.name.trim() || !this.quickCustomer.phone.trim() || !this.quickCustomer.addressLine1.trim()) {
+      return;
+    }
+
+    this.quickCustomerSaving.set(true);
+    this.api.createCustomer(this.quickCustomer).subscribe({
+      next: (created) => {
+        this.customers.update(list => [created, ...list]);
+        this.model.customerId = created.id;
+        this.onCustomerSelected();
+        this.quickCustomerSaving.set(false);
+        this.showQuickCustomerModal.set(false);
+      },
+      error: (e) => {
+        this.quickCustomerError.set(messageFrom(e));
+        this.quickCustomerSaving.set(false);
+      }
+    });
+  }
+
+  onCustomerSelected(): void {
+    this.onInput('customerId');
+  }
+
+  clearCustomer(): void {
+    this.model.customerId = null;
+    this.onInput('customerId');
+  }
+
+  setTitle(t: string): void {
+    this.model.title = t;
+    this.onInput('title');
+  }
+
+  private formatDate(d: Date): string {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  setDateToday(): void {
+    this.model.scheduledDate = this.formatDate(new Date());
+    if (!this.model.arrivalWindow) {
+      this.model.arrivalWindow = '8:00 AM – 12:00 PM';
+    }
+  }
+
+  setDateTomorrow(): void {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    this.model.scheduledDate = this.formatDate(d);
+    if (!this.model.arrivalWindow) {
+      this.model.arrivalWindow = '8:00 AM – 12:00 PM';
+    }
+  }
+
+  setDateNextMonday(): void {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = (day === 0 ? 1 : 8 - day);
+    d.setDate(d.getDate() + diff);
+    this.model.scheduledDate = this.formatDate(d);
+    if (!this.model.arrivalWindow) {
+      this.model.arrivalWindow = '8:00 AM – 12:00 PM';
+    }
+  }
+
+  clearDate(): void {
+    this.model.scheduledDate = '';
+    this.model.arrivalWindow = '';
+  }
+
+  onDateChange(): void {
+    if (this.model.scheduledDate && !this.model.arrivalWindow) {
+      this.model.arrivalWindow = '8:00 AM – 12:00 PM';
+    }
+  }
+
+  setWindow(w: string): void {
+    this.model.arrivalWindow = w;
+  }
+
+  isToday(): boolean {
+    return this.model.scheduledDate === this.formatDate(new Date());
+  }
+
+  isTomorrow(): boolean {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return this.model.scheduledDate === this.formatDate(d);
+  }
+
+  isNextMonday(): boolean {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = (day === 0 ? 1 : 8 - day);
+    d.setDate(d.getDate() + diff);
+    return this.model.scheduledDate === this.formatDate(d);
   }
 
   validateField(field: string): string {
@@ -301,15 +555,27 @@ export class JobFormLivePage {
     return this.hasError(field) ? (this.errors()[field] || '') : '';
   }
 
-  save(){
+  save(createAnother = false){
     this.submitted.set(true);
+    this.error.set('');
+    this.success.set('');
     if (!this.runValidation()) return;
     if(this.saving())return;
     this.saving.set(true);
-    this.error.set('');
     const command={...this.model,customerId:this.model.customerId!,scheduledDate:this.model.scheduledDate||undefined};
     this.api.createJob(command).subscribe({
-      next:j=>this.router.navigate(['/app/jobs',j.id]),
+      next:j=>{
+        this.saving.set(false);
+        if (createAnother) {
+          this.success.set(`Job #${j.jobNumber} ("${j.title}") created successfully! Ready for next job.`);
+          this.model = {customerId:null,title:'',description:'',priority:'Normal',scheduledDate:'',arrivalWindow:''};
+          this.submitted.set(false);
+          this.touched.set({});
+          this.errors.set({});
+        } else {
+          this.router.navigate(['/app/jobs',j.id]);
+        }
+      },
       error:e=>{this.error.set(messageFrom(e));this.saving.set(false)}
     });
   }
@@ -342,7 +608,17 @@ export class CustomerLivePage {
 @Component({selector:'app-job-live',imports:[RouterLink,CurrencyPipe,FormsModule,NgSelectComponent],template:`
 <main class="page">@if(loading()){<div class="card card-body muted">Loading job…</div>}@else if(error()&&!job()){<div class="card card-body callout error-text">{{error()}}</div>}@else if(job();as j){
 <header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/jobs">Jobs</a><span class="crumb-sep">/</span><span class="crumb-current">#{{j.jobNumber}}</span></nav><div class="title-with-badge"><h1>Job #{{j.jobNumber}} · {{j.title}}</h1><span class="badge" [class.amber]="j.status==='InProgress'" [class.blue]="j.status==='Scheduled'" [class.gray]="j.status==='Draft'" [class.teal]="j.status==='Completed'">{{label(j.status)}}</span></div><p><a class="link" [routerLink]="['/app/customers', j.customerId]">{{customer()?.name||'Customer'}}</a> · {{customer()?.addressLine1}}</p></div>
-<div class="page-actions">@if(j.status==='Draft'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('Scheduled')">Schedule job</button>}@else if(j.status==='Scheduled'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('InProgress')">Start job</button>}@else if(j.status==='InProgress'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('Completed')">Mark complete</button>}</div></header>
+<div class="page-actions">
+  @if(j.status==='Draft'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('Scheduled')">Schedule job</button>}
+  @else if(j.status==='Scheduled'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('InProgress')">Start job</button>}
+  @else if(j.status==='InProgress'){
+    <button class="btn primary" [disabled]="statusSaving()||financialSaving()" (click)="completeAndInvoice()">Complete & create invoice</button>
+    <button class="btn" [disabled]="statusSaving()" (click)="changeStatus('Completed')">Mark complete</button>
+  }
+  @else if(j.status==='Completed' && !existingInvoice()){
+    <button class="btn primary" [disabled]="financialSaving()" (click)="createInvoice()">＋ Create invoice</button>
+  }
+</div></header>
 @if(error()){<div class="callout error-text">{{error()}}</div>}@if(success()){<div class="callout">{{success()}}</div>}
 <section class="split"><div class="grid"><article class="card"><div class="card-head"><h2>Work summary</h2><span class="badge blue">{{label(j.status)}}</span></div><div class="card-body"><p>{{j.description||'No work instructions were entered.'}}</p><div class="list"><div class="list-row"><span class="muted">Priority</span><strong>{{j.priority}}</strong></div><div class="list-row"><span class="muted">Scheduled</span><strong>{{j.scheduledDate||'Unscheduled'}}</strong></div><div class="list-row"><span class="muted">Arrival window</span><strong>{{j.arrivalWindow||'—'}}</strong></div></div></div></article>
 <article class="card"><div class="card-head"><h2>Services & materials</h2></div><div class="card-body"><div class="form-grid">
@@ -415,6 +691,7 @@ export class JobLivePage {
   removeItem(index:number){this.saveItems(this.items().items.filter((_,i)=>i!==index))}
   private saveItems(next:JobItemSet['items']){this.savingItems.set(true);this.error.set('');this.api.replaceJobItems(this.id,next).subscribe({next:r=>{this.items.set(r);this.job.update(j=>j?{...j,total:r.total}:j);this.savingItems.set(false)},error:e=>{this.error.set(messageFrom(e));this.savingItems.set(false)}})}
   changeStatus(status:string){this.statusSaving.set(true);this.error.set('');this.success.set('');this.api.changeJobStatus(this.id,status).subscribe({next:j=>{this.job.set(j);this.statusSaving.set(false);this.success.set(`Job changed to ${this.label(j.status)}.`);this.loadFinancials();},error:e=>{this.error.set(messageFrom(e));this.statusSaving.set(false)}})}
+  completeAndInvoice(){this.statusSaving.set(true);this.error.set('');this.api.changeJobStatus(this.id,'Completed').subscribe({next:()=>{this.statusSaving.set(false);this.createInvoice();},error:e=>{this.error.set(messageFrom(e));this.statusSaving.set(false)}})}
   createEstimate(){const valid=new Date();valid.setDate(valid.getDate()+30);this.financialSaving.set(true);this.error.set('');this.api.createEstimate(this.id,valid.toISOString().slice(0,10)).subscribe({next:est=>this.router.navigate(['/app/estimates',est.id]),error:e=>{this.error.set(messageFrom(e));this.financialSaving.set(false)}})}
   createInvoice(){this.financialSaving.set(true);this.error.set('');this.api.createInvoice(this.id).subscribe({next:inv=>this.router.navigate(['/app/invoices',inv.id]),error:e=>{this.error.set(messageFrom(e));this.financialSaving.set(false)}})}
   label(value:string){return value.replace(/([a-z])([A-Z])/g,'$1 $2')}
