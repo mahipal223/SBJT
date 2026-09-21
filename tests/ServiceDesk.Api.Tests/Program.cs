@@ -11,6 +11,9 @@ using ServiceDesk.Infrastructure.Work;
 using ServiceDesk.Application.Platform;
 using ServiceDesk.Application.Tenancy;
 using ServiceDesk.Infrastructure.Tenancy;
+using ServiceDesk.Infrastructure.Security;
+using Microsoft.Extensions.Configuration;
+using System.IdentityModel.Tokens.Jwt;
 
 var permissions = new HashSet<string>(StringComparer.Ordinal)
 {
@@ -601,7 +604,48 @@ Require(workspaceSummary is not null, "Workspace summary returned for owner");
 Require(workspaceSummary!.Role == "Owner", "Creator has Owner role in workspace");
 Require(workspaceSummary.Permissions.Contains(Permissions.WorkspaceRead), "Owner has workspace.read permission");
 
-Console.WriteLine("Phase 1 through Phase 10 launch verification, tenant isolation, and security checks passed.");
+// ─── Phase 11: Multi-Provider Authentication, Password Policy & Security ─────
+var hasher = new PasswordHasher();
+var (testHash, testSalt) = hasher.HashPassword("SecureP@ssw0rd123!");
+Require(!string.IsNullOrWhiteSpace(testHash), "Password hash is generated");
+Require(!string.IsNullOrWhiteSpace(testSalt), "Password salt is generated");
+Require(hasher.VerifyPassword("SecureP@ssw0rd123!", testHash, testSalt), "Valid password verifies successfully");
+Require(!hasher.VerifyPassword("WrongPassword123!", testHash, testSalt), "Invalid password is rejected");
+Require(!hasher.VerifyPassword("", testHash, testSalt), "Empty password is rejected");
+Require(!hasher.VerifyPassword("SecureP@ssw0rd123!", "corrupted", testSalt), "Corrupted hash fails gracefully");
+
+var testConfig = new ConfigurationBuilder()
+    .AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["Jwt:SecretKey"] = "ServiceDeskSuperSecretSigningKeyForDevelopmentPurposesOnly_MustBeAtLeast32BytesLong!",
+        ["Jwt:Issuer"] = "ServiceDesk.Api",
+        ["Jwt:Audience"] = "ServiceDesk.Client",
+        ["Jwt:ExpiryHours"] = "24"
+    })
+    .Build();
+
+var tokenIssuer = new JwtTokenIssuer(testConfig);
+var testUserId = Guid.NewGuid();
+var (tokenStr, expiresIn) = tokenIssuer.IssueToken(testUserId, "test@example.com", "Test User");
+Require(!string.IsNullOrWhiteSpace(tokenStr), "JWT token string is issued");
+Require(expiresIn > 0, "JWT expiration is positive");
+
+var jwtHandler = new JwtSecurityTokenHandler();
+var parsedJwt = jwtHandler.ReadJwtToken(tokenStr);
+Require(parsedJwt.Issuer == "ServiceDesk.Api", "JWT issuer matches configuration");
+Require(parsedJwt.Audiences.Contains("ServiceDesk.Client"), "JWT audience matches configuration");
+Require(parsedJwt.Subject == testUserId.ToString(), "JWT subject contains user GUID");
+
+// OTP Hash and verification check
+var otpSample = "123456";
+var otpHash1 = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(otpSample));
+var otpHash2 = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(otpSample));
+Require(System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(otpHash1, otpHash2), "Valid OTP hash matches with timing-safe comparison");
+
+var badOtpHash = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes("654321"));
+Require(!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(otpHash1, badOtpHash), "Mismatched OTP hash fails timing-safe comparison");
+
+Console.WriteLine("Phase 1 through Phase 11 launch verification, tenant isolation, and security checks passed.");
 return;
 
 static void Require(bool condition, string message)

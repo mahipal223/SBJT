@@ -1,6 +1,6 @@
 -- Apply AFTER 01-schema.sql. Missing/wrong session context denies tenant access.
 use ServiceDeskDev;
-go;
+GO
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO

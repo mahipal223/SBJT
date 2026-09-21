@@ -33,26 +33,31 @@ public sealed class DynamicEmailSender(BaseDAL baseDAL, ILogger<DynamicEmailSend
         string body,
         CancellationToken cancellationToken = default)
     {
-        const string sql = """
-            SELECT Host, Port, Username, Password, FromEmail, FromName, EnableSsl
-            FROM app.EmailConfigurations
-            WHERE BusinessId = @BusinessId AND IsEnabled = 1;
-            """;
+        SmtpConfig? config = null;
 
-        var config = await baseDAL.ExecuteSingleAsync(
-            businessId,
-            "EmailConfigurations.GetActive",
-            sql,
-            reader => new SmtpConfig(
-                reader.GetString(0),
-                reader.GetInt32(1),
-                reader.GetString(2),
-                reader.GetString(3),
-                reader.GetString(4),
-                reader.GetString(5),
-                reader.GetBoolean(6)),
-            [new SqlParameter("@BusinessId", System.Data.SqlDbType.UniqueIdentifier) { Value = businessId }],
-            cancellationToken);
+        if (businessId != Guid.Empty)
+        {
+            const string sql = """
+                SELECT Host, Port, Username, Password, FromEmail, FromName, EnableSsl
+                FROM app.EmailConfigurations
+                WHERE BusinessId = @BusinessId AND IsEnabled = 1;
+                """;
+
+            config = await baseDAL.ExecuteSingleAsync(
+                businessId,
+                "EmailConfigurations.GetActive",
+                sql,
+                reader => new SmtpConfig(
+                    reader.GetString(0),
+                    reader.GetInt32(1),
+                    reader.GetString(2),
+                    reader.GetString(3),
+                    reader.GetString(4),
+                    reader.GetString(5),
+                    reader.GetBoolean(6)),
+                [new SqlParameter("@BusinessId", System.Data.SqlDbType.UniqueIdentifier) { Value = businessId }],
+                cancellationToken);
+        }
 
         if (config is not null && !string.IsNullOrWhiteSpace(config.Host))
         {

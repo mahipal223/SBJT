@@ -36,12 +36,19 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IDataExportService, DataExportService>();
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IPlatformAdminService, PlatformAdminService>();
+            services.AddSingleton<ServiceDesk.Application.Security.IPasswordHasher, ServiceDesk.Infrastructure.Security.PasswordHasher>();
+            services.AddSingleton<ServiceDesk.Application.Security.ITokenIssuer, ServiceDesk.Infrastructure.Security.JwtTokenIssuer>();
+            services.AddScoped<ServiceDesk.Application.Security.IPasswordPolicyService, PasswordPolicyService>();
+            services.AddScoped<ServiceDesk.Application.Security.IEmailVerificationService, EmailVerificationService>();
+            services.AddScoped<ServiceDesk.Application.Security.IAuthenticationService, AuthenticationService>();
             services.AddHostedService<ServiceDesk.Infrastructure.Notifications.OutboxProcessorService>();
         }
         else
         {
             services.AddSingleton<IWorkStore, ServiceDesk.Infrastructure.Work.InMemoryWorkStore>();
             services.AddSingleton<IBusinessService, ServiceDesk.Infrastructure.Tenancy.InMemoryBusinessStore>();
+            services.AddSingleton<ServiceDesk.Application.Security.IPasswordHasher, ServiceDesk.Infrastructure.Security.PasswordHasher>();
+            services.AddSingleton<ServiceDesk.Application.Security.ITokenIssuer, ServiceDesk.Infrastructure.Security.JwtTokenIssuer>();
         }
 
         return services;

@@ -2,7 +2,9 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { NgSelectComponent } from '@ng-select/ng-select';
 import { AuthService } from '../../core/auth.service';
+import { TIMEZONES, US_STATES_AND_PROVINCES, STATE_CITIES } from '../../core/reference-data';
 
 interface OnboardingState {
   // Step 1 — Industry
@@ -30,19 +32,9 @@ const INDUSTRIES = [
   { code: 'roofing',    label: 'Roofing',             icon: '🏠' },
 ];
 
-const TIMEZONES = [
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Phoenix',
-  'America/Anchorage',
-  'Pacific/Honolulu',
-];
-
 @Component({
   selector: 'app-onboarding',
-  imports: [FormsModule],
+  imports: [FormsModule, NgSelectComponent],
   template: `
     <div class="onboard-root">
       <!-- Progress header -->
@@ -100,54 +92,47 @@ const TIMEZONES = [
             <h1 id="step2-title">Tell us about your business</h1>
             <p class="sub">This information appears on estimates, invoices and customer receipts.</p>
             <form class="profile-form" #profileForm="ngForm">
-              <div class="field-full">
+              <div class="field-full" [class.has-error]="nameModel.invalid && (nameModel.touched || step2Submitted())">
                 <label for="biz-name">Business name <span class="req">*</span></label>
-                <input id="biz-name" type="text" [(ngModel)]="form.businessName" name="businessName"
+                <input id="biz-name" type="text" [(ngModel)]="form.businessName" name="businessName" #nameModel="ngModel"
                        placeholder="Northstar Services LLC" autocomplete="organization" required />
+                @if (nameModel.invalid && (nameModel.touched || step2Submitted())) {
+                  <span class="field-error">Business name is required.</span>
+                }
               </div>
-              <div class="field">
+              <div class="field" [class.has-error]="phoneModel.invalid && (phoneModel.touched || step2Submitted())">
                 <label for="biz-phone">Business phone</label>
                 <input id="biz-phone" type="tel" [(ngModel)]="form.phone" name="phone"
-                       #phone="ngModel" pattern="[0-9()+ .-]{7,20}"
+                       #phoneModel="ngModel" pattern="[0-9()+ .-]{7,20}"
                        placeholder="(512) 555-0100" autocomplete="tel" />
-                @if (phone.invalid && phone.touched) {
-                  <small class="field-error">Enter a valid US phone number.</small>
+                @if (phoneModel.invalid && (phoneModel.touched || step2Submitted())) {
+                  <span class="field-error">Enter a valid US phone number.</span>
                 }
               </div>
               <div class="field">
                 <label for="biz-tz">Time zone</label>
-                <select id="biz-tz" [(ngModel)]="form.timeZone" name="timeZone">
-                  @for (tz of timezones; track tz) {
-                    <option [value]="tz">{{ tz.replace('_', ' ').replace('America/', '') }}</option>
-                  }
-                </select>
+                <ng-select id="biz-tz" [(ngModel)]="form.timeZone" name="timeZone" [items]="timezones" bindLabel="label" bindValue="id" [clearable]="false"></ng-select>
               </div>
               <div class="field-full">
                 <label for="biz-addr">Street address</label>
                 <input id="biz-addr" type="text" [(ngModel)]="form.address" name="address"
                        placeholder="1200 South Lamar Blvd" autocomplete="street-address" />
               </div>
-              <div class="field">
-                <label for="biz-city">City</label>
-                <input id="biz-city" type="text" [(ngModel)]="form.city" name="city"
-                       placeholder="Austin" autocomplete="address-level2" />
-              </div>
               <div class="field field-sm">
                 <label for="biz-state">State</label>
-                <input id="biz-state" type="text" [(ngModel)]="form.state" name="state"
-                       #state="ngModel" pattern="[A-Za-z]{2}"
-                       placeholder="TX" maxlength="2" autocomplete="address-level1" />
-                @if (state.invalid && state.touched) {
-                  <small class="field-error">Use a two-letter state code.</small>
-                }
+                <ng-select id="biz-state" [(ngModel)]="form.state" name="state" [items]="states" bindLabel="label" bindValue="code" placeholder="TX — Texas" [clearable]="true" (change)="onStateChange($event)"></ng-select>
               </div>
-              <div class="field field-sm">
+              <div class="field">
+                <label for="biz-city">City</label>
+                <ng-select id="biz-city" [(ngModel)]="form.city" name="city" [items]="citySuggestions()" [addTag]="true" placeholder="Select or type city..." [clearable]="true"></ng-select>
+              </div>
+              <div class="field field-sm" [class.has-error]="zipModel.invalid && (zipModel.touched || step2Submitted())">
                 <label for="biz-zip">ZIP</label>
                 <input id="biz-zip" type="text" [(ngModel)]="form.zip" name="zip"
-                       #zip="ngModel" pattern="[0-9]{5}(-[0-9]{4})?"
+                       #zipModel="ngModel" pattern="[0-9]{5}(-[0-9]{4})?"
                        placeholder="78704" maxlength="10" autocomplete="postal-code" />
-                @if (zip.invalid && zip.touched) {
-                  <small class="field-error">Use a 5-digit ZIP or ZIP+4.</small>
+                @if (zipModel.invalid && (zipModel.touched || step2Submitted())) {
+                  <span class="field-error">Use a 5-digit ZIP or ZIP+4.</span>
                 }
               </div>
             </form>
@@ -313,7 +298,11 @@ const TIMEZONES = [
     .field-full, .field, .field-sm { display: grid; gap: 6px; }
     label { font-size: 13px; font-weight: 600; color: #3d5462; }
     .req { color: #b43b3b; }
-    .field-error { color: #991b1b; font-size: 12px; }
+    .field-error { color: #991b1b; font-size: 12px; font-weight: 500; }
+    .field-full.has-error input, .field.has-error input {
+      border-color: #b43b3b !important;
+      box-shadow: 0 0 0 3px rgba(180,59,59,.12) !important;
+    }
     input, select {
       height: 42px;
       padding: 0 12px;
@@ -394,6 +383,8 @@ export class OnboardingPage {
 
   readonly industries = INDUSTRIES;
   readonly timezones  = TIMEZONES;
+  readonly states     = US_STATES_AND_PROVINCES;
+  readonly step2Submitted = signal(false);
   readonly steps      = [
     { num: 1, label: 'Your industry' },
     { num: 2, label: 'Business profile' },
@@ -412,7 +403,25 @@ export class OnboardingPage {
     teamSize:     'solo',
   };
 
+  citySuggestions(): string[] {
+    return (STATE_CITIES as Record<string, string[]>)[this.form.state] || [];
+  }
+
+  onStateChange(st: any): void {
+    if (st?.code) {
+      this.form.state = st.code;
+      const cities = (STATE_CITIES as Record<string, string[]>)[st.code] || [];
+      if (cities.length > 0 && !this.form.city) {
+        this.form.city = cities[0];
+      }
+    }
+  }
+
   next(): void {
+    if (this.step() === 2) {
+      this.step2Submitted.set(true);
+      if (!this.form.businessName.trim()) return;
+    }
     if (this.step() < 3) {
       this.step.update(s => s + 1);
     }

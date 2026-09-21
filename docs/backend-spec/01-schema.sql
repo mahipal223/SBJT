@@ -21,6 +21,13 @@ CREATE TABLE auth.Users (
   Email nvarchar(254) NOT NULL,
   NormalizedEmail nvarchar(254) NOT NULL,
   FullName nvarchar(200) NOT NULL,
+  PasswordHash nvarchar(500) NULL,
+  PasswordSalt nvarchar(200) NULL,
+  AvatarUrl nvarchar(500) NULL,
+  EmailVerified bit NOT NULL DEFAULT 0,
+  AccessFailedCount int NOT NULL DEFAULT 0,
+  LockoutEnd datetime2(3) NULL,
+  PasswordChangedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
   Status varchar(32) NOT NULL DEFAULT 'Active' CHECK (Status IN ('Active','Disabled')),
   CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
   UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -29,6 +36,36 @@ CREATE TABLE auth.Users (
   UNIQUE (Subject),
   UNIQUE (NormalizedEmail)
 );
+
+CREATE TABLE auth.UserIdentities (
+  Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+  UserId uniqueidentifier NOT NULL,
+  Provider nvarchar(50) NOT NULL,
+  ProviderSubject nvarchar(255) NOT NULL,
+  ProviderEmail nvarchar(254) NULL,
+  LinkedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+  LastSignInAt datetime2(3) NULL,
+  PRIMARY KEY (Id),
+  FOREIGN KEY (UserId) REFERENCES auth.Users(Id) ON DELETE CASCADE,
+  UNIQUE (Provider, ProviderSubject)
+);
+
+CREATE INDEX IX_UserIdentities_UserId ON auth.UserIdentities(UserId);
+
+CREATE TABLE auth.EmailVerifications (
+  Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+  UserId uniqueidentifier NOT NULL,
+  Email nvarchar(254) NOT NULL,
+  TokenHash binary(32) NOT NULL,
+  ExpiresAt datetime2(3) NOT NULL,
+  AttemptCount int NOT NULL DEFAULT 0,
+  ConsumedAt datetime2(3) NULL,
+  CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+  PRIMARY KEY (Id),
+  FOREIGN KEY (UserId) REFERENCES auth.Users(Id) ON DELETE CASCADE
+);
+
+CREATE INDEX IX_EmailVerifications_User ON auth.EmailVerifications(UserId, ConsumedAt);
 
 CREATE TABLE auth.Roles (
   Code nvarchar(32) NOT NULL,
@@ -769,6 +806,24 @@ CREATE TABLE platform.Administrators (
   IsActive bit NOT NULL DEFAULT 1,
   PRIMARY KEY (UserId),
   FOREIGN KEY (UserId) REFERENCES auth.Users(Id)
+);
+
+CREATE TABLE platform.PasswordPolicies (
+  Id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+  MinLength int NOT NULL DEFAULT 8 CHECK (MinLength >= 8),
+  MaxLength int NOT NULL DEFAULT 128 CHECK (MaxLength <= 128),
+  RequireUppercase bit NOT NULL DEFAULT 1,
+  RequireLowercase bit NOT NULL DEFAULT 1,
+  RequireDigit bit NOT NULL DEFAULT 1,
+  RequireNonAlphanumeric bit NOT NULL DEFAULT 1,
+  MaxFailedAccessAttempts int NOT NULL DEFAULT 5 CHECK (MaxFailedAccessAttempts >= 3),
+  LockoutDurationMinutes int NOT NULL DEFAULT 15 CHECK (LockoutDurationMinutes >= 1),
+  PasswordExpirationDays int NULL,
+  PreventPasswordReuseCount int NOT NULL DEFAULT 3,
+  UpdatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+  UpdatedByUserId uniqueidentifier NULL,
+  PRIMARY KEY (Id),
+  FOREIGN KEY (UpdatedByUserId) REFERENCES auth.Users(Id)
 );
 
 CREATE TABLE app.SupportAccessGrants (

@@ -184,6 +184,8 @@ Run `dotnet format` after meaningful C# changes and do not leave formatting chan
 - Disable duplicate submissions while a request is active.
 - Display stable user-facing messages from ProblemDetails codes.
 - Preserve accessible labels, keyboard behavior, focus states, and responsive layouts at 390px, 768px, 1024px, and desktop widths.
+- Form validation standard: Client-side field validation errors must always be displayed directly below the respective input field using `<span class="field-error">`, and the invalid input container must be visually highlighted with `.has-error` (red border and red focus ring). Common / top-level error banners are strictly reserved for server-side API responses, HTTP `ProblemDetails`, or general non-field failures.
+- Bounded input standard: Enums, currencies, time zones, industries, arrival time windows, units, and statuses must use searchable `<ng-select>` dropdowns (pre-populated with global reference sets from `reference-data.ts`) rather than freeform textboxes.
 
 ## Testing and completion
 

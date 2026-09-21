@@ -18,44 +18,108 @@ public sealed record BusinessProfileResponse(
     bool SoloMode,
     DateTimeOffset CreatedAt);
 
-public sealed record CreateBusinessCommand(
-    [property: Required, StringLength(200, MinimumLength = 1)]
-    string Name,
-    [property: Required, StringLength(32, MinimumLength = 1)]
-    string Industry,
-    [property: RegularExpression(@"^[0-9()+ .-]{7,20}$", ErrorMessage = "Phone must be a valid US phone number.")]
-    string? Phone,
-    [property: StringLength(250)]
-    string? Address,
-    [property: StringLength(100)]
-    string? City,
-    [property: RegularExpression(@"^[A-Za-z]{2}$", ErrorMessage = "State must be a two-letter code.")]
-    string? State,
-    [property: RegularExpression(@"^\d{5}(-\d{4})?$", ErrorMessage = "ZIP must be five digits or ZIP+4.")]
-    string? Zip,
-    [property: StringLength(80)]
-    string? TimeZone,
-    bool SoloMode);
+public sealed record CreateBusinessCommand
+{
+    public CreateBusinessCommand(
+        string name,
+        string industry,
+        string? phone,
+        string? address,
+        string? city,
+        string? state,
+        string? zip,
+        string? timeZone,
+        bool soloMode)
+    {
+        Name = name;
+        Industry = industry;
+        Phone = phone;
+        Address = address;
+        City = city;
+        State = state;
+        Zip = zip;
+        TimeZone = timeZone;
+        SoloMode = soloMode;
+    }
 
-public sealed record UpdateBusinessCommand(
-    [property: StringLength(200, MinimumLength = 1)]
-    string? Name,
-    [property: StringLength(32, MinimumLength = 1)]
-    string? Industry,
-    [property: RegularExpression(@"^[0-9()+ .-]{7,20}$", ErrorMessage = "Phone must be a valid US phone number.")]
-    string? Phone,
-    [property: StringLength(250)]
-    string? Address,
-    [property: StringLength(100)]
-    string? City,
-    [property: RegularExpression(@"^[A-Za-z]{2}$", ErrorMessage = "State must be a two-letter code.")]
-    string? State,
-    [property: RegularExpression(@"^\d{5}(-\d{4})?$", ErrorMessage = "ZIP must be five digits or ZIP+4.")]
-    string? Zip,
-    [property: StringLength(80)]
-    string? TimeZone,
-    [property: RegularExpression(@"^[A-Z]{3}$", ErrorMessage = "Currency must be a three-letter ISO code.")]
-    string? Currency);
+    [Required, StringLength(200, MinimumLength = 1)]
+    public string Name { get; init; }
+
+    [Required, StringLength(32, MinimumLength = 1)]
+    public string Industry { get; init; }
+
+    [RegularExpression(@"^[0-9()+ .-]{7,20}$", ErrorMessage = "Phone must be a valid US phone number.")]
+    public string? Phone { get; init; }
+
+    [StringLength(250)]
+    public string? Address { get; init; }
+
+    [StringLength(100)]
+    public string? City { get; init; }
+
+    [RegularExpression(@"^[A-Za-z]{2}$", ErrorMessage = "State must be a two-letter code.")]
+    public string? State { get; init; }
+
+    [RegularExpression(@"^\d{5}(-\d{4})?$", ErrorMessage = "ZIP must be five digits or ZIP+4.")]
+    public string? Zip { get; init; }
+
+    [StringLength(80)]
+    public string? TimeZone { get; init; }
+
+    public bool SoloMode { get; init; }
+}
+
+public sealed record UpdateBusinessCommand
+{
+    public UpdateBusinessCommand(
+        string? name,
+        string? industry,
+        string? phone,
+        string? address,
+        string? city,
+        string? state,
+        string? zip,
+        string? timeZone,
+        string? currency)
+    {
+        Name = name;
+        Industry = industry;
+        Phone = phone;
+        Address = address;
+        City = city;
+        State = state;
+        Zip = zip;
+        TimeZone = timeZone;
+        Currency = currency;
+    }
+
+    [StringLength(200, MinimumLength = 1)]
+    public string? Name { get; init; }
+
+    [StringLength(32, MinimumLength = 1)]
+    public string? Industry { get; init; }
+
+    [RegularExpression(@"^[0-9()+ .-]{7,20}$", ErrorMessage = "Phone must be a valid US phone number.")]
+    public string? Phone { get; init; }
+
+    [StringLength(250)]
+    public string? Address { get; init; }
+
+    [StringLength(100)]
+    public string? City { get; init; }
+
+    [RegularExpression(@"^[A-Za-z]{2}$", ErrorMessage = "State must be a two-letter code.")]
+    public string? State { get; init; }
+
+    [RegularExpression(@"^\d{5}(-\d{4})?$", ErrorMessage = "ZIP must be five digits or ZIP+4.")]
+    public string? Zip { get; init; }
+
+    [StringLength(80)]
+    public string? TimeZone { get; init; }
+
+    [RegularExpression(@"^[A-Z]{3}$", ErrorMessage = "Currency must be a three-letter ISO code.")]
+    public string? Currency { get; init; }
+}
 
 public sealed record WorkspaceSummaryResponse(
     Guid BusinessId,

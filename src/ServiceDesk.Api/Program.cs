@@ -27,24 +27,22 @@ builder.Services.AddCors(options =>
 });
 
 // ─── Authentication ───────────────────────────────────────────────────────────
-// Primary scheme: Auth0 JWT Bearer (email/password + Google).
+// Primary scheme: Native ServiceDesk JWT Bearer (Email/Password, Google, Apple).
 // Fallback: Development mock handler (only active in Development environment).
-// Once Auth0 is configured, Bearer tokens are validated against the Auth0 tenant.
 // ─────────────────────────────────────────────────────────────────────────────
 
-var auth0Authority = builder.Configuration["Auth0:Authority"];
-var auth0Audience = builder.Configuration["Auth0:Audience"];
-var hasAuth0Config = !string.IsNullOrWhiteSpace(auth0Authority)
-                     && !auth0Authority.Contains("FILL_IN");
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"]
+    ?? "ServiceDeskSuperSecretSigningKeyForDevelopmentPurposesOnly_MustBeAtLeast32BytesLong!";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "ServiceDesk.Api";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "ServiceDesk.Client";
+var signingKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecretKey));
 
 const string smartAuthScheme = "SmartAuth";
 
 var authBuilder = builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = smartAuthScheme;
-    options.DefaultChallengeScheme = hasAuth0Config
-        ? JwtBearerDefaults.AuthenticationScheme
-        : DevelopmentAuthenticationDefaults.Scheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 });
 
 authBuilder.AddPolicyScheme(smartAuthScheme, "Bearer or Dev Header", options =>
@@ -64,27 +62,27 @@ authBuilder.AddPolicyScheme(smartAuthScheme, "Bearer or Dev Header", options =>
             return DevelopmentAuthenticationDefaults.Scheme;
         }
 
-        return hasAuth0Config
-            ? JwtBearerDefaults.AuthenticationScheme
-            : DevelopmentAuthenticationDefaults.Scheme;
+        return JwtBearerDefaults.AuthenticationScheme;
     };
 });
 
-if (hasAuth0Config)
+authBuilder.AddJwtBearer(options =>
 {
-    authBuilder.AddJwtBearer(options =>
+    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
     {
-        options.Authority = auth0Authority;
-        options.Audience = auth0Audience;
-        // Auth0 uses "sub" as the unique user identifier claim.
-        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-        {
-            NameClaimType = "sub"
-        };
-    });
-}
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = signingKey,
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(5),
+        NameClaimType = "sub"
+    };
+});
 
-// Keep dev handler registered so local development without Auth0 still works.
+// Keep dev handler registered so local development without tokens still works.
 if (builder.Environment.IsDevelopment())
 {
     authBuilder.AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>(

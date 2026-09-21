@@ -6,6 +6,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { NgSelectComponent } from '@ng-select/ng-select';
 import { CatalogItem, Customer, Estimate, Invoice, Job, JobItemSet, WorkApiService } from '../core/work-api.service';
+import { ARRIVAL_WINDOWS, STATE_CITIES, US_STATES_AND_PROVINCES } from '../core/reference-data';
 
 const messageFrom = (error: unknown) => error instanceof HttpErrorResponse
   ? error.error?.detail || 'The server could not complete the request.'
@@ -51,12 +52,27 @@ export class CustomersLivePage {
   <div class="wide grid-3-cols">
     <div class="field" [class.has-error]="hasError('city')">
       <label for="city">City *</label>
-      <input id="city" name="city" [(ngModel)]="model.city" (blur)="markTouched('city')" (input)="onInput('city')" placeholder="e.g. Austin">
+      <ng-select id="city" name="city"
+        [items]="citySuggestions()"
+        [addTag]="true"
+        [(ngModel)]="model.city"
+        (blur)="markTouched('city')"
+        (change)="onInput('city')"
+        placeholder="Select or type city...">
+      </ng-select>
       @if(hasError('city')){<span class="field-error" id="city-error">{{errorMessage('city')}}</span>}
     </div>
     <div class="field" [class.has-error]="hasError('stateCode')">
       <label for="stateCode">State *</label>
-      <input id="stateCode" name="stateCode" maxlength="2" [(ngModel)]="model.stateCode" (blur)="markTouched('stateCode')" (input)="onInput('stateCode')" placeholder="e.g. TX">
+      <ng-select id="stateCode" name="stateCode"
+        [items]="stateOptions"
+        bindLabel="label"
+        bindValue="code"
+        [(ngModel)]="model.stateCode"
+        (blur)="markTouched('stateCode')"
+        (change)="onInput('stateCode')"
+        placeholder="Select state...">
+      </ng-select>
       @if(hasError('stateCode')){<span class="field-error" id="state-error">{{errorMessage('stateCode')}}</span>}
     </div>
     <div class="field" [class.has-error]="hasError('postalCode')">
@@ -76,6 +92,8 @@ export class CustomerFormLivePage {
   touched=signal<Record<string,boolean>>({});
   errors=signal<Record<string,string>>({});
   model={customerType:'Residential',name:'',phone:'',email:'',companyName:'',addressLine1:'',city:'Austin',stateCode:'TX',postalCode:'78701'};
+  readonly stateOptions = US_STATES_AND_PROVINCES;
+  readonly citySuggestions = computed(() => STATE_CITIES[this.model.stateCode] || []);
 
   hasError(field: string): boolean {
     return (this.submitted() || !!this.touched()[field]) && !!this.errors()[field];
@@ -214,7 +232,15 @@ export class JobsLivePage {
     </ng-select>
   </div>
   <div class="field"><label for="scheduledDate">Date</label><input id="scheduledDate" name="scheduledDate" type="date" [(ngModel)]="model.scheduledDate"></div>
-  <div class="field wide"><label for="arrivalWindow">Arrival window</label><input id="arrivalWindow" name="arrivalWindow" [(ngModel)]="model.arrivalWindow" placeholder="e.g. 9:00 AM – 10:30 AM"></div>
+  <div class="field wide">
+    <label for="arrivalWindow">Arrival window</label>
+    <ng-select id="arrivalWindow" name="arrivalWindow"
+      [items]="arrivalWindows"
+      [addTag]="true"
+      [(ngModel)]="model.arrivalWindow"
+      placeholder="Select arrival window or type custom time (e.g. 9:00 AM – 10:30 AM)...">
+    </ng-select>
+  </div>
   <div class="field wide"><label for="description">Customer request / internal instructions</label><textarea id="description" name="description" rows="4" [(ngModel)]="model.description"></textarea></div>
   @if(error()){<div class="wide callout error-text" id="job-form-error">{{error()}}</div>}
   <div class="wide page-actions"><button class="btn primary" type="submit" [disabled]="saving()" id="submit-job-btn">{{saving()?'Creating…':model.scheduledDate?'Create & schedule job':'Save unscheduled'}}</button><a class="btn" routerLink="/app/jobs">Cancel</a></div>
@@ -228,6 +254,7 @@ export class JobFormLivePage {
   touched=signal<Record<string,boolean>>({});
   errors=signal<Record<string,string>>({});
   model={customerId:null as string | null,title:'',description:'',priority:'Normal',scheduledDate:'',arrivalWindow:''};
+  readonly arrivalWindows = ARRIVAL_WINDOWS;
 
   constructor(){
     const prefillCustomer = this.route.snapshot.queryParamMap.get('customerId');
@@ -318,7 +345,7 @@ export class CustomerLivePage {
 @Component({selector:'app-job-live',imports:[RouterLink,CurrencyPipe,FormsModule,NgSelectComponent],template:`
 <main class="page">@if(loading()){<div class="card card-body muted">Loading job…</div>}@else if(error()&&!job()){<div class="card card-body callout error-text">{{error()}}</div>}@else if(job();as j){
 <header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/jobs">Jobs</a><span class="crumb-sep">/</span><span class="crumb-current">#{{j.jobNumber}}</span></nav><div class="title-with-badge"><h1>Job #{{j.jobNumber}} · {{j.title}}</h1><span class="badge" [class.amber]="j.status==='InProgress'" [class.blue]="j.status==='Scheduled'" [class.gray]="j.status==='Draft'" [class.teal]="j.status==='Completed'">{{label(j.status)}}</span></div><p><a class="link" [routerLink]="['/app/customers', j.customerId]">{{customer()?.name||'Customer'}}</a> · {{customer()?.addressLine1}}</p></div>
-<div class="page-actions">@if(j.status==='Scheduled'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('InProgress')">Start job</button>}@else if(j.status==='InProgress'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('Completed')">Mark complete</button>}</div></header>
+<div class="page-actions">@if(j.status==='Draft'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('Scheduled')">Schedule job</button>}@else if(j.status==='Scheduled'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('InProgress')">Start job</button>}@else if(j.status==='InProgress'){<button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('Completed')">Mark complete</button>}</div></header>
 @if(error()){<div class="callout error-text">{{error()}}</div>}@if(success()){<div class="callout">{{success()}}</div>}
 <section class="split"><div class="grid"><article class="card"><div class="card-head"><h2>Work summary</h2><span class="badge blue">{{label(j.status)}}</span></div><div class="card-body"><p>{{j.description||'No work instructions were entered.'}}</p><div class="list"><div class="list-row"><span class="muted">Priority</span><strong>{{j.priority}}</strong></div><div class="list-row"><span class="muted">Scheduled</span><strong>{{j.scheduledDate||'Unscheduled'}}</strong></div><div class="list-row"><span class="muted">Arrival window</span><strong>{{j.arrivalWindow||'—'}}</strong></div></div></div></article>
 <article class="card"><div class="card-head"><h2>Services & materials</h2></div><div class="card-body"><div class="form-grid">

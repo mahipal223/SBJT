@@ -2,29 +2,128 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServiceDesk.Application.Abstractions;
+using ServiceDesk.Application.Security;
 
 namespace ServiceDesk.Api.Controllers;
 
 /// <summary>
-/// Handles first-time user registration and business workspace provisioning
-/// after a successful Auth0 login.
+/// Handles user registration, email OTP verification, native login,
+/// social identity logins (Google, Apple), and workspace synchronization.
 /// </summary>
 [ApiController]
-[Authorize]
 [Route("api/v1/auth")]
-public sealed class AuthController(IMembershipResolver membershipResolver) : ControllerBase
+public sealed class AuthController(
+    IAuthenticationService authenticationService,
+    IEmailVerificationService emailVerificationService,
+    IMembershipResolver membershipResolver) : ControllerBase
 {
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Register(
+        [FromBody] RegisterRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await authenticationService.RegisterAsync(request, cancellationToken);
+            return Accepted(result);
+        }
+        catch (AuthRuleException ex)
+        {
+            return MapAuthException(ex);
+        }
+    }
+
+    [HttpPost("verify-email-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyEmailOtp(
+        [FromBody] VerifyEmailOtpRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await authenticationService.VerifyEmailOtpAndLoginAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthRuleException ex)
+        {
+            return MapAuthException(ex);
+        }
+    }
+
+    [HttpPost("resend-email-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResendEmailOtp(
+        [FromBody] ResendEmailOtpRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await emailVerificationService.ResendEmailOtpAsync(request.Email, cancellationToken);
+            return Ok(new { message = "Verification code resent successfully." });
+        }
+        catch (AuthRuleException ex)
+        {
+            return MapAuthException(ex);
+        }
+    }
+
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Login(
+        [FromBody] LoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await authenticationService.LoginAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthRuleException ex)
+        {
+            return MapAuthException(ex);
+        }
+    }
+
+    [HttpPost("google")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GoogleLogin(
+        [FromBody] GoogleLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await authenticationService.GoogleLoginAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthRuleException ex)
+        {
+            return MapAuthException(ex);
+        }
+    }
+
+    [HttpPost("apple")]
+    [AllowAnonymous]
+    public async Task<IActionResult> AppleLogin(
+        [FromBody] AppleLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await authenticationService.AppleLoginAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthRuleException ex)
+        {
+            return MapAuthException(ex);
+        }
+    }
+
     /// <summary>
-    /// Called once after the first Auth0 login to synchronise the OIDC user
-    /// with the internal user table and create a business workspace when
-    /// the user has none yet.
+    /// Synchronizes the authenticated user with their workspace membership.
     /// </summary>
-    /// <remarks>
-    /// The frontend calls this after every Auth0 login callback.
-    /// If the user already has a workspace, the existing membership is returned.
-    /// Body is intentionally empty — all identity data comes from the JWT claims.
-    /// </remarks>
     [HttpPost("sync-user")]
+    [Authorize]
     public async Task<IActionResult> SyncUser(CancellationToken cancellationToken)
     {
         var subject = User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -45,10 +144,8 @@ public sealed class AuthController(IMembershipResolver membershipResolver) : Con
                        ?? User.FindFirstValue("name")
                        ?? string.Empty;
 
-        // Derive a deterministic userId from the Auth0 subject.
-        var userId = ServiceDesk.Application.Security.UserIdentityUtilities.DeriveUserId(subject);
+        var userId = UserIdentityUtilities.DeriveUserId(subject);
 
-        // Check whether this user already belongs to any active workspace.
         var memberships = await membershipResolver.ListForUserAsync(userId, cancellationToken);
         var activeMembership = memberships.FirstOrDefault(m => m.IsActive);
 
@@ -66,9 +163,6 @@ public sealed class AuthController(IMembershipResolver membershipResolver) : Con
             });
         }
 
-        // New user — they need to complete the onboarding wizard.
-        // The business workspace will be created when the wizard is submitted
-        // via POST /api/v1/businesses.
         return Ok(new
         {
             userId,
@@ -81,5 +175,24 @@ public sealed class AuthController(IMembershipResolver membershipResolver) : Con
         });
     }
 
-}
+    private ObjectResult MapAuthException(AuthRuleException ex)
+    {
+        var statusCode = ex.Code switch
+        {
+            "email_in_use" => 409,
+            "account_locked" => 423,
+            "invalid_credentials" => 401,
+            "email_not_verified" => 403,
+            "rate_limited" => 429,
+            "too_many_attempts" => 429,
+            "resource_not_found" => 404,
+            _ => 400
+        };
 
+        return Problem(
+            statusCode: statusCode,
+            title: "Authentication error",
+            detail: ex.Message,
+            extensions: new Dictionary<string, object?> { ["code"] = ex.Code });
+    }
+}

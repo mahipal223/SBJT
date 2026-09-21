@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgSelectComponent } from '@ng-select/ng-select';
 import { CatalogItem, WorkApiService } from '../core/work-api.service';
+import { CATALOG_UNITS } from '../core/reference-data';
 
 @Component({selector:'app-catalog-live',imports:[FormsModule,CurrencyPipe,NgSelectComponent],template:`
 <main class="page"><header class="page-head"><div><p class="eyebrow">Price book</p><h1>Services & parts</h1><p>Reusable items keep jobs, estimates, and invoices consistent.</p></div><button class="btn primary" id="open-add-item-btn" (click)="toggleForm()">＋ Add item</button></header>
@@ -18,7 +19,7 @@ import { CatalogItem, WorkApiService } from '../core/work-api.service';
   </div>
   <div class="field" [class.has-error]="hasError('unit')">
     <label for="unit">Unit *</label>
-    <input id="unit" name="unit" [(ngModel)]="model.unit" (blur)="markTouched('unit')" (input)="onInput('unit')" placeholder="each, hour, visit">
+    <ng-select id="unit" name="unit" [items]="catalogUnits" bindLabel="label" bindValue="value" [addTag]="addUnitTag" [(ngModel)]="model.unit" (change)="onUnitChange($event)" placeholder="Select or type unit..."></ng-select>
     @if(hasError('unit')){<span class="field-error" id="catalog-unit-error">{{errorMessage('unit')}}</span>}
   </div>
   <div class="field" [class.has-error]="hasError('unitCost')">
@@ -53,6 +54,7 @@ export class CatalogLivePage {
     { value: '', label: 'Non-taxable' },
     { value: 'TX-TAXABLE', label: 'TX-TAXABLE' }
   ];
+  readonly catalogUnits = CATALOG_UNITS;
   submitted=signal(false);
   touched=signal<Record<string,boolean>>({});
   errors=signal<Record<string,string>>({});
@@ -66,13 +68,38 @@ export class CatalogLivePage {
     this.touched.set({});
     this.errors.set({});
     this.error.set('');
+    if (this.showForm() && !this.model.unit) {
+      this.model.unit = 'each';
+    }
+  }
+
+  addUnitTag = (tag: string) => {
+    const trimmed = tag.trim();
+    return { value: trimmed, code: trimmed, label: trimmed };
+  };
+
+  onUnitChange(val: any): void {
+    if (val && typeof val === 'object') {
+      this.model.unit = val.value || val.code || val.label || 'each';
+    } else if (typeof val === 'string') {
+      this.model.unit = val;
+    }
+    this.markTouched('unit');
   }
 
   load(){this.loading.set(true);this.api.catalog(this.search,this.type).subscribe({next:r=>{this.items.set(r.items);this.loading.set(false)},error:e=>{this.error.set(this.message(e));this.loading.set(false)}})}
 
+  private getUnitString(): string {
+    if (!this.model.unit) return '';
+    if (typeof this.model.unit === 'object') {
+      return (this.model.unit as any).value || (this.model.unit as any).code || (this.model.unit as any).label || '';
+    }
+    return String(this.model.unit);
+  }
+
   validateField(field: string): string {
     if (field === 'name' && !this.model.name?.trim()) return 'Item name is required.';
-    if (field === 'unit' && !this.model.unit?.trim()) return 'Unit is required.';
+    if (field === 'unit' && !this.getUnitString().trim()) return 'Unit is required.';
     if (field === 'unitCost' && (this.model.unitCost === null || this.model.unitCost === undefined || this.model.unitCost < 0)) return 'Cost cannot be negative.';
     if (field === 'unitPrice' && (this.model.unitPrice === null || this.model.unitPrice === undefined || this.model.unitPrice < 0)) return 'Sale price cannot be negative.';
     return '';
@@ -109,6 +136,7 @@ export class CatalogLivePage {
 
   save(){
     this.submitted.set(true);
+    this.model.unit = this.getUnitString() || 'each';
     if (!this.runValidation()) return;
     this.saving.set(true);this.error.set('');
     this.api.createCatalogItem(this.model).subscribe({

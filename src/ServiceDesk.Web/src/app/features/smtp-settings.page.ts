@@ -2,7 +2,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { NgSelectComponent } from '@ng-select/ng-select';
 import { WorkApiService } from '../core/work-api.service';
+import { SMTP_PORTS } from '../core/reference-data';
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof HttpErrorResponse) {
@@ -13,7 +15,7 @@ const getErrorMessage = (error: unknown) => {
 
 @Component({
   selector: 'app-smtp-settings',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, NgSelectComponent],
   template: `
     <main class="page">
       <header class="page-head">
@@ -81,7 +83,7 @@ const getErrorMessage = (error: unknown) => {
 
                   <div class="field">
                     <label>SMTP Port</label>
-                    <input type="number" [(ngModel)]="port" name="port" placeholder="587" [disabled]="saving()">
+                    <ng-select [items]="smtpPorts" bindLabel="label" bindValue="port" [(ngModel)]="port" name="port" [searchable]="false" [clearable]="false" [disabled]="saving()"></ng-select>
                   </div>
 
                   <div class="field">
@@ -192,6 +194,7 @@ export class SmtpSettingsPage {
   readonly successMessage = signal('');
   readonly testMessage = signal('');
   testSuccess = false;
+  readonly smtpPorts = SMTP_PORTS;
 
   host = '';
   port = 587;

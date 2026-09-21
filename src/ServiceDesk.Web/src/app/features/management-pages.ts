@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/auth.service';
 import { BusinessProfile, WorkspaceContext } from '../core/api.models';
 import { Job, WorkApiService } from '../core/work-api.service';
+import { NgSelectComponent } from '@ng-select/ng-select';
+import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCES } from '../core/reference-data';
 
 interface ScheduledJobCell {
   id: string;
@@ -273,7 +275,7 @@ export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percen
 
 @Component({
   selector: 'app-settings',
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, NgSelectComponent],
   template: `
 <main class="page">
   <header class="page-head">
@@ -310,16 +312,87 @@ export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percen
         <article class="card">
           <div class="card-head"><h2>Business profile</h2></div>
           <form class="card-body form-grid" #businessForm="ngForm">
-            <div class="field wide"><label for="settings-name">Business name</label><input id="settings-name" name="name" [(ngModel)]="business.name" required maxlength="200"></div>
-            <div class="field"><label for="settings-industry">Business type</label><input id="settings-industry" name="industry" [(ngModel)]="business.industry" required maxlength="32"></div>
-            <div class="field"><label for="settings-phone">Business phone</label><input id="settings-phone" name="phone" [(ngModel)]="business.phone" pattern="[0-9()+ .-]{7,20}"></div>
+            <div class="field wide" [class.has-error]="hasFieldError('name')">
+              <label for="settings-name">Business name *</label>
+              <input id="settings-name" name="name" [(ngModel)]="business.name" (blur)="markTouched('name')" (input)="onInput('name')" required maxlength="200">
+              @if(hasFieldError('name')){<span class="field-error" id="name-error">{{getFieldError('name')}}</span>}
+            </div>
+            <div class="field" [class.has-error]="hasFieldError('industry')">
+              <label for="settings-industry">Business type *</label>
+              <ng-select id="settings-industry" name="industry"
+                [items]="industries"
+                bindLabel="label"
+                bindValue="code"
+                [clearable]="false"
+                [(ngModel)]="business.industry"
+                (blur)="markTouched('industry')"
+                (change)="onInput('industry')"
+                placeholder="Select business trade...">
+              </ng-select>
+              @if(hasFieldError('industry')){<span class="field-error" id="industry-error">{{getFieldError('industry')}}</span>}
+            </div>
+            <div class="field" [class.has-error]="hasFieldError('phone')">
+              <label for="settings-phone">Business phone</label>
+              <input id="settings-phone" name="phone" [(ngModel)]="business.phone" (blur)="markTouched('phone')" (input)="onInput('phone')" placeholder="e.g. (555) 234-5678">
+              @if(hasFieldError('phone')){<span class="field-error" id="phone-error">{{getFieldError('phone')}}</span>}
+            </div>
             <div class="field wide"><label for="settings-address">Street address</label><input id="settings-address" name="address" [(ngModel)]="business.address" maxlength="250"></div>
-            <div class="field"><label for="settings-city">City</label><input id="settings-city" name="city" [(ngModel)]="business.city" maxlength="100"></div>
-            <div class="field"><label for="settings-state">State</label><input id="settings-state" name="state" [(ngModel)]="business.state" pattern="[A-Za-z]{2}" maxlength="2"></div>
-            <div class="field"><label for="settings-zip">ZIP</label><input id="settings-zip" name="zip" [(ngModel)]="business.zip" pattern="[0-9]{5}(-[0-9]{4})?" maxlength="10"></div>
-            <div class="field"><label for="settings-timezone">Time zone</label><input id="settings-timezone" name="timeZone" [(ngModel)]="business.timeZone" required maxlength="80"></div>
-            <div class="field"><label for="settings-currency">Currency</label><input id="settings-currency" name="currency" [(ngModel)]="business.currency" pattern="[A-Z]{3}" maxlength="3"></div>
-            @if (businessForm.invalid) { <div class="field wide"><small class="muted">Correct invalid profile fields before saving.</small></div> }
+            <div class="field" [class.has-error]="hasFieldError('city')">
+              <label for="settings-city">City</label>
+              <ng-select id="settings-city" name="city"
+                [items]="citySuggestions()"
+                [addTag]="true"
+                [(ngModel)]="business.city"
+                placeholder="Select or type city...">
+              </ng-select>
+            </div>
+            <div class="field" [class.has-error]="hasFieldError('state')">
+              <label for="settings-state">State / Province</label>
+              <ng-select id="settings-state" name="state"
+                [items]="states"
+                bindLabel="label"
+                bindValue="code"
+                [(ngModel)]="business.state"
+                (blur)="markTouched('state')"
+                (change)="onInput('state')"
+                placeholder="Select state/province...">
+              </ng-select>
+              @if(hasFieldError('state')){<span class="field-error" id="state-error">{{getFieldError('state')}}</span>}
+            </div>
+            <div class="field" [class.has-error]="hasFieldError('zip')">
+              <label for="settings-zip">ZIP / Postal code</label>
+              <input id="settings-zip" name="zip" [(ngModel)]="business.zip" (blur)="markTouched('zip')" (input)="onInput('zip')" placeholder="e.g. 78701">
+              @if(hasFieldError('zip')){<span class="field-error" id="zip-error">{{getFieldError('zip')}}</span>}
+            </div>
+            <div class="field" [class.has-error]="hasFieldError('timeZone')">
+              <label for="settings-timezone">Time zone *</label>
+              <ng-select id="settings-timezone" name="timeZone"
+                [items]="timezones"
+                bindLabel="label"
+                bindValue="value"
+                groupBy="group"
+                [clearable]="false"
+                [(ngModel)]="business.timeZone"
+                (blur)="markTouched('timeZone')"
+                (change)="onInput('timeZone')"
+                placeholder="Select time zone...">
+              </ng-select>
+              @if(hasFieldError('timeZone')){<span class="field-error" id="tz-error">{{getFieldError('timeZone')}}</span>}
+            </div>
+            <div class="field" [class.has-error]="hasFieldError('currency')">
+              <label for="settings-currency">Working currency *</label>
+              <ng-select id="settings-currency" name="currency"
+                [items]="currencies"
+                bindLabel="label"
+                bindValue="value"
+                [clearable]="false"
+                [(ngModel)]="business.currency"
+                (blur)="markTouched('currency')"
+                (change)="onInput('currency')"
+                placeholder="Select currency...">
+              </ng-select>
+              @if(hasFieldError('currency')){<span class="field-error" id="currency-error">{{getFieldError('currency')}}</span>}
+            </div>
           </form>
         </article>
         <aside class="grid">
@@ -407,6 +480,78 @@ export class SettingsPage implements OnInit {
   readonly paymentReceived = signal(true);
   readonly dailyDigest = signal(false);
   readonly recipientEmail = signal(this.auth.email());
+  readonly submitted = signal(false);
+  readonly fieldErrors = signal<Record<string, string>>({});
+  readonly fieldTouched = signal<Record<string, boolean>>({});
+
+  readonly industries = INDUSTRIES;
+  readonly timezones = TIMEZONES;
+  readonly currencies = CURRENCIES;
+  readonly states = US_STATES_AND_PROVINCES;
+  readonly citySuggestions = computed(() => STATE_CITIES[this.profile()?.state || ''] || []);
+
+  hasFieldError(field: string): boolean {
+    return (this.submitted() || !!this.fieldTouched()[field]) && !!this.fieldErrors()[field];
+  }
+
+  getFieldError(field: string): string {
+    return this.hasFieldError(field) ? (this.fieldErrors()[field] || '') : '';
+  }
+
+  markTouched(field: string): void {
+    this.fieldTouched.update(t => ({ ...t, [field]: true }));
+    this.validateProfile();
+  }
+
+  onInput(field: string): void {
+    if (this.submitted() || this.fieldTouched()[field]) {
+      this.validateProfile();
+    }
+  }
+
+  validateField(field: string): string {
+    const value = this.profile();
+    if (!value) return '';
+    switch (field) {
+      case 'name':
+        if (!value.name?.trim()) return 'Business name is required.';
+        if (value.name.trim().length < 2) return 'Business name must be at least 2 characters.';
+        return '';
+      case 'industry':
+        if (!value.industry?.trim()) return 'Please select a business type.';
+        return '';
+      case 'phone':
+        if (value.phone?.trim() && !/^[0-9()+ .-]{7,20}$/.test(value.phone.trim())) {
+          return 'Please enter a valid phone number.';
+        }
+        return '';
+      case 'timeZone':
+        if (!value.timeZone?.trim()) return 'Time zone is required.';
+        return '';
+      case 'currency':
+        if (!value.currency?.trim() || !/^[A-Z]{3}$/.test(value.currency.trim())) {
+          return 'Valid 3-letter currency code is required.';
+        }
+        return '';
+      case 'zip':
+        if (value.zip?.trim() && !/^[0-9A-Za-z -]{3,10}$/.test(value.zip.trim())) {
+          return 'Please enter a valid postal code.';
+        }
+        return '';
+      default:
+        return '';
+    }
+  }
+
+  validateProfile(): boolean {
+    const errs: Record<string, string> = {};
+    for (const f of ['name', 'industry', 'phone', 'timeZone', 'currency', 'zip']) {
+      const msg = this.validateField(f);
+      if (msg) errs[f] = msg;
+    }
+    this.fieldErrors.set(errs);
+    return Object.keys(errs).length === 0;
+  }
 
   ngOnInit(): void {
     const bizId = this.auth.businessId();
@@ -456,15 +601,15 @@ export class SettingsPage implements OnInit {
   }
 
   isProfileValid(): boolean {
-    const value = this.profile();
-    if (!value || !value.name.trim() || !value.industry.trim() || !value.timeZone.trim()) return false;
-    if (value.phone && !/^[0-9()+ .-]{7,20}$/.test(value.phone)) return false;
-    if (value.state && !/^[A-Za-z]{2}$/.test(value.state)) return false;
-    if (value.zip && !/^\d{5}(-\d{4})?$/.test(value.zip)) return false;
-    return /^[A-Z]{3}$/.test(value.currency);
+    for (const f of ['name', 'industry', 'phone', 'timeZone', 'currency', 'zip']) {
+      if (this.validateField(f)) return false;
+    }
+    return true;
   }
 
   saveProfile(): void {
+    this.submitted.set(true);
+    if (!this.validateProfile()) return;
     const businessId = this.auth.businessId();
     const profile = this.profile();
     if (!businessId || !profile || !profile.name.trim()) return;

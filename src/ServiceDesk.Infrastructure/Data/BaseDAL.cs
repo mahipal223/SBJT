@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using ServiceDesk.Application.Work;
 using ServiceDesk.Application.Financials;
+using ServiceDesk.Application.Security;
 
 namespace ServiceDesk.Infrastructure.Data;
 
@@ -63,6 +64,11 @@ public sealed class BaseDAL
         Guid businessId,
         CancellationToken cancellationToken = default)
     {
+        if (businessId == Guid.Empty)
+        {
+            return await OpenPlatformConnectionAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         var connection = new SqlConnection(connectionString);
 
         try
@@ -234,7 +240,7 @@ public sealed class BaseDAL
         }).ConfigureAwait(false);
     }
 
-    private async Task<SqlConnection> OpenPlatformConnectionAsync(CancellationToken cancellationToken)
+    public async Task<SqlConnection> OpenPlatformConnectionAsync(CancellationToken cancellationToken = default)
     {
         var targetConnectionString = !string.IsNullOrWhiteSpace(platformConnectionString)
             ? platformConnectionString
@@ -382,6 +388,10 @@ public sealed class BaseDAL
             throw;
         }
         catch (FinancialRuleException)
+        {
+            throw;
+        }
+        catch (AuthRuleException)
         {
             throw;
         }

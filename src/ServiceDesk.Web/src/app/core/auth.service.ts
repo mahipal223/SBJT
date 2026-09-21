@@ -1,14 +1,29 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { AuthService as Auth0Service } from '@auth0/auth0-angular';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  fullName: string;
+  avatarUrl: string | null;
+  emailVerified: boolean;
+  providers: string[];
+}
+
+export interface AuthTokenResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: UserProfile;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly router = inject(Router);
   private readonly http   = inject(HttpClient);
-  private readonly auth0  = inject(Auth0Service, { optional: true });
 
+  private readonly _token      = signal<string | null>(sessionStorage.getItem('sd.token'));
   private readonly _userId     = signal<string | null>(sessionStorage.getItem('sd.userId'));
   private readonly _businessId = signal<string | null>(sessionStorage.getItem('sd.businessId'));
   private readonly _email      = signal<string | null>(sessionStorage.getItem('sd.email'));
@@ -16,6 +31,7 @@ export class AuthService {
   private readonly _businessName = signal<string | null>(sessionStorage.getItem('sd.businessName'));
   private readonly _role = signal<string | null>(sessionStorage.getItem('sd.role'));
 
+  readonly token      = computed(() => this._token());
   readonly userId     = computed(() => this._userId());
   readonly businessId = computed(() => this._businessId());
   readonly email      = computed(() => this._email() ?? '');
@@ -23,7 +39,21 @@ export class AuthService {
   readonly businessName = computed(() => this._businessName() ?? 'Workspace');
   readonly role = computed(() => this._role() ?? 'Member');
 
-  readonly isAuthenticated = computed(() => Boolean(this.userId()));
+  readonly isAuthenticated = computed(() => Boolean(this.token() || this.userId()));
+
+  handleAuthSuccess(authResponse: AuthTokenResponse): void {
+    sessionStorage.setItem('sd.token',    authResponse.accessToken);
+    sessionStorage.setItem('sd.userId',   authResponse.user.id);
+    sessionStorage.setItem('sd.email',    authResponse.user.email);
+    sessionStorage.setItem('sd.fullName', authResponse.user.fullName);
+
+    this._token.set(authResponse.accessToken);
+    this._userId.set(authResponse.user.id);
+    this._email.set(authResponse.user.email);
+    this._fullName.set(authResponse.user.fullName);
+
+    this.syncAfterLogin();
+  }
 
   syncAfterLogin(): void {
     this.http.post<{
@@ -52,7 +82,8 @@ export class AuthService {
         }
       },
       error: () => {
-        void this.router.navigate(['/login']);
+        // Fallback directly to onboarding if sync fails on new user
+        void this.router.navigate(['/onboarding']);
       }
     });
   }
@@ -75,6 +106,7 @@ export class AuthService {
   logout(): void {
     localStorage.clear();
     sessionStorage.clear();
+    this._token.set(null);
     this._userId.set(null);
     this._businessId.set(null);
     this._email.set(null);
@@ -82,14 +114,6 @@ export class AuthService {
     this._businessName.set(null);
     this._role.set(null);
 
-    if (this.auth0) {
-      this.auth0.logout({
-        logoutParams: {
-          returnTo: `${window.location.origin}/login`,
-        },
-      });
-    } else {
-      void this.router.navigate(['/login']);
-    }
+    void this.router.navigate(['/login']);
   }
 }

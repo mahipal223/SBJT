@@ -1,6 +1,6 @@
 -- Roles are fixed for MVP; custom roles are deferred. No production prices are seeded.
 use ServiceDeskDev;
-go;
+GO
 SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 INSERT auth.Roles(Code,Name) VALUES (N'Owner',N'Business owner'),(N'Manager',N'Office manager'),(N'Technician',N'Technician');
@@ -59,4 +59,6 @@ INSERT auth.Permissions(Code,Description) VALUES (N'audit.read',N'audit.read');
 INSERT auth.RolePermissions(RoleCode,PermissionCode) VALUES (N'Owner',N'audit.read');
 INSERT auth.Permissions(Code,Description) VALUES (N'support.approve',N'support.approve');
 INSERT auth.RolePermissions(RoleCode,PermissionCode) VALUES (N'Owner',N'support.approve');
+INSERT platform.PasswordPolicies (Id, MinLength, MaxLength, RequireUppercase, RequireLowercase, RequireDigit, RequireNonAlphanumeric, MaxFailedAccessAttempts, LockoutDurationMinutes, PasswordExpirationDays, PreventPasswordReuseCount, UpdatedAt)
+VALUES ('00000000-0000-0000-0000-000000000001', 8, 128, 1, 1, 1, 1, 5, 15, NULL, 3, SYSUTCDATETIME());
 COMMIT;
