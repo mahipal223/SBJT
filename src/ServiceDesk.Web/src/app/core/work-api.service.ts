@@ -235,6 +235,7 @@ export class WorkApiService {
   jobItems(jobId: string) { return this.http.get<JobItemSet>(`${this.root}/jobs/${jobId}/items`); }
   replaceJobItems(jobId: string, items: JobItem[]) { return this.http.put<JobItemSet>(`${this.root}/jobs/${jobId}/items`, items); }
   changeJobStatus(jobId: string, status: string, reason?: string) { return this.http.post<Job>(`${this.root}/jobs/${jobId}/status`, { status, reason }); }
+  scheduleJob(jobId: string, command: { scheduledDate: string; arrivalWindow?: string; assignedMemberId?: string }) { return this.http.post<Job>(`${this.root}/jobs/${jobId}/schedule`, command); }
   estimates(status = '') { return this.http.get<Estimate[]>(`${this.root}/estimates`, { params: status ? new HttpParams().set('status', status) : undefined }); }
   estimate(estimateId: string) { return this.http.get<Estimate>(`${this.root}/estimates/${estimateId}`); }
   createEstimate(jobId: string, validUntil: string) { return this.http.post<Estimate>(`${this.root}/jobs/${jobId}/estimates`, { validUntil }); }

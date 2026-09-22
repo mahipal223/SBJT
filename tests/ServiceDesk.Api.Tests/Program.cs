@@ -40,6 +40,13 @@ var appointmentDate = new DateOnly(2026, 9, 12);
 var appointment = AppointmentWindow.Parse(appointmentDate, "9:00 AM – 10:00 AM")!;
 Require(appointment.EndsAt - appointment.StartsAt == TimeSpan.FromHours(1), "Arrival window preserves the entered end time");
 Require(AppointmentWindow.Parse(null, null) is null, "Unscheduled jobs have no appointment");
+var singleTimeAppt = AppointmentWindow.Parse(appointmentDate, "15:06")!;
+Require(singleTimeAppt.StartsAt.Hour == 15 && singleTimeAppt.StartsAt.Minute == 6, "Single time parses start time correctly");
+Require(singleTimeAppt.EndsAt > singleTimeAppt.StartsAt, "Single time generates valid window ending after start");
+
+var allDayAppt = AppointmentWindow.Parse(appointmentDate, "All Day (Flexible)")!;
+Require(allDayAppt.StartsAt.Hour == 8 && allDayAppt.EndsAt.Hour == 18, "All day flexible window covers full work day");
+
 foreach (var invalidWindow in new[] { "invalid", "10:00 AM - 9:00 AM", "9:00 AM - 9:00 AM" })
 {
     var rejected = false;
@@ -127,6 +134,13 @@ var scheduledJob = await store.ChangeJobStatusAsync(
     job.Id,
     new ChangeJobStatusCommand("Scheduled"));
 Require(scheduledJob.Status == "Scheduled", "Draft job can be scheduled");
+
+var rescheduledJob = await store.ScheduleJobAsync(
+    businessId,
+    job.Id,
+    new ScheduleJobCommand(new DateOnly(2026, 9, 20), "9:00 AM – 11:00 AM"));
+Require(rescheduledJob.Status == "Scheduled", "ScheduleJobAsync reschedules job");
+Require(rescheduledJob.ScheduledDate == new DateOnly(2026, 9, 20), "ScheduleJobAsync preserves scheduled date");
 
 var activeJob = await store.ChangeJobStatusAsync(
     businessId,

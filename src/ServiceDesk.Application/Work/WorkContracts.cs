@@ -18,7 +18,17 @@ public sealed record CreateJobCommand(
     Guid CustomerId, string Title, string? Description, string Priority,
     DateOnly? ScheduledDate, string? ArrivalWindow, Guid? AssignedMemberId);
 
-public sealed record ChangeJobStatusCommand(string Status, string? Reason = null);
+public sealed record ChangeJobStatusCommand(
+    string Status,
+    string? Reason = null,
+    DateOnly? ScheduledDate = null,
+    string? ArrivalWindow = null,
+    Guid? AssignedMemberId = null);
+
+public sealed record ScheduleJobCommand(
+    DateOnly ScheduledDate,
+    string? ArrivalWindow = null,
+    Guid? AssignedMemberId = null);
 
 public sealed record PageResult<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
 
@@ -37,6 +47,7 @@ public interface IWorkStore
     Task<JobRecord?> GetJobAsync(Guid businessId, Guid jobId, CancellationToken cancellationToken = default);
     Task<JobRecord> CreateJobAsync(Guid businessId, CreateJobCommand command, int jobsPerPeriodLimit, CancellationToken cancellationToken = default);
     Task<JobRecord> ChangeJobStatusAsync(Guid businessId, Guid jobId, ChangeJobStatusCommand command, CancellationToken cancellationToken = default);
+    Task<JobRecord> ScheduleJobAsync(Guid businessId, Guid jobId, ScheduleJobCommand command, CancellationToken cancellationToken = default);
     Task<PageResult<CatalogItemRecord>> ListCatalogItemsAsync(Guid businessId, string? search, string? itemType, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<CatalogItemRecord> CreateCatalogItemAsync(Guid businessId, CreateCatalogItemCommand command, CancellationToken cancellationToken = default);
     Task<JobItemSet> GetJobItemsAsync(Guid businessId, Guid jobId, CancellationToken cancellationToken = default);

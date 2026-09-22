@@ -67,6 +67,32 @@ public sealed class JobsController(IWorkStore store, IConfiguration configuratio
         }
     }
 
+    [HttpPost("{jobId:guid}/schedule")]
+    [Authorize(Policy = Permissions.JobsWrite)]
+    public async Task<ActionResult<JobRecord>> Schedule(
+        Guid businessId,
+        Guid jobId,
+        ScheduleJobCommand command,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await store.ScheduleJobAsync(businessId, jobId, command, cancellationToken));
+        }
+        catch (WorkRuleException ex) when (ex.Code == "resource_not_found")
+        {
+            return NotFound(Problem(ex.Code, ex.Message, 404));
+        }
+        catch (WorkRuleException ex) when (ex.Code == "invalid_transition")
+        {
+            return UnprocessableEntity(Problem(ex.Code, ex.Message, 422));
+        }
+        catch (WorkRuleException ex)
+        {
+            return BadRequest(Problem(ex.Code, ex.Message, 400));
+        }
+    }
+
     [HttpPut("{jobId:guid}/items")]
     [Authorize(Policy = Permissions.JobsWrite)]
     public async Task<ActionResult<JobItemSet>> ReplaceItems(Guid businessId, Guid jobId, IReadOnlyList<ReplaceJobItemCommand> commands, CancellationToken cancellationToken)

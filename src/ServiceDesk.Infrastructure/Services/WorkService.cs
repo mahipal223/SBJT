@@ -371,6 +371,15 @@ public sealed class WorkService(BaseDAL baseDAL, ITenantContextAccessor tenantCo
         ChangeJobStatusCommand command,
         CancellationToken cancellationToken = default)
     {
+        if (command.Status?.Trim() == "Scheduled" && command.ScheduledDate.HasValue)
+        {
+            return await ScheduleJobAsync(
+                businessId,
+                jobId,
+                new ScheduleJobCommand(command.ScheduledDate.Value, command.ArrivalWindow, command.AssignedMemberId),
+                cancellationToken).ConfigureAwait(false);
+        }
+
         var member = tenantContext.Current
             ?? throw new WorkRuleException("membership_required", "An active membership is required.");
         var targetStatus = command.Status?.Trim();
@@ -463,6 +472,113 @@ public sealed class WorkService(BaseDAL baseDAL, ITenantContextAccessor tenantCo
                     VarChar("@Status", targetStatus, 32)
                 ]);
                 await update.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+                return true;
+            },
+            IsolationLevel.Serializable,
+            cancellationToken);
+
+        return await GetJobAsync(businessId, jobId, cancellationToken).ConfigureAwait(false)
+            ?? throw new WorkRuleException("resource_not_found", "The updated job could not be read.");
+    }
+
+    public async Task<JobRecord> ScheduleJobAsync(
+        Guid businessId,
+        Guid jobId,
+        ScheduleJobCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var member = tenantContext.Current
+            ?? throw new WorkRuleException("membership_required", "An active membership is required.");
+
+        var appointment = AppointmentWindow.Parse(command.ScheduledDate, command.ArrivalWindow);
+        if (appointment is null)
+        {
+            throw new WorkRuleException("validation_failed", "A scheduled date is required.");
+        }
+
+        var startsAt = appointment.StartsAt;
+        var endsAt = appointment.EndsAt;
+        var assignedMemberId = command.AssignedMemberId ?? member.MemberId;
+
+        await baseDAL.ExecuteInTransactionAsync(
+            businessId,
+            "Jobs.Schedule",
+            async (connection, transaction, token) =>
+            {
+                const string selectSql = """
+                    SELECT Status
+                    FROM app.Jobs WITH (UPDLOCK, HOLDLOCK)
+                    WHERE BusinessId = @BusinessId AND Id = @JobId;
+                    """;
+                string currentStatus;
+                await using (var select = BaseDAL.BuildCommand(connection, transaction, selectSql, parameters:
+                [UniqueIdentifier("@BusinessId", businessId), UniqueIdentifier("@JobId", jobId)]))
+                await using (var reader = await select.ExecuteReaderAsync(token).ConfigureAwait(false))
+                {
+                    if (!await reader.ReadAsync(token).ConfigureAwait(false))
+                    {
+                        throw new WorkRuleException("resource_not_found", "The requested resource was not found.");
+                    }
+
+                    currentStatus = reader.GetString(0);
+                }
+
+                if (currentStatus is "Completed" or "Cancelled")
+                {
+                    throw new WorkRuleException("invalid_transition", $"A {currentStatus} job cannot be scheduled.");
+                }
+
+                const string scheduleSql = """
+                    IF EXISTS
+                    (
+                        SELECT 1 FROM app.Appointments WITH (UPDLOCK, HOLDLOCK)
+                        WHERE BusinessId = @BusinessId AND JobId = @JobId AND Status = 'Scheduled'
+                    )
+                    BEGIN
+                        UPDATE app.Appointments
+                        SET StartsAt = @StartsAt, EndsAt = @EndsAt, UpdatedAt = SYSUTCDATETIME()
+                        WHERE BusinessId = @BusinessId AND JobId = @JobId AND Status = 'Scheduled';
+                    END
+                    ELSE
+                    BEGIN
+                        INSERT app.Appointments (BusinessId, JobId, StartsAt, EndsAt, Status)
+                        VALUES (@BusinessId, @JobId, @StartsAt, @EndsAt, 'Scheduled');
+                    END;
+
+                    IF NOT EXISTS
+                    (
+                        SELECT 1 FROM app.JobAssignments
+                        WHERE BusinessId = @BusinessId AND JobId = @JobId AND MemberId = @AssignedMemberId AND IsActive = 1
+                    )
+                    BEGIN
+                        INSERT app.JobAssignments (BusinessId, JobId, MemberId)
+                        VALUES (@BusinessId, @JobId, @AssignedMemberId);
+                    END;
+
+                    UPDATE app.Jobs
+                    SET Status = 'Scheduled',
+                        UpdatedAt = SYSUTCDATETIME()
+                    WHERE BusinessId = @BusinessId AND Id = @JobId;
+
+                    INSERT app.AuditEvents
+                        (BusinessId, ActorUserId, Action, EntityType, EntityId, CorrelationId, Changes)
+                    VALUES
+                        (@BusinessId, @UserId, N'job.scheduled', N'Job', @JobId,
+                         CONVERT(nvarchar(100), NEWID()),
+                         CONCAT(N'{"from":"', @CurrentStatus, N'","to":"Scheduled","startsAt":"', CONVERT(nvarchar(30), @StartsAt, 126), N'"}'));
+                    """;
+
+                await using var scheduleCmd = BaseDAL.BuildCommand(connection, transaction, scheduleSql, parameters:
+                [
+                    UniqueIdentifier("@BusinessId", businessId),
+                    UniqueIdentifier("@JobId", jobId),
+                    UniqueIdentifier("@AssignedMemberId", assignedMemberId),
+                    UniqueIdentifier("@UserId", member.UserId),
+                    DateTime2("@StartsAt", startsAt),
+                    DateTime2("@EndsAt", endsAt),
+                    VarChar("@CurrentStatus", currentStatus, 32)
+                ]);
+                await scheduleCmd.ExecuteNonQueryAsync(token).ConfigureAwait(false);
                 return true;
             },
             IsolationLevel.Serializable,

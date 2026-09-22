@@ -92,6 +92,11 @@ public sealed class InMemoryWorkStore : IWorkStore
 
     public Task<JobRecord> ChangeJobStatusAsync(Guid businessId, Guid jobId, ChangeJobStatusCommand command, CancellationToken cancellationToken = default)
     {
+        if (command.Status == "Scheduled" && command.ScheduledDate.HasValue)
+        {
+            return ScheduleJobAsync(businessId, jobId, new ScheduleJobCommand(command.ScheduledDate.Value, command.ArrivalWindow, command.AssignedMemberId), cancellationToken);
+        }
+
         lock (gate)
         {
             var index = jobs.FindIndex(job => job.BusinessId == businessId && job.Id == jobId);
@@ -108,6 +113,36 @@ public sealed class InMemoryWorkStore : IWorkStore
             };
             if (!allowed) throw new WorkRuleException("invalid_transition", $"A {current.Status} job cannot change to {command.Status}.");
             jobs[index] = current with { Status = command.Status };
+            return Task.FromResult(jobs[index]);
+        }
+    }
+
+    public Task<JobRecord> ScheduleJobAsync(Guid businessId, Guid jobId, ScheduleJobCommand command, CancellationToken cancellationToken = default)
+    {
+        var window = AppointmentWindow.Parse(command.ScheduledDate, command.ArrivalWindow);
+        if (window is null)
+        {
+            throw new WorkRuleException("validation_failed", "A scheduled date is required.");
+        }
+
+        lock (gate)
+        {
+            var index = jobs.FindIndex(job => job.BusinessId == businessId && job.Id == jobId);
+            if (index < 0) throw new WorkRuleException("resource_not_found", "The requested resource was not found.");
+            var current = jobs[index];
+            if (current.Status is "Completed" or "Cancelled")
+            {
+                throw new WorkRuleException("invalid_transition", $"A {current.Status} job cannot be scheduled.");
+            }
+
+            var arrivalDisplay = command.ArrivalWindow ?? $"{window.StartsAt:h:mm tt} – {window.EndsAt:h:mm tt}";
+            jobs[index] = current with
+            {
+                Status = "Scheduled",
+                ScheduledDate = command.ScheduledDate,
+                ArrivalWindow = arrivalDisplay,
+                AssignedMemberId = command.AssignedMemberId ?? current.AssignedMemberId
+            };
             return Task.FromResult(jobs[index]);
         }
     }

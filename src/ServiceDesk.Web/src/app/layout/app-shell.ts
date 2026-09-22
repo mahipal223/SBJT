@@ -58,17 +58,32 @@ import { WorkspaceContext } from '../core/api.models';
     </header>
     <router-outlet />
   </section>
-  <nav class="mobile-nav" aria-label="Mobile navigation">
-    @for (item of mobileNavigation; track item.path) {
-      <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-        <span>{{ item.icon }}</span>{{ item.label }}
-      </a>
-    }
+  <nav class="bottom-nav" aria-label="Mobile navigation">
+    <a routerLink="/app/overview" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg>
+      Home
+    </a>
+    <a routerLink="/app/jobs" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5V3h8v2 M4 5h16v16H4z M8 10h8 M8 14h5"/></svg>
+      Jobs
+    </a>
+    <a routerLink="/app/jobs/new" class="create" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14 M5 12h14"/></svg>
+      New job
+    </a>
+    <a routerLink="/app/schedule" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v16H4z M8 3v4 M16 3v4 M4 10h16 M8 14h2 M14 14h2"/></svg>
+      Schedule
+    </a>
+    <button type="button" (click)="open()" aria-label="More navigation" [attr.aria-expanded]="drawer()">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h.01 M12 12h.01 M19 12h.01"/></svg>
+      More
+    </button>
   </nav>
 </div>`,
   styles: `
-:host { display: block; min-height: 100vh; }
-.app-layout { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+:host { display: block; min-height: 100vh; width: 100%; max-width: 100vw; overflow-x: hidden; }
+.app-layout { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); width: 100%; max-width: 100vw; overflow-x: hidden; }
 .app-sidebar { position: sticky; top: 0; z-index: 30; height: 100vh; display: flex; flex-direction: column; padding: 20px 14px; color: #e9f0f3; background: var(--navy); overflow: auto; scrollbar-width: thin; scrollbar-color: #274d5d transparent; }
 .app-sidebar::-webkit-scrollbar { width: 6px; }
 .app-sidebar::-webkit-scrollbar-track { background: transparent; }
@@ -82,12 +97,12 @@ import { WorkspaceContext } from '../core/api.models';
 .workspace-picker span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
 .workspace-picker strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-picker small { color: #aac0c9; font-size: 10px; }
-nav p { margin: 16px 10px 6px; color: #78939e; font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-nav a { position: relative; display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 8px; color: #c9d7dd; font-size: 13px; font-weight: 600; text-decoration: none; }
-nav a:hover, nav a.active { color: #fff; background: #1c4653; }
-nav a.active::before { content: ''; position: absolute; left: -14px; width: 3px; height: 22px; border-radius: 0 4px 4px 0; background: #59c7bc; }
-.nav-icon { width: 19px; text-align: center; font-size: 15px; }
-nav em { margin-left: auto; min-width: 20px; padding: 2px 6px; border-radius: 10px; color: #fff; background: #b14b45; font-size: 9px; font-style: normal; text-align: center; }
+.app-sidebar nav p { margin: 16px 10px 6px; color: #78939e; font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.app-sidebar nav a { position: relative; display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 8px; color: #c9d7dd; font-size: 13px; font-weight: 600; text-decoration: none; }
+.app-sidebar nav a:hover, .app-sidebar nav a.active { color: #fff; background: #1c4653; }
+.app-sidebar nav a.active::before { content: ''; position: absolute; left: -14px; width: 3px; height: 22px; border-radius: 0 4px 4px 0; background: #59c7bc; }
+.app-sidebar .nav-icon { width: 19px; text-align: center; font-size: 15px; }
+.app-sidebar nav em { margin-left: auto; min-width: 20px; padding: 2px 6px; border-radius: 10px; color: #fff; background: #b14b45; font-size: 9px; font-style: normal; text-align: center; }
 .sidebar-footer { display: grid; gap: 10px; margin-top: auto; padding-top: 22px; }
 .plan-mini { display: flex; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid #31505d; border-radius: 9px; }
 .plan-mini > span { display: grid; gap: 3px; }
@@ -99,7 +114,7 @@ nav em { margin-left: auto; min-width: 20px; padding: 2px 6px; border-radius: 10
 .user-card > span:last-child { display: grid; gap: 2px; }
 .user-card strong { font-size: 11px; }
 .user-card small { color: #8fa8b2; font-size: 10px; }
-.app-content { min-width: 0; }
+.app-content { min-width: 0; max-width: 100%; width: 100%; overflow-x: hidden; }
 .topbar { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--line); background: #fff; }
 .menu-button { display: none; border: 0; background: transparent; font-size: 21px; cursor: pointer; line-height: 1; }
 .top-search { width: min(440px, 50vw); height: 38px; display: flex; align-items: center; gap: 9px; padding: 0 11px; border: 1px solid var(--line); border-radius: 8px; color: #84959d; background: #f8fafb; font-size: 12px; }
@@ -110,21 +125,26 @@ nav em { margin-left: auto; min-width: 20px; padding: 2px 6px; border-radius: 10
 .btn-logout { width: auto !important; height: 34px !important; border-radius: 6px !important; padding: 0 12px !important; font-size: 12px !important; font-weight: 600; color: var(--navy) !important; background: #f0f4f6 !important; border: 1px solid var(--line) !important; cursor: pointer; transition: background .15s; }
 .btn-logout:hover { background: #e2ebef !important; }
 .avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: var(--teal); color: #fff; font-size: 11px; font-weight: 800; cursor: pointer; }
-.mobile-nav, .scrim { display: none; }
+.bottom-nav, .scrim { display: none; }
 @media (max-width: 880px) {
   .app-layout { grid-template-columns: 1fr; }
   .app-sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-105%); width: 270px; transition: transform .22s ease; box-shadow: 18px 0 50px rgba(0,0,0,.2); }
   .app-sidebar.open { transform: translateX(0); }
   .close-menu { display: block; }
-  .scrim { display: block; position: fixed; inset: 0; z-index: 20; border: 0; background: rgba(10,28,36,.55); }
+  .scrim { display: block; position: fixed; inset: 0; z-index: 35; border: 0; background: rgba(10,28,36,.55); }
   .topbar { height: 60px; padding: 0 16px; }
   .menu-button { display: block; }
   .top-search { width: auto; flex: 1; margin: 0 12px; }
   .top-search kbd { display: none; }
-  .mobile-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(5,1fr); padding: 7px 5px max(7px,env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(255,255,255,.97); box-shadow: 0 -8px 30px rgba(16,41,54,.07); }
-  .mobile-nav a { display: grid; place-items: center; gap: 2px; padding: 3px; color: #70848e; font-size: 9px; text-decoration: none; }
-  .mobile-nav a span { font-size: 16px; }
-  .mobile-nav a.active { color: var(--teal); font-weight: 800; }
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr); background: #fffffff5; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid #dbe5e3; padding: 7px 8px max(9px, env(safe-area-inset-bottom)); box-shadow: 0 -4px 24px rgba(24, 54, 44, 0.05); }
+  .bottom-nav a, .bottom-nav button { border: 0 !important; background: transparent !important; background-color: transparent !important; color: var(--muted) !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 4px !important; font-size: 9px !important; min-height: 46px !important; text-decoration: none !important; cursor: pointer !important; padding: 0 !important; border-radius: 0 !important; position: static !important; transition: color .15s ease !important; box-shadow: none !important; outline: none !important; }
+  .bottom-nav a:hover, .bottom-nav button:hover, .bottom-nav a.active, .bottom-nav button.active { background: transparent !important; background-color: transparent !important; box-shadow: none !important; }
+  .bottom-nav a::before, .bottom-nav a::after, .bottom-nav button::before, .bottom-nav button::after { display: none !important; content: none !important; }
+  .bottom-nav svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .bottom-nav a.active, .bottom-nav .active { background: transparent !important; background-color: transparent !important; color: var(--teal) !important; font-weight: 700 !important; }
+  .bottom-nav a.active svg, .bottom-nav .active svg { color: var(--teal) !important; stroke: var(--teal) !important; }
+  .bottom-nav .create { background: transparent !important; background-color: transparent !important; }
+  .bottom-nav .create svg { width: 30px !important; height: 30px !important; padding: 5px !important; border-radius: 9px !important; background: var(--teal) !important; color: #fff !important; stroke: #fff !important; stroke-width: 2.4 !important; }
 }
 @media (max-width: 520px) {
   .top-search span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -197,14 +217,6 @@ export class AppShell implements OnInit {
     items: group.items.filter(item =>
       item.path !== '/app/team' || this.workspace()?.business.soloMode !== true)
   })));
-
-  readonly mobileNavigation = [
-    { label: 'Home', path: '/app/overview', icon: '⌂' },
-    { label: 'Jobs', path: '/app/jobs', icon: '▣' },
-    { label: 'New job', path: '/app/jobs/new', icon: '＋' },
-    { label: 'Customers', path: '/app/customers', icon: '◎' },
-    { label: 'More', path: '/app/settings', icon: '•••' }
-  ];
 
   ngOnInit(): void {
     const businessId = this.auth.businessId();
