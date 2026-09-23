@@ -267,7 +267,7 @@ export class CustomerFormLivePage {
             @for (j of filteredJobs(); track j.id) {
               <tr>
                 <td>
-                  <span class="job-ref-badge">#J-{{j.jobNumber}}</span>
+                  <span class="job-ref-badge">#{{j.jobNumber.startsWith('J-') ? j.jobNumber : 'J-' + j.jobNumber}}</span>
                   <a class="cell-main link" [routerLink]="['/app/jobs', j.id]">
                     <strong>{{j.title}}</strong>
                     <small>{{j.description || 'No description'}}</small>
@@ -304,7 +304,7 @@ export class CustomerFormLivePage {
         @for (j of filteredJobs(); track j.id) {
           <a class="mobile-job" [routerLink]="['/app/jobs', j.id]">
             <div class="mobile-job-top">
-              <span class="job-ref-badge">#J-{{j.jobNumber}}</span>
+              <span class="job-ref-badge">#{{j.jobNumber.startsWith('J-') ? j.jobNumber : 'J-' + j.jobNumber}}</span>
               <span class="badge" [class.amber]="j.status==='InProgress'" [class.blue]="j.status==='Scheduled'" [class.gray]="j.status==='Draft'" [class.teal]="j.status==='Completed'">
                 {{label(j.status)}}
               </span>
@@ -436,9 +436,11 @@ export class JobsLivePage {
               bindLabel="name"
               bindValue="id"
               [(ngModel)]="model.customerId"
+              [clearSearchOnAdd]="true"
+              [closeOnSelect]="true"
               (blur)="markTouched('customerId')"
               (change)="onCustomerSelected()"
-              placeholder="Search customer by name, phone, or address...">
+              [placeholder]="model.customerId ? '' : 'Search customer by name, phone, or address...'">
               <ng-template ng-option-tmp let-item="item">
                 <div><strong>{{item.name}}</strong> · <small class="muted">{{item.phone}} · {{item.addressLine1}}, {{item.city}}</small></div>
               </ng-template>
@@ -514,7 +516,9 @@ export class JobsLivePage {
                   [items]="arrivalWindows"
                   [searchable]="true"
                   [clearable]="true"
-                  placeholder="Select arrival window (e.g. 9:00 AM – 11:00 AM)"
+                  [clearSearchOnAdd]="true"
+                  [closeOnSelect]="true"
+                  [placeholder]="model.arrivalWindow ? '' : 'Select arrival window (e.g. 9:00 AM – 11:00 AM)'"
                   [(ngModel)]="model.arrivalWindow">
                 </ng-select>
               </div>
@@ -635,7 +639,7 @@ export class JobsLivePage {
     </aside>
   </div>
 
-  <!-- Mobile Fixed Bottom Action Bar -->
+  <!-- Sticky action bar returns to normal flow below the job summary. -->
   <div class="form-actions-mobile">
     <div class="form-actions-mobile-total">
       <small>Total · USD</small>
@@ -1232,7 +1236,7 @@ export class CustomerLivePage {
     <button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('InProgress')" id="start-job-btn">→ Start job</button>
   }
   @else if(j.status==='InProgress'){
-    <button class="btn primary" [disabled]="statusSaving()||financialSaving()" (click)="completeAndInvoice()" id="complete-job-btn">✓ Complete job</button>
+    <button class="btn primary" [disabled]="statusSaving()||financialSaving()" (click)="completeAndInvoice()" id="complete-job-btn">Complete & create invoice</button>
   }
   @else if(j.status==='Completed'){
     @if(existingInvoice(); as inv){
@@ -1453,7 +1457,7 @@ export class CustomerLivePage {
             </span>
           </a>
         } @else {
-          <button class="btn primary" style="width:100%" [disabled]="financialSaving()" (click)="createInvoice()" id="create-invoice-aside-btn">
+          <button class="btn primary" style="width:100%" [disabled]="financialSaving()||j.status!=='Completed'||!items().items.length" (click)="createInvoice()" id="create-invoice-aside-btn">
             Create invoice
           </button>
           <p class="muted" style="font-size:11px;margin-top:10px;text-align:center">

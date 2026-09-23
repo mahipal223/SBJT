@@ -5,6 +5,13 @@ export interface ReferenceOption {
   symbol?: string;
 }
 
+export const PAYMENT_METHODS: ReferenceOption[] = [
+  { value: 'Card', label: 'Credit / debit card' },
+  { value: 'Cash', label: 'Cash' },
+  { value: 'Check', label: 'Check' },
+  { value: 'BankTransfer', label: 'Bank transfer' }
+];
+
 export interface IndustryOption {
   code: string;
   label: string;

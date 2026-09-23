@@ -82,8 +82,8 @@ import { WorkspaceContext } from '../core/api.models';
   </nav>
 </div>`,
   styles: `
-:host { display: block; min-height: 100vh; width: 100%; max-width: 100vw; overflow-x: hidden; }
-.app-layout { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); width: 100%; max-width: 100vw; overflow-x: hidden; }
+:host { display: block; min-height: 100vh; width: 100%; max-width: 100vw; overflow-x: clip; }
+.app-layout { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); width: 100%; max-width: 100vw; overflow-x: clip; }
 .app-sidebar { position: sticky; top: 0; z-index: 30; height: 100vh; display: flex; flex-direction: column; padding: 20px 14px; color: #e9f0f3; background: var(--navy); overflow: auto; scrollbar-width: thin; scrollbar-color: #274d5d transparent; }
 .app-sidebar::-webkit-scrollbar { width: 6px; }
 .app-sidebar::-webkit-scrollbar-track { background: transparent; }
@@ -114,7 +114,7 @@ import { WorkspaceContext } from '../core/api.models';
 .user-card > span:last-child { display: grid; gap: 2px; }
 .user-card strong { font-size: 11px; }
 .user-card small { color: #8fa8b2; font-size: 10px; }
-.app-content { min-width: 0; max-width: 100%; width: 100%; overflow-x: hidden; }
+.app-content { min-width: 0; max-width: 100%; width: 100%; overflow-x: clip; }
 .topbar { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--line); background: #fff; }
 .menu-button { display: none; border: 0; background: transparent; font-size: 21px; cursor: pointer; line-height: 1; }
 .top-search { width: min(440px, 50vw); height: 38px; display: flex; align-items: center; gap: 9px; padding: 0 11px; border: 1px solid var(--line); border-radius: 8px; color: #84959d; background: #f8fafb; font-size: 12px; }
@@ -128,10 +128,10 @@ import { WorkspaceContext } from '../core/api.models';
 .bottom-nav, .scrim { display: none; }
 @media (max-width: 880px) {
   .app-layout { grid-template-columns: 1fr; }
-  .app-sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-105%); width: 270px; transition: transform .22s ease; box-shadow: 18px 0 50px rgba(0,0,0,.2); }
+  .app-sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 1000; transform: translateX(-105%); width: 270px; transition: transform .22s ease; box-shadow: 18px 0 50px rgba(0,0,0,.2); }
   .app-sidebar.open { transform: translateX(0); }
   .close-menu { display: block; }
-  .scrim { display: block; position: fixed; inset: 0; z-index: 35; border: 0; background: rgba(10,28,36,.55); }
+  .scrim { display: block; position: fixed; inset: 0; z-index: 999; border: 0; background: rgba(10,28,36,.55); }
   .topbar { height: 60px; padding: 0 16px; }
   .menu-button { display: block; }
   .top-search { width: auto; flex: 1; margin: 0 12px; }

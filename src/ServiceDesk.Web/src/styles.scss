@@ -361,7 +361,7 @@ body:has(app-technician) .mobile-nav {
 html {
   color-scheme: light;
   font-family: 'DM Sans', system-ui, sans-serif;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
   width: 100%;
 }
@@ -370,7 +370,7 @@ body {
   margin: 0;
   color: var(--ink);
   background: var(--bg);
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
   width: 100%;
 }
@@ -1533,7 +1533,7 @@ select:not(.filter-select):focus {
   max-width: 100% !important;
 }
 
-.ng-select.ng-select-single .ng-select-container .ng-value-container .ng-placeholder {
+.ng-select.ng-select-single:not(.ng-has-value):not(.ng-select-filtered) .ng-select-container .ng-value-container .ng-placeholder {
   position: relative !important;
   top: auto !important;
   left: auto !important;
@@ -1546,6 +1546,13 @@ select:not(.filter-select):focus {
   text-overflow: ellipsis !important;
   max-width: 100% !important;
   display: block !important;
+}
+
+.ng-select.ng-select-single.ng-has-value .ng-select-container .ng-value-container .ng-placeholder,
+.ng-select.ng-select-single.ng-select-filtered .ng-select-container .ng-value-container .ng-placeholder,
+.ng-select.ng-has-value .ng-placeholder,
+.ng-select.ng-select-filtered .ng-placeholder {
+  display: none !important;
 }
 
 .ng-select.ng-select-single .ng-select-container .ng-value-container .ng-input {
@@ -1567,6 +1574,32 @@ select:not(.filter-select):focus {
 
 .ng-select.ng-select-single.ng-select-filtered .ng-value-container .ng-input>input {
   caret-color: var(--ink) !important;
+}
+
+/* Keep the search query and selected label from occupying the same mobile space. */
+.ng-select.ng-select-single.ng-select-filtered .ng-value-container .ng-value {
+  display: none !important;
+}
+
+.ng-select.ng-select-single.ng-has-value:not(.ng-select-filtered) .ng-value-container .ng-input {
+  display: none !important;
+}
+
+.ng-select.ng-select-single .ng-value-container:has(.ng-value) .ng-placeholder {
+  display: none !important;
+}
+
+.ng-select.ng-select-single.ng-select-filtered .ng-value-container .ng-input {
+  width: 100% !important;
+  background: #fff;
+}
+
+.ng-select.ng-select-single .ng-value-container .ng-value-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Toolbar Filter ng-select Component */
@@ -2532,6 +2565,17 @@ select:not(.filter-select):focus {
 }
 
 @media (max-width: 880px) {
+
+  // Clip horizontal spill without creating a scroll container that traps sticky positioning.
+  html:has(app-job-form-live),
+  body:has(app-job-form-live),
+  app-shell:has(app-job-form-live),
+  .app-layout:has(app-job-form-live),
+  .app-content:has(app-job-form-live),
+  app-job-form-live .page {
+    overflow-x: clip !important;
+  }
+
   .form-layout {
     grid-template-columns: minmax(0, 1fr) !important;
     gap: 16px;
@@ -2552,13 +2596,11 @@ select:not(.filter-select):focus {
 
   .form-actions-mobile {
     display: flex !important;
-    position: fixed !important;
-    left: 14px !important;
-    right: 14px !important;
+    position: sticky !important;
     bottom: calc(66px + env(safe-area-inset-bottom)) !important;
     width: auto !important;
-    max-width: calc(100vw - 28px) !important;
-    margin: 0 auto !important;
+    max-width: 100% !important;
+    margin: 0px 0 0 !important;
     z-index: 45 !important;
     box-sizing: border-box !important;
     justify-content: space-between !important;
@@ -3708,5 +3750,146 @@ select:not(.filter-select):focus {
   to {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+// Financial documents share a compact action area and readable mobile line items.
+app-estimate-detail-live,
+app-invoice-detail-live {
+  .page-head>div:first-child {
+    min-width: 0;
+  }
+
+  .page-head h1,
+  .stat-value {
+    overflow-wrap: anywhere;
+  }
+
+  .page-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 620px;
+  }
+
+  .data-table td:first-child {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 880px) {
+    .page-head {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+
+    .page-actions {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px !important;
+      width: 100%;
+      max-width: none;
+      margin-top: 12px;
+    }
+
+    .page-actions .btn {
+      width: 100% !important;
+      min-width: 0;
+      white-space: normal;
+    }
+
+    .page-actions .primary {
+      grid-column: 1 / -1;
+    }
+
+    .grid.cols-4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .grid.cols-3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .grid.cols-3 .stat:nth-child(2) {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+
+    .stat {
+      min-width: 0;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .table-scroll {
+      overflow: visible;
+    }
+
+    .data-table {
+      min-width: 0 !important;
+      width: 100%;
+    }
+
+    .data-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      clip-path: inset(50%);
+      overflow: hidden;
+    }
+
+    .data-table tbody {
+      display: block;
+    }
+
+    .data-table tr {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      padding: 16px;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .data-table td {
+      display: block;
+      border: 0;
+      padding: 0;
+      white-space: normal;
+      text-align: left;
+    }
+
+    .data-table td:first-child {
+      grid-column: 1 / -1;
+      font-weight: 700;
+    }
+
+    .data-table td:nth-child(2) {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .data-table td:nth-child(n+3)::before {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+
+    .data-table td:nth-child(3)::before {
+      content: 'Quantity';
+    }
+
+    .data-table td:nth-child(4)::before {
+      content: 'Unit price';
+    }
+
+    .data-table td:nth-child(5)::before {
+      content: 'Total';
+    }
+
+    .totals {
+      width: 100%;
+      max-width: none;
+    }
   }
 }

@@ -130,7 +130,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
           <div class="main-column card">
             <div class="card-head">
               <div>
-                <h2 style="margin:0; font-size: 17px;">Today's Operations & Active Jobs</h2>
+                <h2 style="margin:0; font-size: 17px;">Today's Jobs</h2>
                 <span class="meta-label">Live dispatch queue directly from SQL Server</span>
               </div>
               <a routerLink="/app/jobs" class="view-all-link">View All Jobs &rarr;</a>

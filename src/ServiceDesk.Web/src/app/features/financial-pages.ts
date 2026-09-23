@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgSelectComponent } from '@ng-select/ng-select';
 import { Estimate, Invoice, PublicEstimate, WorkApiService } from '../core/work-api.service';
+import { PAYMENT_METHODS } from '../core/reference-data';
 
 const financialMessage = (error: unknown) => error instanceof HttpErrorResponse
   ? error.error?.detail || 'The server could not complete the financial request.'
@@ -129,18 +130,14 @@ export class InvoicesLivePage {
   imports: [RouterLink, CurrencyPipe, DatePipe],
   template: `<main class="page"><header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/estimates">Estimates</a><span class="crumb-sep">/</span><span class="crumb-current">#{{estimate()?.estimateNumber}}</span></nav><div class="title-with-badge"><h1>#{{estimate()?.estimateNumber}} · revision {{estimate()?.revision}}</h1>@if(estimate();as e){<span class="badge" [class.gray]="e.status==='Draft'" [class.amber]="e.status==='Sent'" [class.teal]="e.status==='Approved'">{{e.status}}</span>}</div><p>{{estimate()?.customerName}} · <a class="link" [routerLink]="['/app/jobs', estimate()?.jobId]">View job</a></p></div>
   <div class="page-actions">
-    @if(estimate()?.status==='Draft'||estimate()?.status==='Sent'){
-      <button class="btn primary" [disabled]="saving()" (click)="approveInApp()" id="approve-estimate-btn">✔ Mark approved</button>
-      <button class="btn" [disabled]="saving()" (click)="declineInApp()" id="decline-estimate-btn">Decline</button>
-    }
+    @if(estimate()?.status==='Draft'){<button class="btn primary" [disabled]="saving()" (click)="send()">Send for approval</button>}
+    @if(estimate()?.status==='Sent'){<button class="btn primary" [disabled]="saving()" (click)="createLink()">Customer approval link</button>}
     @if(estimate()?.status==='Approved'){
-      <a class="btn primary" [routerLink]="['/app/jobs', estimate()?.jobId]" id="schedule-job-btn">Go to Job & Schedule →</a>
+      <a class="btn primary" [routerLink]="['/app/jobs', estimate()?.jobId]" id="schedule-job-btn">Continue job →</a>
     }
     <button class="btn" (click)="downloadPdf()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Download PDF</button>
     <button class="btn" (click)="printDocument()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg> Print</button>
-    @if(estimate()?.status==='Draft'){<button class="btn" [disabled]="saving()" (click)="send()">Send estimate</button>}
     @if(estimate()&&estimate()!.status!=='Superseded'){<button class="btn" [disabled]="saving()" (click)="revise()">Create revision</button>}
-    @if(estimate()?.status==='Sent'){<button class="btn" [disabled]="saving()" (click)="createLink()">Customer link</button>}
   </div></header>
   @if(loading()){<section class="card card-body muted">Loading estimate…</section>}@else if(error()){<section class="card card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></section>}@else if(estimate()){<section class="grid cols-3"><article class="card stat"><span class="stat-label">Status</span><strong class="stat-value small-value">{{estimate()!.status}}</strong><span class="stat-meta">Valid through {{estimate()!.validUntil|date:'MMM d, y'}}</span></article><article class="card stat"><span class="stat-label">Customer</span><strong class="stat-value small-value">{{estimate()!.customerName}}</strong><span class="stat-meta">Frozen customer snapshot</span></article><article class="card stat"><span class="stat-label">Total</span><strong class="stat-value">{{estimate()!.total|currency}}</strong><span class="stat-meta">{{estimate()!.items.length}} line items</span></article></section>
   @if(message()){<div class="callout section-gap">✅ {{message()}}</div>}@if(publicUrl()){<article class="card section-gap"><div class="card-head"><h2>Customer approval link</h2></div><div class="card-body"><label class="field"><span>Share this secure link</span><input readonly [value]="publicUrl()"></label><small class="muted">Creating another link revokes the previous one.</small></div></article>}
@@ -156,36 +153,6 @@ export class EstimateDetailLivePage {
   send(){this.mutate(this.api.sendEstimate(this.id));}
   revise(){const validUntil=new Date();validUntil.setDate(validUntil.getDate()+30);this.saving.set(true);this.api.reviseEstimate(this.id,validUntil.toISOString().slice(0,10)).subscribe({next:value=>void this.router.navigate(['/app/estimates',value.id]),error:error=>{this.error.set(financialMessage(error));this.saving.set(false);}});}
   createLink(){this.saving.set(true);this.error.set('');this.api.createPublicEstimateLink(this.id).subscribe({next:value=>{this.publicUrl.set(`${location.origin}/estimate/${value.token}`);this.message.set(`Link available until ${new Date(value.expiresAt).toLocaleString()}.`);this.saving.set(false);},error:error=>{this.error.set(financialMessage(error));this.saving.set(false);}});}
-  approveInApp(){
-    this.saving.set(true);
-    this.error.set('');
-    this.api.decideEstimate(this.id, 'Approved', this.estimate()?.customerName || 'Customer (In-person/Phone)').subscribe({
-      next: () => {
-        this.message.set('Estimate approved successfully! Work scope accepted.');
-        this.saving.set(false);
-        this.load();
-      },
-      error: error => {
-        this.error.set(financialMessage(error));
-        this.saving.set(false);
-      }
-    });
-  }
-  declineInApp(){
-    this.saving.set(true);
-    this.error.set('');
-    this.api.decideEstimate(this.id, 'Declined', this.estimate()?.customerName || 'Customer').subscribe({
-      next: () => {
-        this.message.set('Estimate marked as Declined.');
-        this.saving.set(false);
-        this.load();
-      },
-      error: error => {
-        this.error.set(financialMessage(error));
-        this.saving.set(false);
-      }
-    });
-  }
   printDocument(){window.print();}
   downloadPdf(){if(this.estimate()){this.api.downloadEstimatePdf(this.estimate()!.id,this.estimate()!.estimateNumber);}}
   private mutate(request: ReturnType<WorkApiService['sendEstimate']>){this.saving.set(true);this.error.set('');request.subscribe({next:value=>{this.estimate.set(value);this.message.set('Estimate sent successfully.');this.saving.set(false);},error:error=>{this.error.set(financialMessage(error));this.saving.set(false);}});}
@@ -197,7 +164,7 @@ export class EstimateDetailLivePage {
   template: `<main class="page"><header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/invoices">Invoices</a><span class="crumb-sep">/</span><span class="crumb-current">#{{invoice()?.invoiceNumber}}</span></nav><div class="title-with-badge"><h1>#{{invoice()?.invoiceNumber}}</h1>@if(invoice();as inv){<span class="badge" [class.gray]="inv.status==='Draft'" [class.red]="inv.isOverdue" [class.teal]="inv.paymentStatus==='Paid'">{{inv.paymentStatus==='Paid'?'Paid':inv.status}}</span>}</div><p>{{invoice()?.customerName}} · <a class="link" [routerLink]="['/app/jobs', invoice()?.jobId]">View job</a></p></div>
   <div class="page-actions">
     @if(invoice()?.status==='Draft'){
-      <button class="btn primary" [disabled]="saving()" (click)="issueAndSettle()" id="issue-settle-btn" title="Issue invoice and record payment in 1 click">⚡ Issue & mark paid</button>
+      <button class="btn primary" [disabled]="saving()" (click)="issueAndSettle()" id="issue-settle-btn">Issue & record payment</button>
       <button class="btn" [disabled]="saving()" (click)="issue()" id="issue-btn">Issue invoice (Net 14)</button>
     }
     @else if(invoice()?.status==='Issued' && (invoice()?.balance ?? 0) > 0){
@@ -210,31 +177,33 @@ export class EstimateDetailLivePage {
   @if(loading()){<section class="card card-body muted">Loading invoice…</section>}@else if(error()){<section class="card card-body"><div class="callout error-text">{{error()}}</div></section>}@else if(invoice()){<section class="grid cols-4"><article class="card stat"><span class="stat-label">Status</span><strong class="stat-value small-value">{{invoice()!.paymentStatus==='Paid'?'Paid':invoice()!.status}}</strong><span class="stat-meta">{{invoice()!.issuedOn?(invoice()!.issuedOn|date:'MMM d, y'):'Not issued'}}</span></article><article class="card stat"><span class="stat-label">Delivery</span><strong class="stat-value small-value"><span class="badge" [class.amber]="invoice()!.deliveryStatus==='Queued'" [class.red]="invoice()!.deliveryStatus==='Failed'" [class.gray]="invoice()!.status==='Draft'">{{invoice()!.status==='Draft'?'Draft':invoice()!.deliveryStatus}}</span></strong><span class="stat-meta">Outbound email</span></article><article class="card stat"><span class="stat-label">Total</span><strong class="stat-value">{{invoice()!.total|currency}}</strong><span class="stat-meta">Original invoice</span></article><article class="card stat"><span class="stat-label">Balance</span><strong class="stat-value">{{invoice()!.balance|currency}}</strong><span class="stat-meta">@if(invoice()!.dueOn){Due {{invoice()!.dueOn|date:'MMM d, y'}}}</span></article></section><article class="card section-gap"><div class="card-head"><h2>Invoice items</h2></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Description</th><th>Type</th><th>Quantity</th><th>Price</th><th>Total</th></tr></thead><tbody>@for(item of invoice()!.items;track item.id){<tr><td>{{item.description}}</td><td>{{item.itemType}}</td><td>{{item.quantity}} {{item.unit}}</td><td class="money">{{item.unitPrice|currency}}</td><td class="money">{{item.lineTotal|currency}}</td></tr>}</tbody></table></div></article>}
 
   @if(showPaymentModal()){
-    <div class="quick-modal-backdrop" (click)="showPaymentModal.set(false)">
-      <div class="quick-modal-card" (click)="$event.stopPropagation()">
+    <div class="quick-modal-backdrop" (click)="closePaymentModal()">
+      <div class="quick-modal-card" role="dialog" aria-modal="true" aria-labelledby="payment-title" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3>💳 Record Invoice Payment</h3>
-          <button type="button" class="modal-close-btn" (click)="showPaymentModal.set(false)">✕</button>
+          <h3 id="payment-title">Record payment</h3>
+          <button type="button" class="modal-close-btn" aria-label="Close payment" [disabled]="saving()" (click)="closePaymentModal()">✕</button>
         </div>
         <form (ngSubmit)="submitPayment()" novalidate>
           <div class="modal-body form-grid">
-            <div class="field">
+            @if(paymentError()){<div class="wide callout error-text" role="alert">{{paymentError()}}</div>}
+            <div class="field" [class.has-error]="paymentAmountError()">
               <label for="pay-amount">Payment amount *</label>
               <input id="pay-amount" name="payAmount" type="number" step="0.01" min="0.01" [max]="invoice()?.balance || 99999" [(ngModel)]="paymentAmount" required>
               <small class="muted">Balance due: {{invoice()?.balance | currency}}</small>
+              @if(paymentAmountError()){<span class="field-error" role="alert">{{paymentAmountError()}}</span>}
             </div>
             <div class="field">
               <label for="pay-method">Method *</label>
-              <ng-select id="pay-method" name="payMethod" [items]="paymentMethodOptions" [clearable]="false" [searchable]="false" [(ngModel)]="paymentMethod"></ng-select>
+              <ng-select labelForId="pay-method" name="payMethod" [items]="paymentMethodOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="true" [(ngModel)]="paymentMethod"></ng-select>
             </div>
             <div class="field wide">
-              <label for="pay-ref">Reference / Note (Optional)</label>
+              <label for="pay-ref">Transaction reference (Optional)</label>
               <input id="pay-ref" name="payRef" [(ngModel)]="paymentRef" placeholder="e.g. Check #4092, Terminal Auth 8891...">
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn" (click)="showPaymentModal.set(false)">Cancel</button>
-            <button type="submit" class="btn primary" [disabled]="saving() || paymentAmount <= 0">{{saving() ? 'Processing…' : 'Record ' + (paymentAmount | currency)}}</button>
+            <button type="button" class="btn" [disabled]="saving()" (click)="closePaymentModal()">Cancel</button>
+            <button type="submit" class="btn primary" [disabled]="saving()">{{saving() ? 'Processing…' : 'Record ' + (paymentAmount | currency)}}</button>
           </div>
         </form>
       </div>
@@ -246,10 +215,12 @@ export class EstimateDetailLivePage {
 export class InvoiceDetailLivePage {
   private readonly api=inject(WorkApiService);private readonly route=inject(ActivatedRoute);readonly invoice=signal<Invoice|null>(null);readonly loading=signal(true);readonly error=signal('');readonly saving=signal(false);readonly message=signal('');
   readonly showPaymentModal = signal(false);
+  readonly paymentError = signal('');
+  readonly paymentAmountError = signal('');
   paymentAmount = 0;
-  paymentMethod = 'Credit Card';
+  paymentMethod = 'Card';
   paymentRef = '';
-  readonly paymentMethodOptions = ['Credit Card', 'Cash', 'Check', 'Bank Transfer'];
+  readonly paymentMethodOptions = PAYMENT_METHODS;
   private readonly id=this.route.snapshot.paramMap.get('id')??'';
   constructor(){this.load();}
   load(){this.loading.set(true);this.api.invoice(this.id).subscribe({next:value=>{this.invoice.set(value);this.paymentAmount=value.balance;this.loading.set(false);},error:error=>{this.error.set(financialMessage(error));this.loading.set(false);}});}
@@ -262,18 +233,10 @@ export class InvoiceDetailLivePage {
     this.error.set('');
     this.api.issueInvoice(this.id,issued.toISOString().slice(0,10),due.toISOString().slice(0,10)).subscribe({
       next:inv=>{
-        this.api.recordPayment(this.id,inv.balance,'Credit Card').subscribe({
-          next:()=>{
-            this.message.set(`Invoice #${inv.invoiceNumber} issued and settled in full via Card.`);
-            this.saving.set(false);
-            this.load();
-          },
-          error:e=>{
-            this.error.set(financialMessage(e));
-            this.saving.set(false);
-            this.load();
-          }
-        });
+        this.invoice.set(inv);
+        this.message.set(`Invoice #${inv.invoiceNumber} issued. Record the payment received below.`);
+        this.saving.set(false);
+        this.openPaymentModal();
       },
       error:error=>{
         this.error.set(financialMessage(error));
@@ -282,23 +245,37 @@ export class InvoiceDetailLivePage {
     });
   }
   openPaymentModal(){
-    if(!this.invoice())return;
+    if(!this.invoice() || this.saving())return;
     this.paymentAmount = this.invoice()!.balance;
+    this.paymentRef = '';
+    this.paymentError.set('');
+    this.paymentAmountError.set('');
     this.showPaymentModal.set(true);
   }
+  closePaymentModal(){if(!this.saving())this.showPaymentModal.set(false);}
   submitPayment(){
-    if(!this.invoice() || this.paymentAmount <= 0)return;
+    if(!this.invoice() || this.saving())return;
+    this.paymentError.set('');
+    this.paymentAmountError.set('');
+    if(!Number.isFinite(this.paymentAmount) || this.paymentAmount <= 0){
+      this.paymentAmountError.set('Enter an amount greater than zero.');
+      return;
+    }
+    if(this.paymentAmount > this.invoice()!.balance){
+      this.paymentAmountError.set('Payment cannot exceed the remaining balance.');
+      return;
+    }
     this.saving.set(true);
     this.error.set('');
     this.api.recordPayment(this.id, this.paymentAmount, this.paymentMethod, this.paymentRef || undefined).subscribe({
       next:()=>{
-        this.message.set(`Payment of $${this.paymentAmount.toFixed(2)} recorded successfully via ${this.paymentMethod}.`);
+        this.message.set('Payment recorded successfully. The remaining balance is updated below.');
         this.saving.set(false);
         this.showPaymentModal.set(false);
         this.load();
       },
       error:error=>{
-        this.error.set(financialMessage(error));
+        this.paymentError.set(financialMessage(error));
         this.saving.set(false);
       }
     });
