@@ -1,4 +1,4 @@
-import { Component, computed, ElementRef, HostListener, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { afterNextRender, Component, computed, ElementRef, HostListener, inject, Injector, OnInit, signal, ViewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
@@ -15,7 +15,7 @@ import { WorkspaceContext } from '../core/api.models';
   <aside id="workspace-navigation" class="app-sidebar" [class.open]="drawer()">
     <div class="brand-row">
       <a class="brand" routerLink="/app/overview" (click)="close()"><span>S</span> ServiceDesk</a>
-      <button class="close-menu" aria-label="Close menu" (click)="close(true)">×</button>
+      <button #closeMenuButton class="close-menu" aria-label="Close menu" (click)="close(true)">×</button>
     </div>
     <div class="workspace-picker">
       <span class="workspace-logo">{{ workspaceInitials() }}</span>
@@ -42,23 +42,21 @@ import { WorkspaceContext } from '../core/api.models';
       </button>
     </div>
   </aside>
-  <section class="app-content">
+  <section class="app-content" [attr.inert]="drawer() ? '' : null">
     <header class="topbar">
       <button #menuButton class="menu-button" (click)="open()" aria-label="Open menu"
               aria-controls="workspace-navigation" [attr.aria-expanded]="drawer()">☰</button>
-      <div class="top-search">
-        ⌕ <span>Search customers, jobs, invoices…</span><kbd>⌘ K</kbd>
-      </div>
+      <a class="top-search" routerLink="/app/jobs" aria-label="Search jobs">
+        ⌕ <span>Search jobs…</span>
+      </a>
       <div class="top-actions">
-        <button title="Help">?</button>
-        <button title="Notifications">♢<i></i></button>
         <button class="btn-logout" type="button" (click)="logout()" title="Sign out">Sign out</button>
-        <span class="avatar" (click)="logout()" title="Sign out">{{ userInitials() }}</span>
+        <span class="avatar" aria-label="Signed-in user">{{ userInitials() }}</span>
       </div>
     </header>
     <router-outlet />
   </section>
-  <nav class="bottom-nav" aria-label="Mobile navigation">
+  <nav class="bottom-nav" aria-label="Mobile navigation" [attr.inert]="drawer() ? '' : null">
     <a routerLink="/app/overview" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg>
       Home
@@ -117,7 +115,7 @@ import { WorkspaceContext } from '../core/api.models';
 .app-content { min-width: 0; max-width: 100%; width: 100%; overflow-x: clip; }
 .topbar { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--line); background: #fff; }
 .menu-button { display: none; border: 0; background: transparent; font-size: 21px; cursor: pointer; line-height: 1; }
-.top-search { width: min(440px, 50vw); height: 38px; display: flex; align-items: center; gap: 9px; padding: 0 11px; border: 1px solid var(--line); border-radius: 8px; color: #84959d; background: #f8fafb; font-size: 12px; }
+.top-search { width: min(440px, 50vw); height: 38px; display: flex; align-items: center; gap: 9px; padding: 0 11px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); background: #f8fafb; font-size: 12px; text-decoration: none; }
 .top-search kbd { margin-left: auto; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; font-size: 9px; }
 .top-actions { display: flex; align-items: center; gap: 9px; }
 .top-actions button { position: relative; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: #fff; cursor: pointer; }
@@ -128,23 +126,25 @@ import { WorkspaceContext } from '../core/api.models';
 .bottom-nav, .scrim { display: none; }
 @media (max-width: 880px) {
   .app-layout { grid-template-columns: 1fr; }
-  .app-sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 1000; transform: translateX(-105%); width: 270px; transition: transform .22s ease; box-shadow: 18px 0 50px rgba(0,0,0,.2); }
-  .app-sidebar.open { transform: translateX(0); }
-  .close-menu { display: block; }
+  .app-sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 1000; transform: translateX(-105%); visibility: hidden; width: min(270px, 100vw); transition: transform .22s ease; box-shadow: 18px 0 50px rgba(0,0,0,.2); }
+  .app-sidebar.open { transform: translateX(0); visibility: visible; }
+  .close-menu { display: block; min-width: 44px; min-height: 44px; }
   .scrim { display: block; position: fixed; inset: 0; z-index: 999; border: 0; background: rgba(10,28,36,.55); }
   .topbar { height: 60px; padding: 0 16px; }
   .menu-button { display: block; }
   .top-search { width: auto; flex: 1; margin: 0 12px; }
   .top-search kbd { display: none; }
   .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr); background: #fffffff5; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid #dbe5e3; padding: 7px 8px max(9px, env(safe-area-inset-bottom)); box-shadow: 0 -4px 24px rgba(24, 54, 44, 0.05); }
-  .bottom-nav a, .bottom-nav button { border: 0 !important; background: transparent !important; background-color: transparent !important; color: var(--muted) !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 4px !important; font-size: 9px !important; min-height: 46px !important; text-decoration: none !important; cursor: pointer !important; padding: 0 !important; border-radius: 0 !important; position: static !important; transition: color .15s ease !important; box-shadow: none !important; outline: none !important; }
+  .bottom-nav a, .bottom-nav button { border: 0 !important; background: transparent !important; background-color: transparent !important; color: var(--muted) !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 4px !important; font-size: 11px !important; min-height: 46px !important; text-decoration: none !important; cursor: pointer !important; padding: 0 !important; border-radius: 0 !important; position: static !important; transition: color .15s ease !important; box-shadow: none !important; outline: none !important; }
   .bottom-nav a:hover, .bottom-nav button:hover, .bottom-nav a.active, .bottom-nav button.active { background: transparent !important; background-color: transparent !important; box-shadow: none !important; }
+  .bottom-nav a:focus-visible, .bottom-nav button:focus-visible { outline: 2px solid var(--teal) !important; outline-offset: -2px; }
+  .menu-button { min-width: 44px; min-height: 44px; }
   .bottom-nav a::before, .bottom-nav a::after, .bottom-nav button::before, .bottom-nav button::after { display: none !important; content: none !important; }
   .bottom-nav svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .bottom-nav a.active, .bottom-nav .active { background: transparent !important; background-color: transparent !important; color: var(--teal) !important; font-weight: 700 !important; }
   .bottom-nav a.active svg, .bottom-nav .active svg { color: var(--teal) !important; stroke: var(--teal) !important; }
   .bottom-nav .create { background: transparent !important; background-color: transparent !important; }
-  .bottom-nav .create svg { width: 30px !important; height: 30px !important; padding: 5px !important; border-radius: 9px !important; background: var(--teal) !important; color: #fff !important; stroke: #fff !important; stroke-width: 2.4 !important; }
+  .bottom-nav a.create svg, .bottom-nav a.create.active svg { width: 30px !important; height: 30px !important; padding: 5px !important; border-radius: 9px !important; background: var(--teal) !important; color: #fff !important; stroke: #fff !important; stroke-width: 2.4 !important; }
 }
 @media (max-width: 520px) {
   .top-search span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -157,8 +157,10 @@ export class AppShell implements OnInit {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   @ViewChild('menuButton') private menuButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('closeMenuButton') private closeMenuButton?: ElementRef<HTMLButtonElement>;
 
   readonly drawer = signal(false);
   readonly workspace = signal<WorkspaceContext | null>(null);
@@ -230,11 +232,14 @@ export class AppShell implements OnInit {
     });
   }
 
-  open() { this.drawer.set(true); }
+  open() {
+    this.drawer.set(true);
+    afterNextRender(() => this.closeMenuButton?.nativeElement.focus(), { injector: this.injector });
+  }
   close(returnFocus = false) {
     this.drawer.set(false);
     if (returnFocus) {
-      queueMicrotask(() => this.menuButton?.nativeElement.focus());
+      afterNextRender(() => this.menuButton?.nativeElement.focus(), { injector: this.injector });
     }
   }
 

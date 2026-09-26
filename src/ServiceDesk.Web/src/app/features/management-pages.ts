@@ -47,6 +47,20 @@ interface ScheduledJobCell {
     } @else if (rawJobs().length === 0) {
       <div class="callout">No jobs are scheduled for this workspace yet.</div>
     }
+    @if (!loading() && !error()) {
+      <div class="mobile-agenda">
+        @for (day of agenda(); track day.fullDate) {
+          <section class="agenda-day" [class.today]="day.isToday">
+            <h2>{{ day.name }} {{ day.date }}</h2>
+            @for (job of day.jobs; track job.id) {
+              <a class="job-block" [routerLink]="['/app/jobs', job.id]">
+                <b>{{ job.title }}</b><small>{{ job.arrivalWindow || 'Time not set' }} · {{ job.status }}</small>
+              </a>
+            } @empty { <p class="muted">No visits scheduled.</p> }
+          </section>
+        }
+      </div>
+    }
     <div class="calendar">
       <div class="time-head"></div>
       @for (day of days(); track day.name) {
@@ -72,7 +86,8 @@ interface ScheduledJobCell {
   </section>
 </main>`,
   styles: `
-.calendar { display: grid; grid-template-columns: 74px repeat(5, minmax(145px, 1fr)); overflow: auto; }
+.calendar { display: grid; grid-template-columns: 74px repeat(7, minmax(110px, 1fr)); overflow: auto; }
+.mobile-agenda { display: none; }
 .time-head, .day-head { position: sticky; top: 0; z-index: 2; min-height: 64px; padding: 12px; border-bottom: 1px solid var(--line); background: #fff; }
 .day-head { display: grid; place-items: center; }
 .day-head.today strong { color: var(--teal); }
@@ -84,7 +99,21 @@ interface ScheduledJobCell {
 .job-block.amber { border-color: var(--amber); color: #7a4b0a; background: var(--amber-bg); }
 .job-block.blue { border-color: var(--blue); color: #294f88; background: var(--blue-bg); }
 .job-block small { font-size: 9px; opacity: .8; }
-@media (max-width: 720px) { .calendar { grid-template-columns: 55px repeat(5, 150px); } }
+@media (max-width: 720px) {
+  .calendar { display: none; }
+  .mobile-agenda { display: grid; }
+  .agenda-day { padding: 16px; border-top: 1px solid var(--line); }
+  .agenda-day h2 { margin: 0 0 10px; font-size: 16px; }
+  .agenda-day.today h2 { color: var(--teal); }
+  .agenda-day p { margin: 0; font-size: 13px; }
+  .agenda-day .job-block { height: auto; margin-top: 8px; font-size: 14px; min-height: 44px; }
+  .agenda-day .job-block small { font-size: 12px; }
+  .toolbar { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .toolbar strong { text-align: center; }
+  .toolbar > span { display: none; }
+  .toolbar > .btn { grid-column: 1 / -1; justify-self: end; }
+  .icon-btn { width: 44px; height: 44px; }
+}
 `
 })
 export class SchedulePage implements OnInit {
@@ -102,7 +131,7 @@ export class SchedulePage implements OnInit {
   readonly weekLabel = computed(() => {
     const start = this.weekStart();
     const end = new Date(start);
-    end.setDate(start.getDate() + 4);
+    end.setDate(start.getDate() + 6);
 
     const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
     const endMonth = end.toLocaleDateString('en-US', { month: 'short' });
@@ -116,7 +145,7 @@ export class SchedulePage implements OnInit {
 
   readonly days = computed(() => {
     const start = this.weekStart();
-    const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const today = new Date();
 
     return names.map((name, i) => {
@@ -130,7 +159,7 @@ export class SchedulePage implements OnInit {
       return {
         name,
         date: dateObj.getDate(),
-        fullDate: dateObj.toISOString().split('T')[0],
+        fullDate: `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`,
         isToday
       };
     });
@@ -139,6 +168,10 @@ export class SchedulePage implements OnInit {
   readonly rawJobs = signal<Job[]>([]);
   readonly loading = signal(false);
   readonly error = signal('');
+  readonly agenda = computed(() => this.days().map(day => ({
+    ...day,
+    jobs: this.rawJobs().filter(job => job.scheduledDate === day.fullDate)
+  })));
 
   readonly slots = computed(() => {
     const timeSlots = ['8 AM', '10 AM', '12 PM', '2 PM', '4 PM'];

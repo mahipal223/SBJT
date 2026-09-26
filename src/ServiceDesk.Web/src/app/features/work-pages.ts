@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, Input, Output, EventEmitter, ViewChild, forwardRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -12,12 +12,24 @@ const messageFrom = (error: unknown) => error instanceof HttpErrorResponse
   ? error.error?.detail || 'The server could not complete the request.'
   : 'Something went wrong. Please try again.';
 
-@Component({selector:'app-customers-live',imports:[RouterLink,FormsModule,DatePipe],template:`
-<main class="page"><header class="page-head"><div><p class="eyebrow">Customer relationship management</p><h1>Customers</h1><p>People, properties, job history, and billing details.</p></div><div class="page-actions"><button class="btn" data-prototype>Import CSV</button><a class="btn primary" routerLink="/app/customers/new">＋ New customer</a></div></header>
+@Component({selector:'app-customers-live',imports:[RouterLink,FormsModule,DatePipe,forwardRef(() => CustomerFormLivePage)],template:`
+<main class="page"><header class="page-head"><div><p class="eyebrow">Customer management</p><h1>Customers</h1><p>People, properties, job history, and billing details.</p></div><div class="page-actions"><button class="btn primary" (click)="openCustomer()">＋ New customer</button></div></header>
 <section class="card"><div class="toolbar"><div class="search"><input aria-label="Search customers" placeholder="Search name, phone, email, or address" [(ngModel)]="search" (ngModelChange)="load()"></div><button class="btn small" (click)="load()">Refresh</button></div>
-@if(loading()){<div class="card-body muted">Loading customers…</div>}@else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}@else if(!customers().length){<div class="empty-state"><h2>No customers yet</h2><p>Add your first customer to create a job.</p><a class="btn primary" routerLink="/app/customers/new">＋ New customer</a></div>}@else{
-<div class="table-scroll"><table class="data-table"><thead><tr><th>Customer</th><th>Contact</th><th>Service address</th><th>Type</th><th>Status</th></tr></thead><tbody>@for(c of customers();track c.id){<tr><td><a class="person link" [routerLink]="['/app/customers',c.id]"><span class="avatar">{{initials(c.name)}}</span><span class="cell-main"><strong>{{c.name}}</strong><small>Added {{c.createdAt | date:'MMM yyyy'}}</small></span></a></td><td><span class="cell-main"><strong>{{c.phone}}</strong><small>{{c.email || 'No email'}}</small></span></td><td>{{c.addressLine1}}, {{c.city}}, {{c.stateCode}} {{c.postalCode}}</td><td>{{c.customerType}}</td><td><span class="badge" [class.gray]="c.isArchived">{{c.isArchived?'Archived':'Active'}}</span></td></tr>}</tbody></table></div>}</section></main>`})
+@if(loading()){<div class="card-body muted">Loading customers…</div>}@else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}@else if(!customers().length){<div class="empty-state"><h2>No customers yet</h2><p>Add your first customer to create a job.</p><button class="btn primary" (click)="openCustomer()">＋ New customer</button></div>}@else{
+<div class="table-scroll"><table class="data-table"><thead><tr><th>Customer</th><th>Contact</th><th>Service address</th><th>Type</th><th>Status</th></tr></thead><tbody>@for(c of customers();track c.id){<tr><td><a class="person link" [routerLink]="['/app/customers',c.id]"><span class="avatar">{{initials(c.name)}}</span><span class="cell-main"><strong>{{c.name}}</strong><small>Added {{c.createdAt | date:'MMM yyyy'}}</small></span></a></td><td><span class="cell-main"><strong>{{c.phone}}</strong><small>{{c.email || 'No email'}}</small></span></td><td>{{c.addressLine1}}, {{c.city}}, {{c.stateCode}} {{c.postalCode}}</td><td>{{c.customerType}}</td><td><span class="badge" [class.gray]="c.isArchived">{{c.isArchived?'Archived':'Active'}}</span></td></tr>}</tbody></table></div>}</section><dialog #customerDialog class="customer-dialog" aria-labelledby="customer-popup-title" (cancel)="cancelCustomer($event)"><app-customer-form-live #customerForm [popup]="true" (cancelled)="closeCustomer()" (saved)="customerSaved()"></app-customer-form-live></dialog></main>`})
 export class CustomersLivePage {
+  @ViewChild('customerDialog') private customerDialog!: ElementRef<HTMLDialogElement>;
+  @ViewChild('customerForm') private customerForm!: CustomerFormLivePage;
+  openCustomer() {
+    this.customerForm.submitted.set(false);
+    this.customerForm.touched.set({});
+    this.customerForm.errors.set({});
+    this.customerForm.error.set('');
+    this.customerDialog.nativeElement.showModal();
+  }
+  closeCustomer() { if (!this.customerForm.saving()) this.customerDialog.nativeElement.close(); }
+  cancelCustomer(event: Event) { event.preventDefault(); this.closeCustomer(); }
+  customerSaved() { this.customerDialog.nativeElement.close(); this.load(); }
   private api=inject(WorkApiService); customers=signal<Customer[]>([]); loading=signal(true); error=signal(''); search='';
   constructor(){this.load()}
   load(){this.loading.set(true);this.error.set('');this.api.customers(this.search).subscribe({next:r=>{this.customers.set(r.items);this.loading.set(false)},error:e=>{this.error.set(messageFrom(e));this.loading.set(false)}})}
@@ -25,11 +37,15 @@ export class CustomersLivePage {
 }
 
 @Component({selector:'app-customer-form-live',imports:[RouterLink,FormsModule,NgSelectComponent],template:`
-<main class="page"><header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/customers">Customers</a><span class="crumb-sep">/</span><span class="crumb-current">Add customer</span></nav><h1>Add customer</h1><p>Create the customer once, then attach jobs, estimates, and invoices.</p></div><a class="btn" routerLink="/app/customers">Cancel</a></header><section class="card"><div class="card-head"><h2>Customer details</h2><span class="muted">Fields marked * are required</span></div>
-<form class="card-body form-grid" (ngSubmit)="save()" novalidate>
+<main [class.page]="!popup" [class.customer-popup]="popup">
+@if(popup){<header class="customer-popup-header"><div><h2 id="customer-popup-title">Add customer</h2><p>Fields marked * are required.</p></div><button class="icon-btn" type="button" aria-label="Close add customer" [disabled]="saving()" (click)="cancelled.emit()">×</button></header>}
+@else{<header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/customers">Customers</a><span class="crumb-sep">/</span><span class="crumb-current">Add customer</span></nav><h1>Add customer</h1><p>Create the customer once, then attach jobs, estimates, and invoices.</p></div><a class="btn" routerLink="/app/customers">Cancel</a></header>}
+<section [class.card]="!popup" class="customer-form-section">
+@if(!popup){<div class="card-head"><h2>Customer details</h2><span class="muted">Fields marked * are required</span></div>}
+<form id="customer-create-form" class="card-body form-grid" (ngSubmit)="save()" novalidate>
   <div class="field" [class.has-error]="hasError('name')">
     <label for="name">Full name *</label>
-    <input id="name" name="name" [(ngModel)]="model.name" (blur)="markTouched('name')" (input)="onInput('name')" placeholder="e.g. Sarah Miller">
+    <input id="name" name="name" autofocus [(ngModel)]="model.name" (blur)="markTouched('name')" (input)="onInput('name')" placeholder="e.g. Sarah Miller">
     @if(hasError('name')){<span class="field-error" id="name-error">{{errorMessage('name')}}</span>}
   </div>
   <div class="field" [class.has-error]="hasError('phone')">
@@ -58,7 +74,7 @@ export class CustomersLivePage {
         [(ngModel)]="model.city"
         (blur)="markTouched('city')"
         (change)="onInput('city')"
-        placeholder="Select or type city...">
+        [placeholder]="model.city ? '' : 'Select or type city...'">
       </ng-select>
       @if(hasError('city')){<span class="field-error" id="city-error">{{errorMessage('city')}}</span>}
     </div>
@@ -71,7 +87,7 @@ export class CustomersLivePage {
         [(ngModel)]="model.stateCode"
         (blur)="markTouched('stateCode')"
         (change)="onInput('stateCode')"
-        placeholder="Select state...">
+        [placeholder]="model.stateCode ? '' : 'Select state...'">
       </ng-select>
       @if(hasError('stateCode')){<span class="field-error" id="state-error">{{errorMessage('stateCode')}}</span>}
     </div>
@@ -82,9 +98,14 @@ export class CustomersLivePage {
     </div>
   </div>
   @if(error()){<div class="wide callout error-text" id="form-error-banner">{{error()}}</div>}
-  <div class="wide page-actions"><a class="btn" routerLink="/app/customers">Cancel</a><button class="btn primary" type="submit" [disabled]="saving()" id="save-customer-btn">{{saving()?'Saving…':'Save customer'}}</button></div>
-</form></section></main>`})
+  @if(!popup){<div class="wide page-actions"><a class="btn" routerLink="/app/customers">Cancel</a><button class="btn primary" type="submit" [disabled]="saving()" id="save-customer-btn">{{saving()?'Saving…':'Save customer'}}</button></div>}
+</form></section>
+@if(popup){<footer class="customer-popup-footer"><button class="btn" type="button" [disabled]="saving()" (click)="cancelled.emit()">Cancel</button><button class="btn primary" type="submit" form="customer-create-form" [disabled]="saving()">{{saving()?'Saving…':'Save customer'}}</button></footer>}
+</main>`})
 export class CustomerFormLivePage {
+  @Input() popup = false;
+  @Output() cancelled = new EventEmitter<void>();
+  @Output() saved = new EventEmitter<Customer>();
   private api=inject(WorkApiService);private router=inject(Router);
   saving=signal(false);
   error=signal('');
@@ -170,7 +191,7 @@ export class CustomerFormLivePage {
     if(this.saving())return;
     this.saving.set(true);
     this.api.createCustomer(this.model).subscribe({
-      next:c=>this.router.navigate(['/app/customers',c.id]),
+      next:c=>{ this.saving.set(false); if(this.popup){ this.saved.emit(c); this.model={customerType:'Residential',name:'',phone:'',email:'',companyName:'',addressLine1:'',city:'Austin',stateCode:'TX',postalCode:'78701'}; this.submitted.set(false); this.touched.set({}); this.errors.set({}); } else this.router.navigate(['/app/customers',c.id]); },
       error:e=>{this.error.set(messageFrom(e));this.saving.set(false)}
     });
   }
@@ -213,7 +234,7 @@ export class CustomerFormLivePage {
     </article>
   </section>
 
-  <section class="card section-gap">
+  <section class="card section-gap job-list-card">
     <div class="filters-toolbar">
       <div class="search-wrap">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -319,10 +340,6 @@ export class CustomerFormLivePage {
         }
       </div>
 
-      <div style="padding: 12px 20px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line-soft); display: flex; justify-content: space-between;">
-        <span>{{filteredJobs().length}} jobs shown</span>
-        <span>Workspace local</span>
-      </div>
     }
   </section>
 </main>

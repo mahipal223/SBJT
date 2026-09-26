@@ -27,7 +27,7 @@ const financialMessage = (error: unknown) => error instanceof HttpErrorResponse
         <article class="card stat"><span class="stat-label">Pipeline value</span><strong class="stat-value">{{pipelineValue() | currency}}</strong><span class="stat-meta">Current results</span></article>
       </section>
       <section class="card section-gap">
-        <div class="toolbar"><strong>{{estimates().length}} estimates</strong><span style="flex:1"></span><ng-select class="filter-ng-select" [items]="estimateStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select><button class="btn small" (click)="load()">Refresh</button></div>
+        <div class="toolbar"><ng-select class="filter-ng-select" [items]="estimateStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select><button class="btn small" (click)="load()">Refresh</button></div>
         @if(loading()){<div class="card-body muted">Loading estimates…</div>}
         @else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}
         @else if(!estimates().length){<div class="empty-state"><h2>No estimates yet</h2><p>Open a job with line items and choose Create estimate.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
@@ -82,14 +82,14 @@ export class EstimatesLivePage {
         <div><p class="eyebrow">Accounts receivable</p><h1>Invoices & payments</h1><p>Issue invoices from completed jobs and track the calculated balance.</p></div>
         <a class="btn primary" routerLink="/app/jobs">＋ Choose completed job</a>
       </header>
-      <section class="grid cols-4">
+      @if(!loading() && !error()) {<section class="grid cols-4">
         <article class="card stat"><span class="stat-label">Outstanding</span><strong class="stat-value">{{outstanding()|currency}}</strong><span class="stat-meta">Issued balance</span></article>
         <article class="card stat"><span class="stat-label">Overdue</span><strong class="stat-value">{{overdue()|currency}}</strong><span class="stat-meta">Needs follow-up</span></article>
         <article class="card stat"><span class="stat-label">Paid</span><strong class="stat-value">{{paid()|currency}}</strong><span class="stat-meta">Settled invoices</span></article>
         <article class="card stat"><span class="stat-label">Drafts</span><strong class="stat-value">{{count('Draft')}}</strong><span class="stat-meta">Ready to issue</span></article>
-      </section>
+      </section>}
       <section class="card section-gap">
-        <div class="toolbar"><strong>{{invoices().length}} invoices</strong><span style="flex:1"></span><ng-select class="filter-ng-select" [items]="invoiceStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select><button class="btn small" (click)="load()">Refresh</button></div>
+        <div class="toolbar">@if(loading() || error()){<strong>{{loading() ? 'Loading invoices…' : 'Invoices unavailable'}}</strong>}<ng-select class="filter-ng-select" [items]="invoiceStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select><button class="btn small" (click)="load()">Refresh</button></div>
         @if(loading()){<div class="card-body muted">Loading invoices…</div>}
         @else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}
         @else if(!invoices().length){<div class="empty-state"><h2>No invoices yet</h2><p>Complete a job, then create its invoice from the job page.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
@@ -165,7 +165,7 @@ export class EstimateDetailLivePage {
   <div class="page-actions">
     @if(invoice()?.status==='Draft'){
       <button class="btn primary" [disabled]="saving()" (click)="issueAndSettle()" id="issue-settle-btn">Issue & record payment</button>
-      <button class="btn" [disabled]="saving()" (click)="issue()" id="issue-btn">Issue invoice (Net 14)</button>
+      <button class="btn" [disabled]="saving()" (click)="issue()" id="issue-btn">Issue invoice · due in 14 days</button>
     }
     @else if(invoice()?.status==='Issued' && (invoice()?.balance ?? 0) > 0){
       <button class="btn primary" [disabled]="saving()" (click)="openPaymentModal()" id="open-pay-btn">Record payment ({{invoice()?.balance|currency}})</button>

@@ -6,6 +6,152 @@
   box-sizing: border-box;
 }
 
+// Touch-friendly controls and readable form text on phones and tablets.
+@media (max-width: 880px) {
+  .page .btn, .page .picker-commit-btn, .quick-modal-card .btn,
+  .quick-modal-card .modal-close-btn, .quick-modal-card .choice-action-btn,
+  .quick-modal-card .catalog-tabs button {
+    min-height: 44px !important;
+  }
+
+  .quick-modal-card .modal-close-btn, .quick-modal-card .choice-action-btn {
+    min-width: 44px !important;
+  }
+
+  .page .ng-select.ng-select-single .ng-select-container,
+  .quick-modal-card .ng-select.ng-select-single .ng-select-container {
+    min-height: 44px !important;
+  }
+
+  .page input:not([type='checkbox']):not([type='radio']), .page textarea,
+  .page .ng-select input, .quick-modal-card input:not([type='checkbox']):not([type='radio']), .quick-modal-card textarea {
+    font-size: 16px !important;
+  }
+}
+
+// Keep picker actions reachable in landscape and when the keyboard reduces height.
+.quick-modal-card.picker-modal-card {
+  display: flex;
+  flex-direction: column;
+
+  > .modal-header, > .modal-footer { flex-shrink: 0; }
+  > .modal-body { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
+}
+
+// Financial lists become readable cards with actions in view on small screens.
+@media (max-width: 520px) {
+  .page .filters-toolbar .status-chips {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+  .page .filters-toolbar .status-chips .chip { min-height: 44px; }
+
+  app-estimates-live, app-invoices-live, app-customers-live, app-catalog-live {
+    .page-head {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 12px;
+    }
+
+    .page-head > .btn { width: 100%; }
+    .table-scroll { overflow: visible; }
+    .data-table { min-width: 0 !important; width: 100%; }
+    .data-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      clip-path: inset(50%);
+      overflow: hidden;
+    }
+    .data-table tbody { display: block; }
+    .data-table tr {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .data-table td {
+      display: block;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      text-align: left;
+    }
+    .data-table td:first-child, .data-table td:nth-child(2), .data-table td:last-child {
+      grid-column: 1 / -1;
+    }
+    .data-table td:not(:first-child):not(:last-child)::before {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .data-table td:nth-child(2)::before { content: 'Customer'; }
+    .data-table td:nth-child(3)::before { content: 'Created'; }
+    .data-table td:nth-child(4)::before { content: 'Expires'; }
+    .data-table td:nth-child(5)::before { content: 'Status'; }
+    .data-table td:nth-child(6)::before { content: 'Total'; }
+    .data-table .page-actions { flex-wrap: wrap !important; justify-content: flex-start !important; }
+    .data-table .page-actions .btn { flex: 1; }
+  }
+  app-invoices-live {
+    .data-table td:nth-child(3)::before { content: 'Issued / due'; }
+    .data-table td:nth-child(4)::before { content: 'Status'; }
+    .data-table td:nth-child(5)::before { content: 'Delivery'; }
+    .data-table td:nth-child(7)::before { content: 'Balance'; }
+  }
+  app-customers-live {
+    .data-table td:nth-child(2)::before { content: 'Contact'; }
+    .data-table td:nth-child(3) { grid-column: 1 / -1; }
+    .data-table td:nth-child(3)::before { content: 'Service address'; }
+    .data-table td:nth-child(4)::before { content: 'Type'; }
+    .data-table td:last-child::before { content: 'Status'; display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .person > span:last-child { min-width: 0; }
+  }
+  app-catalog-live {
+    .data-table td:nth-child(2)::before { content: 'Type'; }
+    .data-table td:nth-child(3)::before { content: 'Unit'; }
+    .data-table td:nth-child(4)::before { content: 'Cost'; }
+    .data-table td:nth-child(5)::before { content: 'Sale price'; }
+    .data-table td:last-child::before { content: 'Tax'; display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  }
+  app-customers-live, app-catalog-live, app-estimates-live, app-invoices-live {
+    .toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+    .toolbar > strong { grid-column: 1 / -1; }
+    .toolbar > .search { min-width: 0; }
+    .toolbar > span { display: none; }
+    .toolbar > .btn { justify-self: end; }
+    .toolbar .filter-ng-select { width: 100%; min-width: 0; }
+    .search input { min-height: 44px; }
+  }
+  .page .filters-toolbar .search-wrap { height: 44px !important; min-height: 44px !important; }
+  app-reports-live .period-buttons {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    width: 100%;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  app-reports-live .page-actions { width: 100%; flex-wrap: wrap; }
+  app-reports-live .period-buttons .btn { width: 100%; white-space: normal; }
+  app-customers-live, app-catalog-live, app-estimates-live, app-invoices-live {
+    .page > section.card { border: 0; background: transparent; box-shadow: none; overflow: visible; }
+    .toolbar { background: white; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; padding: 12px; }
+    .data-table tbody { display: grid; gap: 12px; }
+    .data-table tr { background: white; border: 1px solid var(--line); border-radius: 12px; }
+  }
+  app-jobs-live {
+    .page .job-list-card { border: 0; background: transparent; box-shadow: none; overflow: visible; }
+    .page .job-list-card .filters-toolbar { background: white; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; }
+    .page .job-list-card .mobile-jobs { padding: 0 !important; }
+  }
+}
+
 /* Custom sleek scrollbars */
 * {
   scrollbar-width: thin;
@@ -373,6 +519,7 @@ body {
   overflow-x: clip;
   max-width: 100vw;
   width: 100%;
+  font-size: 14px;
 }
 
 button,
@@ -1267,7 +1414,7 @@ button:disabled {
 }
 
 /* Content Links & Table Links (Fix purple visited links without affecting sidebar) */
-.page a:not(.btn):not(.back-link):not(.breadcrumb a):not(.tabs a):not(.toggle):not(.badge):not(.avatar),
+.page:not(.overview) a:not(.btn):not(.back-link):not(.breadcrumb a):not(.tabs a):not(.toggle):not(.badge):not(.avatar),
 .link,
 .link:visited,
 .cell-main a,
@@ -1280,7 +1427,7 @@ button:disabled {
   text-decoration: none;
 }
 
-.page a:not(.btn):not(.back-link):not(.breadcrumb a):not(.tabs a):not(.toggle):not(.badge):not(.avatar):not(.quick-link-btn):not(.card):not(.person):hover,
+.page:not(.overview) a:not(.btn):not(.back-link):not(.breadcrumb a):not(.tabs a):not(.toggle):not(.badge):not(.avatar):not(.quick-link-btn):not(.card):not(.person):hover,
 .link:hover,
 .cell-main a:hover,
 .data-table a:hover {
@@ -1357,7 +1504,8 @@ button:disabled {
   stroke: var(--teal) !important;
 }
 
-.bottom-nav .create svg {
+.bottom-nav a.create svg,
+.bottom-nav a.create.active svg {
   width: 30px !important;
   height: 30px !important;
   padding: 5px !important;
@@ -1581,8 +1729,13 @@ select:not(.filter-select):focus {
   display: none !important;
 }
 
-.ng-select.ng-select-single.ng-has-value:not(.ng-select-filtered) .ng-value-container .ng-input {
-  display: none !important;
+/* Keep the input focusable so selected dropdowns can still be searched. */
+.ng-select.ng-select-single.ng-has-value:not(.ng-select-filtered) .ng-value-container .ng-input>input {
+  opacity: 0;
+}
+
+.ng-select.ng-select-single.ng-select-filtered .ng-value-container .ng-input>input {
+  opacity: 1;
 }
 
 .ng-select.ng-select-single .ng-value-container:has(.ng-value) .ng-placeholder {
@@ -2620,7 +2773,7 @@ select:not(.filter-select):focus {
       small {
         display: block !important;
         color: var(--muted) !important;
-        font-size: 11px !important;
+        font-size: 12px !important;
         font-weight: 500 !important;
         letter-spacing: 0 !important;
         line-height: 1.3 !important;
@@ -3139,7 +3292,7 @@ select:not(.filter-select):focus {
    ========================================================================== */
 @media (max-width: 650px) {
   body {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .page {
@@ -3626,20 +3779,20 @@ select:not(.filter-select):focus {
 
       .info {
         strong {
-          font-size: 11.5px !important;
+          font-size: 13px !important;
           font-weight: 700 !important;
           color: var(--ink) !important;
         }
 
         small {
-          font-size: 9.5px !important;
+          font-size: 12px !important;
           color: var(--muted) !important;
           margin-top: 1px !important;
         }
       }
 
       .price {
-        font-size: 11.5px !important;
+        font-size: 13px !important;
         font-weight: 600 !important;
         color: var(--ink) !important;
       }
@@ -3666,13 +3819,13 @@ select:not(.filter-select):focus {
       }
 
       p {
-        font-size: 10.5px !important;
+        font-size: 12px !important;
         color: var(--muted) !important;
         margin: 0 0 8px !important;
       }
 
       label {
-        font-size: 10.5px !important;
+        font-size: 13px !important;
         font-weight: 600 !important;
         color: var(--ink) !important;
       }
@@ -3751,6 +3904,110 @@ select:not(.filter-select):focus {
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* Customer creation shares the popup layout with the price book. */
+app-job-live .page-head h1 {
+  font-size: 30px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+@media(max-width: 1200px) {
+  app-job-live .page-head h1 { font-size: 26px !important; }
+}
+@media(max-width: 880px) {
+  app-job-live .page-head { gap: 12px !important; margin-bottom: 18px !important; }
+  app-job-live .page-head > div:first-child { max-width: 100% !important; }
+  app-job-live .page-head h1 {
+    font-size: 22px !important;
+    line-height: 1.3 !important;
+    letter-spacing: -.4px !important;
+    margin-bottom: 6px !important;
+  }
+  app-job-live .page-head .back-link { margin-bottom: 8px; }
+}
+@media(max-width: 520px) {
+  app-job-live .page-head h1 { font-size: 20px !important; }
+}
+.customer-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 24px 80px #10293640;
+  overflow: hidden;
+}
+.customer-dialog::backdrop { background: rgb(16 41 54 / 55%); backdrop-filter: blur(2px); }
+.customer-dialog[open], .customer-dialog app-customer-form-live, .customer-popup {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.customer-popup { max-height: calc(100dvh - 34px); }
+.customer-popup-header, .customer-popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+  flex-shrink: 0;
+}
+.customer-popup-header { border-bottom: 1px solid var(--line); }
+.customer-popup-header h2 { margin: 0; font-size: 20px; }
+.customer-popup-header p { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.customer-popup .customer-form-section { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.customer-popup .form-grid { margin: 0; padding: 24px; }
+.customer-popup-footer { justify-content: flex-end; border-top: 1px solid var(--line); background: #f8fafb; }
+.customer-popup .btn, .customer-popup .icon-btn { min-height: 44px; }
+body:has(dialog[open], .quick-modal-backdrop, .modal-backdrop) { overflow: hidden; }
+
+@media(max-width: 880px) {
+  .quick-modal-backdrop, .modal-backdrop {
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: flex-end !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  .quick-modal-card, .modal-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    margin: auto 0 0 !important;
+    border-radius: 20px 20px 0 0 !important;
+    border: 0 !important;
+  }
+  .quick-modal-card { display: flex; flex-direction: column; overflow: hidden; }
+  .quick-modal-card > .modal-header, .quick-modal-card .modal-footer { flex-shrink: 0; }
+  .quick-modal-card .modal-body { overflow-y: auto; }
+  .modal-card { overflow-y: auto !important; overscroll-behavior: contain; }
+  dialog.catalog-dialog, dialog.customer-dialog {
+    position: fixed;
+    inset: auto 0 0;
+    margin: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+    border: 0 !important;
+  }
+  .customer-popup { max-height: 92dvh; }
+  .customer-popup-header, .customer-popup .form-grid { padding: 18px; }
+  .customer-popup .form-grid, .customer-popup .grid-3-cols { grid-template-columns: minmax(0, 1fr); }
+  .customer-popup-footer { padding: 14px 18px max(14px, env(safe-area-inset-bottom)); }
+  .customer-popup-footer .btn { flex: 1; justify-content: center; }
+  .catalog-dialog .catalog-dialog-footer { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  .quick-modal-card > form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .quick-modal-card .modal-body { min-height: 0; overscroll-behavior: contain; }
+  .quick-modal-card .btn, .quick-modal-card .modal-close-btn { min-height: 44px !important; }
+  .customer-popup input:not([type='checkbox']), .customer-popup .ng-select input { font-size: 16px !important; }
+}
+@media(prefers-reduced-motion: reduce) {
+  .quick-modal-card, .modal-card { animation: none !important; }
 }
 
 // Financial documents share a compact action area and readable mobile line items.
@@ -3892,4 +4149,69 @@ app-invoice-detail-live {
       max-width: none;
     }
   }
+}
+
+/* Shared type scale for business pages and their dialogs. */
+app-customers-live .page .page-head { display:grid !important; grid-template-columns:minmax(0,1fr) auto; gap:6px 12px !important; align-items:center !important; }
+app-customers-live .page .page-head > div:first-child { display:contents; }
+app-customers-live .page .page-head .eyebrow { grid-column:1; grid-row:1; }
+app-customers-live .page .page-head h1 { grid-column:1; grid-row:2; margin:0 !important; }
+app-customers-live .page .page-head p:not(.eyebrow) { grid-column:1 / -1; grid-row:3; }
+app-customers-live .page .page-head > .page-actions { grid-column:2; grid-row:1 / span 2; align-self:start; width:auto !important; margin-top:0 !important; }
+app-customers-live .page .page-head .page-actions .btn { width:auto !important; white-space:nowrap; }
+.page .page-head > .btn,
+.page .page-head .page-actions .btn {
+  min-height:44px !important;
+  padding:8px 14px !important;
+  border-radius:8px !important;
+  font-size:var(--control-text-size,14px) !important;
+}
+.page {
+  --page-title-size: 28px;
+  --section-title-size: 18px;
+  --control-text-size: 14px;
+}
+.page .page-head h1, .page .overview-header h1 {
+  font-size: var(--page-title-size) !important;
+  line-height: 1.3 !important;
+  letter-spacing: -.5px !important;
+  overflow-wrap: anywhere;
+}
+.page .page-head p:not(.eyebrow), .page .overview-header .intro {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+.page .card-head h2, .page .overview-section-head h2 { font-size: var(--section-title-size); line-height: 1.4; }
+.page .btn, .quick-modal-card .btn, .catalog-dialog .btn, .customer-popup .btn { font-size: var(--control-text-size, 14px) !important; }
+.page .field label, .quick-modal-card .modal-body label { font-size: 13px !important; line-height: 1.4; }
+.page small, .page .stat-meta, .page .field-error { font-size: 12px !important; line-height: 1.5; }
+.page .stat-meta { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
+/* ng-select can render a selected value before its host value class updates. */
+.ng-select.ng-select-single:not(.ng-select-filtered) .ng-select-container .ng-value-container:has(.ng-value) .ng-placeholder { display: none !important; }
+@media(max-width:1200px) { .page { --page-title-size: 26px; } }
+@media(max-width:880px) {
+  .page { --page-title-size: 22px; --section-title-size: 16px; --control-text-size: 13px; }
+  .page .page-head p:not(.eyebrow), .page .overview-header .intro { font-size: 13px !important; }
+  .page .page-head h1 { margin-bottom: 6px !important; }
+  .page .stat-label { font-size: 12px !important; }
+  app-subscription-live .page .price > strong { font-size: 32px !important; line-height: 1.2; }
+  app-customer-form-live .page .card-head { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .page .data-table td::before { font-size: 12px !important; }
+  .page .data-table td, .page .cell-main strong { font-size: 14px; }
+  .quick-modal-card .modal-header h2, .quick-modal-card .modal-header h3,
+  .catalog-dialog .catalog-dialog-header h2, .customer-popup-header h2 { font-size: 18px !important; line-height: 1.35; }
+  .quick-modal-card .modal-header p, .quick-modal-card .modal-body small,
+  .quick-modal-card .picker-count-label, .quick-modal-card .choice-detail small,
+  .quick-modal-card .catalog-choice-meta small { font-size: 12px !important; line-height: 1.5; }
+  .quick-modal-card .picker-commit-btn, .quick-modal-card .catalog-tabs button { font-size: 13px !important; }
+  .page .progress-step { font-size: 11px; }
+  app-job-live .page .page-head h1 { font-size: 22px !important; }
+  app-login-page h1, app-onboarding h1 { font-size: 24px !important; line-height: 1.3; }
+  .app-sidebar .workspace-picker small, .app-sidebar .user-card small,
+  .app-sidebar .plan-mini small { font-size: 12px; }
+  app-shell .bottom-nav a, app-shell .bottom-nav button { font-size: 11px !important; }
+}
+@media(max-width:520px) {
+  app-job-live .page .page-head h1,
+  app-customer-live .page .page-head h1 { font-size: 20px !important; }
 }
