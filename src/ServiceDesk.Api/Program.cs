@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using ServiceDesk.Api.Authentication;
 using ServiceDesk.Api.Extensions;
 using ServiceDesk.Api.Middleware;
@@ -6,8 +7,8 @@ using ServiceDesk.Api.Security;
 using ServiceDesk.Api.Tenancy;
 using ServiceDesk.Application.Abstractions;
 using ServiceDesk.Application.Security;
-using ServiceDesk.Infrastructure.Tenancy;
 using ServiceDesk.Application.Work;
+using ServiceDesk.Infrastructure.Tenancy;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,17 @@ builder.Services.AddCors(options =>
         .WithExposedHeaders("Content-Disposition"));
 });
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("AuthPolicy", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+});
+
 // ─── Authentication ───────────────────────────────────────────────────────────
 // Primary scheme: Native ServiceDesk JWT Bearer (Email/Password, Google, Apple).
 // Fallback: Development mock handler (only active in Development environment).
@@ -33,6 +45,14 @@ builder.Services.AddCors(options =>
 
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"]
     ?? "ServiceDeskSuperSecretSigningKeyForDevelopmentPurposesOnly_MustBeAtLeast32BytesLong!";
+
+if (!builder.Environment.IsDevelopment() &&
+    (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:SecretKey"]) ||
+     jwtSecretKey.Contains("DevelopmentPurposesOnly", StringComparison.OrdinalIgnoreCase)))
+{
+    throw new InvalidOperationException("FATAL: A secure, non-default Jwt:SecretKey configuration is required in Production.");
+}
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "ServiceDesk.Api";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "ServiceDesk.Client";
 var signingKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecretKey));
@@ -111,8 +131,24 @@ builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHand
 
 var app = builder.Build();
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    await next();
+});
+
 app.UseExceptionHandler();
 app.UseCors("Angular");
+app.UseRateLimiter();
 app.UseRouting();
 app.UseAuthentication();
 app.UseMiddleware<PlatformContextMiddleware>();

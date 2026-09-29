@@ -1,9 +1,15 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, throwError } from 'rxjs';
 
 /**
- * Attaches the native ServiceDesk JWT Bearer token to outgoing /api/* requests.
+ * Attaches the native ServiceDesk JWT Bearer token to outgoing /api/* requests,
+ * and handles 401 unauthorized session expiry.
  */
 export const apiContextInterceptor: HttpInterceptorFn = (request, next) => {
+  const router = inject(Router);
+
   // If requesting platform admin endpoints, use dev platform admin header if available
   if (request.url.includes('/api/v1/admin')) {
     const devAdminId = sessionStorage.getItem('servicedesk.devPlatformAdminId') ?? '99999999-9999-9999-9999-999999999999';
@@ -23,5 +29,14 @@ export const apiContextInterceptor: HttpInterceptorFn = (request, next) => {
       },
     });
   }
-  return next(request);
+
+  return next(request).pipe(
+    catchError((error: unknown) => {
+      if (error instanceof HttpErrorResponse && error.status === 401 && !request.url.includes('/api/v1/auth/')) {
+        sessionStorage.clear();
+        void router.navigate(['/login'], { queryParams: { expired: '1' } });
+      }
+      return throwError(() => error);
+    })
+  );
 };

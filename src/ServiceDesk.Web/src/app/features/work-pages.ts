@@ -1190,7 +1190,7 @@ export class JobFormLivePage {
 }
 
 @Component({selector:'app-customer-live',imports:[RouterLink,DatePipe,CurrencyPipe],template:`
-<main class="page">@if(loading()){<div class="card card-body muted">Loading customer…</div>}@else if(error()){<div class="card card-body callout error-text">{{error()}}</div>}@else if(customer();as c){<header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/customers">Customers</a><span class="crumb-sep">/</span><span class="crumb-current">{{c.name}}</span></nav><div class="person"><span class="avatar">{{initials(c.name)}}</span><div><h1>{{c.name}}</h1><p>{{c.customerType}} customer · added {{c.createdAt|date:'MMM yyyy'}}</p></div></div></div><div class="page-actions"><a class="btn primary" [routerLink]="['/app/jobs/new']" [queryParams]="{customerId: c.id}">＋ Create job</a></div></header><section class="split"><article class="card"><div class="card-head"><h2>Contact details</h2></div><div class="card-body form-grid"><div><small class="muted">PHONE</small><p>{{c.phone}}</p></div><div><small class="muted">EMAIL</small><p>{{c.email||'Not provided'}}</p></div><div class="wide"><small class="muted">SERVICE ADDRESS</small><p>{{c.addressLine1}}, {{c.city}}, {{c.stateCode}} {{c.postalCode}}</p></div></div></article><aside class="card"><div class="card-head"><h2>Account</h2></div><div class="card-body"><span class="badge">Active</span><p class="muted">{{c.companyName||'Individual customer'}}</p></div></aside></section>
+<main class="page">@if(loading()){<div class="card card-body muted">Loading customer…</div>}@else if(error()){<div class="card card-body callout error-text">{{error()}}</div>}@else if(customer();as c){<header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/customers">Customers</a><span class="crumb-sep">/</span><span class="crumb-current">{{c.name}}</span></nav><div class="person"><span class="avatar">{{initials(c.name)}}</span><div><h1>{{c.name}}</h1><p>{{c.customerType}} customer · added {{c.createdAt|date:'MMM yyyy'}}</p></div></div></div><div class="page-actions"><a class="btn primary" [routerLink]="['/app/jobs/new']" [queryParams]="{customerId: c.id}">＋ Create job</a></div></header><section class="split"><article class="card"><div class="card-head"><h2>Contact details</h2></div><div class="card-body form-grid"><div><small class="muted">PHONE</small><p>@if(c.phone){<a class="link" [href]="'tel:'+c.phone">{{c.phone}}</a>}@else{Not provided}</p></div><div><small class="muted">EMAIL</small><p>@if(c.email){<a class="link" [href]="'mailto:'+c.email">{{c.email}}</a>}@else{Not provided}</p></div><div class="wide"><small class="muted">SERVICE ADDRESS</small><p>{{c.addressLine1}}, {{c.city}}, {{c.stateCode}} {{c.postalCode}}</p></div></div></article><aside class="card"><div class="card-head"><h2>Account</h2></div><div class="card-body"><span class="badge">Active</span><p class="muted">{{c.companyName||'Individual customer'}}</p></div></aside></section>
 <section class="card section-gap">
   <div class="card-head" style="border-bottom: 1px solid var(--line); display:flex; gap:8px; align-items:center;">
     <button type="button" class="tab-btn" [class.active]="activeTab()==='jobs'" (click)="activeTab.set('jobs')">Jobs ({{customerJobs().length}})</button>
@@ -1453,9 +1453,18 @@ export class CustomerLivePage {
               <p>{{c.customerType || 'Residential'}} customer</p>
             </div>
           </div>
-          <div class="address-line">📍 {{c.addressLine1}}, {{c.city}} {{c.stateCode}} {{c.postalCode}}</div>
-          <div class="address-line">📞 {{c.phone}}</div>
-          <div class="address-line">✉️ {{c.email || 'No email provided'}}</div>
+          <div class="address-line">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            {{c.addressLine1}}, {{c.city}} {{c.stateCode}} {{c.postalCode}}
+          </div>
+          <div class="address-line">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            @if(c.phone){<a class="link" [href]="'tel:'+c.phone">{{c.phone}}</a>}@else{No phone provided}
+          </div>
+          <div class="address-line">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            @if(c.email){<a class="link" [href]="'mailto:'+c.email">{{c.email}}</a>}@else{No email provided}
+          </div>
           <a [routerLink]="['/app/customers', c.id]" class="text-link" style="margin-top:14px">Customer details →</a>
         </div>
       </article>

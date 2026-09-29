@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ServiceDesk.Application.Abstractions;
 using ServiceDesk.Application.Security;
 
@@ -12,6 +13,7 @@ namespace ServiceDesk.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/auth")]
+[EnableRateLimiting("AuthPolicy")]
 public sealed class AuthController(
     IAuthenticationService authenticationService,
     IEmailVerificationService emailVerificationService,

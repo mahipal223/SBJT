@@ -14,6 +14,7 @@ import { SmtpSettingsPage } from './features/smtp-settings.page';
 import { SubscriptionLivePage } from './features/subscription.page';
 import { DashboardLivePage } from './features/dashboard-live.page';
 import { ReportsLivePage } from './features/reports-live.page';
+import { NotFoundPage } from './features/not-found.page';
 
 export const routes: Routes = [
   // ── Public auth routes ──────────────────────────────────────────────────────
@@ -29,28 +30,28 @@ export const routes: Routes = [
     component: AppShell,
     canActivate: [authGuard, workspaceGuard],
     children: [
-      { path: 'overview', component: DashboardLivePage },
-      { path: 'customers', component: CustomersLivePage },
-      { path: 'customers/new', component: CustomerFormLivePage },
-      { path: 'customers/:id', component: CustomerLivePage },
-      { path: 'customers/detail', component: CustomerDetailPage },
-      { path: 'jobs', component: JobsLivePage },
-      { path: 'jobs/new', component: JobFormLivePage },
-      { path: 'jobs/:id', component: JobLivePage },
-      { path: 'jobs/detail', component: JobDetailPage },
-      { path: 'schedule', component: SchedulePage },
-      { path: 'catalog', component: CatalogLivePage },
-      { path: 'estimates', component: EstimatesLivePage },
-      { path: 'estimates/:id', component: EstimateDetailLivePage },
-      { path: 'invoices', component: InvoicesLivePage },
-      { path: 'invoices/:id', component: InvoiceDetailLivePage },
-      { path: 'reports', component: ReportsLivePage },
-      { path: 'team', component: TeamPage },
-      { path: 'subscription', component: SubscriptionLivePage },
-      { path: 'settings', component: SettingsPage },
-      { path: 'settings/smtp', component: SmtpSettingsPage },
+      { path: 'overview', component: DashboardLivePage, title: 'Dashboard | ServiceDesk' },
+      { path: 'customers', component: CustomersLivePage, title: 'Customers | ServiceDesk' },
+      { path: 'customers/new', component: CustomerFormLivePage, title: 'New Customer | ServiceDesk' },
+      { path: 'customers/:id', component: CustomerLivePage, title: 'Customer Details | ServiceDesk' },
+      { path: 'customers/detail', component: CustomerDetailPage, title: 'Customer Details | ServiceDesk' },
+      { path: 'jobs', component: JobsLivePage, title: 'Jobs | ServiceDesk' },
+      { path: 'jobs/new', component: JobFormLivePage, title: 'New Job | ServiceDesk' },
+      { path: 'jobs/:id', component: JobLivePage, title: 'Job Details | ServiceDesk' },
+      { path: 'jobs/detail', component: JobDetailPage, title: 'Job Details | ServiceDesk' },
+      { path: 'schedule', component: SchedulePage, title: 'Schedule | ServiceDesk' },
+      { path: 'catalog', component: CatalogLivePage, title: 'Services & Parts | ServiceDesk' },
+      { path: 'estimates', component: EstimatesLivePage, title: 'Estimates | ServiceDesk' },
+      { path: 'estimates/:id', component: EstimateDetailLivePage, title: 'Estimate Details | ServiceDesk' },
+      { path: 'invoices', component: InvoicesLivePage, title: 'Invoices & Payments | ServiceDesk' },
+      { path: 'invoices/:id', component: InvoiceDetailLivePage, title: 'Invoice Details | ServiceDesk' },
+      { path: 'reports', component: ReportsLivePage, title: 'Reports | ServiceDesk' },
+      { path: 'team', component: TeamPage, title: 'Team | ServiceDesk' },
+      { path: 'subscription', component: SubscriptionLivePage, title: 'Subscription & Usage | ServiceDesk' },
+      { path: 'settings', component: SettingsPage, title: 'Business Settings | ServiceDesk' },
+      { path: 'settings/smtp', component: SmtpSettingsPage, title: 'SMTP Settings | ServiceDesk' },
       { path: 'admin', redirectTo: '/platform-admin', pathMatch: 'full' },
-      { path: 'technician', component: TechnicianPage },
+      { path: 'technician', component: TechnicianPage, title: 'Technician View | ServiceDesk' },
       { path: '', pathMatch: 'full', redirectTo: 'overview' },
     ],
   },
@@ -112,5 +113,5 @@ export const routes: Routes = [
 
   // ── Fallback redirects ───────────────────────────────────────────────────────
   { path: '', pathMatch: 'full', redirectTo: 'app' },
-  { path: '**', redirectTo: 'app' },
+  { path: '**', component: NotFoundPage, title: 'Page Not Found | ServiceDesk' },
 ];
