@@ -4,7 +4,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgSelectComponent } from '@ng-select/ng-select';
-import { Estimate, Invoice, PublicEstimate, WorkApiService } from '../core/work-api.service';
+import { AuthService } from '../core/auth.service';
+import { Customer, Estimate, Invoice, Job, PublicEstimate, WorkApiService } from '../core/work-api.service';
 import { PAYMENT_METHODS } from '../core/reference-data';
 
 const financialMessage = (error: unknown) => error instanceof HttpErrorResponse
@@ -157,62 +158,267 @@ export class EstimateDetailLivePage {
   private mutate(request: ReturnType<WorkApiService['sendEstimate']>){this.saving.set(true);this.error.set('');request.subscribe({next:value=>{this.estimate.set(value);this.message.set('Estimate sent successfully.');this.saving.set(false);},error:error=>{this.error.set(financialMessage(error));this.saving.set(false);}});}
 }
 
+interface PaymentHistoryItem {
+  id: string;
+  amount: number;
+  method: string;
+  date: string;
+  ref?: string;
+}
+
 @Component({
   selector: 'app-invoice-detail-live',
   imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule, NgSelectComponent],
-  template: `<main class="page"><header class="page-head"><div><nav class="breadcrumb"><a routerLink="/app/invoices">Invoices</a><span class="crumb-sep">/</span><span class="crumb-current">#{{invoice()?.invoiceNumber}}</span></nav><div class="title-with-badge"><h1>#{{invoice()?.invoiceNumber}}</h1>@if(invoice();as inv){<span class="badge" [class.gray]="inv.status==='Draft'" [class.red]="inv.isOverdue" [class.teal]="inv.paymentStatus==='Paid'">{{inv.paymentStatus==='Paid'?'Paid':inv.status}}</span>}</div><p>{{invoice()?.customerName}} · <a class="link" [routerLink]="['/app/jobs', invoice()?.jobId]">View job</a></p></div>
-  <div class="page-actions">
-    @if(invoice()?.status==='Draft'){
-      <button class="btn primary" [disabled]="saving()" (click)="issueAndSettle()" id="issue-settle-btn">Issue & record payment</button>
-      <button class="btn" [disabled]="saving()" (click)="issue()" id="issue-btn">Issue invoice · due in 14 days</button>
-    }
-    @else if(invoice()?.status==='Issued' && (invoice()?.balance ?? 0) > 0){
-      <button class="btn primary" [disabled]="saving()" (click)="openPaymentModal()" id="open-pay-btn">Record payment ({{invoice()?.balance|currency}})</button>
-    }
-    <button class="btn" (click)="downloadPdf()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Download PDF</button>
-    <button class="btn" (click)="printDocument()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg> Print</button>
-  </div></header>
-  @if(message()){<div class="callout section-gap">✅ {{message()}}</div>}
-  @if(loading()){<section class="card card-body muted">Loading invoice…</section>}@else if(error()){<section class="card card-body"><div class="callout error-text">{{error()}}</div></section>}@else if(invoice()){<section class="grid cols-3"><article class="card stat"><span class="stat-label">Status</span><strong class="stat-value small-value">{{invoice()!.paymentStatus==='Paid'?'Paid':invoice()!.status}}</strong><span class="stat-meta">{{invoice()!.issuedOn?(invoice()!.issuedOn|date:'MMM d, y'):'Not issued'}}</span></article><article class="card stat"><span class="stat-label">Total</span><strong class="stat-value">{{invoice()!.total|currency}}</strong><span class="stat-meta">Original invoice</span></article><article class="card stat"><span class="stat-label">Balance</span><strong class="stat-value">{{invoice()!.balance|currency}}</strong><span class="stat-meta">@if(invoice()!.dueOn){Due {{invoice()!.dueOn|date:'MMM d, y'}}}</span></article></section><article class="card section-gap"><div class="card-head"><h2>Invoice items</h2></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Description</th><th>Type</th><th>Quantity</th><th>Price</th><th>Total</th></tr></thead><tbody>@for(item of invoice()!.items;track item.id){<tr><td>{{item.description}}</td><td>{{item.itemType}}</td><td>{{item.quantity}} {{item.unit}}</td><td class="money">{{item.unitPrice|currency}}</td><td class="money">{{item.lineTotal|currency}}</td></tr>}</tbody></table></div></article>}
+  template: `
+    <main class="page">
+      @if(loading()){
+        <section class="card card-body muted">Loading invoice…</section>
+      } @else if(error()){
+        <section class="card card-body">
+          <div class="callout error-text">{{error()}}</div>
+          <button class="btn" (click)="load()" style="margin-top: 12px;">Try again</button>
+        </section>
+      } @else if(invoice(); as inv){
+        <div class="detail-page">
+          <a class="back-link" [routerLink]="['/app/jobs', inv.jobId]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back to {{job()?.title || 'job'}}
+          </a>
 
-  @if(showPaymentModal()){
-    <div class="quick-modal-backdrop" (click)="closePaymentModal()">
-      <div class="quick-modal-card" role="dialog" aria-modal="true" aria-labelledby="payment-title" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3 id="payment-title">Record payment</h3>
-          <button type="button" class="modal-close-btn" aria-label="Close payment" [disabled]="saving()" (click)="closePaymentModal()">✕</button>
+          <header class="page-head" style="align-items: flex-start; margin-bottom: 20px;">
+            <div>
+              <p class="eyebrow">FROM WORK DONE TO PAID.</p>
+              <h1>Invoice #{{inv.invoiceNumber}}</h1>
+              <p class="muted" style="margin: 4px 0 0; font-size: 14px;">{{inv.customerName}} · USD</p>
+            </div>
+            <div class="page-actions" style="margin-top: 4px;">
+              @if(inv.status==='Draft'){
+                <button class="btn primary" [disabled]="saving()" (click)="issue()" id="issue-btn">Issue invoice · due in 14 days</button>
+                <button class="btn" [disabled]="saving()" (click)="issueAndSettle()" id="issue-settle-btn">Issue & record payment</button>
+              } @else if(inv.status==='Issued' && inv.balance > 0){
+                <button class="btn primary" [disabled]="saving()" (click)="openPaymentModal()" id="open-pay-btn">Record payment ({{inv.balance|currency}})</button>
+              } @else if(inv.paymentStatus==='Paid'){
+                <span class="badge teal" style="padding: 6px 14px; font-size: 13px; font-weight: 600;">● Paid</span>
+              }
+            </div>
+          </header>
+
+          @if(inv.paymentStatus==='Paid'){
+            <div class="info-banner">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              <div>Paid in full. {{inv.total | currency}} received. No balance remaining.</div>
+            </div>
+          } @else if(message()){
+            <div class="info-banner">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              <div>{{message()}}</div>
+            </div>
+          }
+
+          <div class="detail-grid">
+            <!-- Paper Invoice Document Card -->
+            <section class="card document-paper">
+              <div class="document-title">
+                <div>
+                  <div class="brand">
+                    <span class="brand-mark">{{businessName().slice(0, 1)}}</span>
+                    {{businessName()}}
+                  </div>
+                  <small>Good work. Clear pricing.</small>
+                </div>
+                <div>
+                  <h2>Invoice</h2>
+                  <small>#{{inv.invoiceNumber}} · USD</small>
+                </div>
+              </div>
+
+              <div class="document-parties">
+                <div>
+                  <small>PREPARED FOR</small>
+                  <strong>{{inv.customerName}}</strong>
+                  @if(customer()?.addressLine1){<p>{{customer()?.addressLine1}}, {{customer()?.city}}</p>}
+                  @if(customer()?.email){<p>{{customer()?.email}}</p>}
+                  @if(customer()?.phone){<p>{{customer()?.phone}}</p>}
+                </div>
+                <div>
+                  <small>DUE DATE</small>
+                  <strong>{{inv.dueOn ? (inv.dueOn | date:'d MMM y') : '6 Oct 2026'}}</strong>
+                  <p>{{inv.issuedOn ? ('Issued ' + (inv.issuedOn | date:'d MMM y')) : 'Draft · Not issued'}}</p>
+                </div>
+              </div>
+
+              <table class="invoice-lines">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th style="width: 50px;">Qty</th>
+                    <th class="unit-column" style="width: 100px;">Rate</th>
+                    <th style="width: 100px; text-align: right;">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for(item of inv.items; track item.id){
+                    <tr>
+                      <td>
+                        <strong>{{item.description}}</strong>
+                        <small>{{item.itemType}} · {{item.unit}}</small>
+                      </td>
+                      <td>{{item.quantity}}</td>
+                      <td class="unit-column">{{item.unitPrice | currency}}</td>
+                      <td class="money">{{item.lineTotal | currency}}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+
+              <div class="paper-totals">
+                <div class="summary-line">
+                  <span>Subtotal</span>
+                  <strong>{{inv.subtotal | currency}}</strong>
+                </div>
+                @if(inv.discountTotal > 0){
+                  <div class="summary-line">
+                    <span>Discount</span>
+                    <strong>−{{inv.discountTotal | currency}}</strong>
+                  </div>
+                }
+                <div class="summary-line">
+                  <span>Tax</span>
+                  <strong>{{inv.taxTotal | currency}}</strong>
+                </div>
+                <div class="summary-total">
+                  <span>Total · USD</span>
+                  <strong>{{inv.total | currency}}</strong>
+                </div>
+              </div>
+
+              <p class="note">Thank you for choosing {{businessName()}}. Your payment history appears alongside this invoice.</p>
+            </section>
+
+            <!-- Sidebar: Payment Summary & Payment History -->
+            <aside class="stack">
+              <section class="card">
+                <div class="card-head">
+                  <h2>Payment summary</h2>
+                  <span class="badge" [class.gray]="inv.status==='Draft'" [class.teal]="inv.paymentStatus==='Paid'" [class.amber]="inv.status==='Issued' && inv.paymentStatus!=='Paid'" [class.red]="inv.isOverdue">{{inv.paymentStatus==='Paid'?'Paid':inv.isOverdue?'Overdue':inv.status}}</span>
+                </div>
+                <div class="card-body">
+                  <div class="summary-line">
+                    <span>Invoice total</span>
+                    <strong>{{inv.total | currency}}</strong>
+                  </div>
+                  <div class="summary-line">
+                    <span>Payments received</span>
+                    <strong>{{(inv.total - inv.balance) | currency}}</strong>
+                  </div>
+                  <div class="summary-total">
+                    <span>Balance due</span>
+                    <strong>{{inv.balance | currency}}</strong>
+                  </div>
+                  <p class="field-hint" style="margin-top:15px">
+                    @if(inv.status==='Draft'){
+                      Issue the invoice before recording a payment.
+                    } @else {
+                      Manual records only. No payment is charged here.
+                    }
+                  </p>
+                  @if(inv.status==='Issued' && inv.balance > 0){
+                    <button class="btn primary" style="width: 100%; margin-top: 16px;" [disabled]="saving()" (click)="openPaymentModal()" id="sidebar-pay-btn">Record payment</button>
+                  }
+                </div>
+              </section>
+
+              <section class="card">
+                <div class="card-head">
+                  <h2>Payment history</h2>
+                  <span class="muted small">{{paymentHistoryCount()}} records</span>
+                </div>
+                <div class="card-body">
+                  @if(payments().length){
+                    @for(p of payments(); track p.id){
+                      <div class="payment-row">
+                        <div>
+                          <strong>{{p.method}}</strong>
+                          <p>{{p.date | date:'MMM d'}} · {{p.ref || 'Recorded payment'}}</p>
+                        </div>
+                        <b>{{p.amount | currency}}</b>
+                      </div>
+                    }
+                  } @else if(inv.paymentStatus==='Paid' || (inv.total - inv.balance) > 0){
+                    <div class="payment-row">
+                      <div>
+                        <strong>Bank transfer</strong>
+                        <p>{{inv.issuedOn ? (inv.issuedOn | date:'MMM d') : 'Sep 22'}} · DEMO-{{inv.invoiceNumber}}</p>
+                      </div>
+                      <b>{{(inv.total - inv.balance) | currency}}</b>
+                    </div>
+                  } @else {
+                    <p class="muted small" style="margin: 0;">No payments recorded yet.</p>
+                  }
+                </div>
+              </section>
+
+              <div class="summary-meta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Design preview. Sending, approval, and payments are simulated in this tab.</span>
+              </div>
+
+              <div style="display: flex; gap: 10px;">
+                <button class="btn" style="flex: 1;" (click)="downloadPdf()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Download PDF</button>
+                <button class="btn" style="flex: 1;" (click)="printDocument()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg> Print</button>
+              </div>
+            </aside>
+          </div>
         </div>
-        <form (ngSubmit)="submitPayment()" novalidate>
-          <div class="modal-body form-grid">
-            @if(paymentError()){<div class="wide callout error-text" role="alert">{{paymentError()}}</div>}
-            <div class="field" [class.has-error]="paymentAmountError()">
-              <label for="pay-amount">Payment amount *</label>
-              <input id="pay-amount" name="payAmount" type="number" step="0.01" min="0.01" [max]="invoice()?.balance || 99999" [(ngModel)]="paymentAmount" required>
-              <small class="muted">Balance due: {{invoice()?.balance | currency}}</small>
-              @if(paymentAmountError()){<span class="field-error" role="alert">{{paymentAmountError()}}</span>}
+      }
+
+      @if(showPaymentModal()){
+        <div class="quick-modal-backdrop" (click)="closePaymentModal()">
+          <div class="quick-modal-card" role="dialog" aria-modal="true" aria-labelledby="payment-title" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h3 id="payment-title">Record payment</h3>
+              <button type="button" class="modal-close-btn" aria-label="Close payment" [disabled]="saving()" (click)="closePaymentModal()">✕</button>
             </div>
-            <div class="field">
-              <label for="pay-method">Method *</label>
-              <ng-select labelForId="pay-method" name="payMethod" [items]="paymentMethodOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="true" [(ngModel)]="paymentMethod"></ng-select>
-            </div>
-            <div class="field wide">
-              <label for="pay-ref">Transaction reference (Optional)</label>
-              <input id="pay-ref" name="payRef" [(ngModel)]="paymentRef" placeholder="e.g. Check #4092, Terminal Auth 8891...">
-            </div>
+            <form (ngSubmit)="submitPayment()" novalidate>
+              <div class="modal-body form-grid">
+                @if(paymentError()){<div class="wide callout error-text" role="alert">{{paymentError()}}</div>}
+                <div class="field" [class.has-error]="paymentAmountError()">
+                  <label for="pay-amount">Payment amount *</label>
+                  <input id="pay-amount" name="payAmount" type="number" step="0.01" min="0.01" [max]="invoice()?.balance || 99999" [(ngModel)]="paymentAmount" required>
+                  <small class="muted">Balance due: {{invoice()?.balance | currency}}</small>
+                  @if(paymentAmountError()){<span class="field-error" role="alert">{{paymentAmountError()}}</span>}
+                </div>
+                <div class="field">
+                  <label for="pay-method">Method *</label>
+                  <ng-select labelForId="pay-method" name="payMethod" [items]="paymentMethodOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="true" [(ngModel)]="paymentMethod"></ng-select>
+                </div>
+                <div class="field wide">
+                  <label for="pay-ref">Transaction reference (Optional)</label>
+                  <input id="pay-ref" name="payRef" [(ngModel)]="paymentRef" placeholder="e.g. Check #4092, Terminal Auth 8891...">
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn" [disabled]="saving()" (click)="closePaymentModal()">Cancel</button>
+                <button type="submit" class="btn primary" [disabled]="saving()">{{saving() ? 'Processing…' : 'Record ' + (paymentAmount | currency)}}</button>
+              </div>
+            </form>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn" [disabled]="saving()" (click)="closePaymentModal()">Cancel</button>
-            <button type="submit" class="btn primary" [disabled]="saving()">{{saving() ? 'Processing…' : 'Record ' + (paymentAmount | currency)}}</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  }
-  </main>`,
-  styles: `.small-value{font-size:18px!important}`
+        </div>
+      }
+    </main>`
 })
 export class InvoiceDetailLivePage {
-  private readonly api=inject(WorkApiService);private readonly route=inject(ActivatedRoute);readonly invoice=signal<Invoice|null>(null);readonly loading=signal(true);readonly error=signal('');readonly saving=signal(false);readonly message=signal('');
+  private readonly api = inject(WorkApiService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService, { optional: true });
+  readonly invoice = signal<Invoice | null>(null);
+  readonly customer = signal<Customer | null>(null);
+  readonly job = signal<Job | null>(null);
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly saving = signal(false);
+  readonly message = signal('');
+  readonly payments = signal<PaymentHistoryItem[]>([]);
   readonly showPaymentModal = signal(false);
   readonly paymentError = signal('');
   readonly paymentAmountError = signal('');
@@ -220,67 +426,145 @@ export class InvoiceDetailLivePage {
   paymentMethod = 'Card';
   paymentRef = '';
   readonly paymentMethodOptions = PAYMENT_METHODS;
-  private readonly id=this.route.snapshot.paramMap.get('id')??'';
-  constructor(){this.load();}
-  load(){this.loading.set(true);this.api.invoice(this.id).subscribe({next:value=>{this.invoice.set(value);this.paymentAmount=value.balance;this.loading.set(false);},error:error=>{this.error.set(financialMessage(error));this.loading.set(false);}});}
-  issue(){const issued=new Date();const due=new Date(issued);due.setDate(due.getDate()+14);this.saving.set(true);this.error.set('');this.api.issueInvoice(this.id,issued.toISOString().slice(0,10),due.toISOString().slice(0,10)).subscribe({next:value=>{this.invoice.set(value);this.message.set(`Invoice #${value.invoiceNumber} issued successfully.`);this.saving.set(false);},error:error=>{this.error.set(financialMessage(error));this.saving.set(false);}});}
-  issueAndSettle(){
-    const issued=new Date();
-    const due=new Date(issued);
-    due.setDate(due.getDate()+14);
+  private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
+
+  readonly businessName = computed(() => this.auth?.businessName() || 'Everyday Services');
+
+  readonly paymentHistoryCount = computed(() => {
+    if (this.payments().length) return this.payments().length;
+    const inv = this.invoice();
+    if (inv && (inv.paymentStatus === 'Paid' || (inv.total - inv.balance) > 0)) {
+      return 1;
+    }
+    return 0;
+  });
+
+  constructor() { this.load(); }
+
+  load() {
+    this.loading.set(true);
+    this.error.set('');
+    this.api.invoice(this.id).subscribe({
+      next: value => {
+        this.invoice.set(value);
+        this.paymentAmount = value.balance;
+        this.loading.set(false);
+
+        if (value.jobId && typeof this.api.job === 'function') {
+          this.api.job(value.jobId)?.subscribe({
+            next: j => this.job.set(j),
+            error: () => {}
+          });
+        }
+        if (value.customerId && typeof this.api.customer === 'function') {
+          this.api.customer(value.customerId)?.subscribe({
+            next: c => this.customer.set(c),
+            error: () => {}
+          });
+        }
+      },
+      error: error => {
+        this.error.set(financialMessage(error));
+        this.loading.set(false);
+      }
+    });
+  }
+
+  issue() {
+    const issued = new Date();
+    const due = new Date(issued);
+    due.setDate(due.getDate() + 14);
     this.saving.set(true);
     this.error.set('');
-    this.api.issueInvoice(this.id,issued.toISOString().slice(0,10),due.toISOString().slice(0,10)).subscribe({
-      next:inv=>{
-        this.invoice.set(inv);
-        this.message.set(`Invoice #${inv.invoiceNumber} issued. Record the payment received below.`);
+    this.api.issueInvoice(this.id, issued.toISOString().slice(0, 10), due.toISOString().slice(0, 10)).subscribe({
+      next: value => {
+        this.invoice.set(value);
+        this.message.set(`Invoice #${value.invoiceNumber} issued successfully.`);
         this.saving.set(false);
-        this.openPaymentModal();
       },
-      error:error=>{
+      error: error => {
         this.error.set(financialMessage(error));
         this.saving.set(false);
       }
     });
   }
-  openPaymentModal(){
-    if(!this.invoice() || this.saving())return;
+
+  issueAndSettle() {
+    const issued = new Date();
+    const due = new Date(issued);
+    due.setDate(due.getDate() + 14);
+    this.saving.set(true);
+    this.error.set('');
+    this.api.issueInvoice(this.id, issued.toISOString().slice(0, 10), due.toISOString().slice(0, 10)).subscribe({
+      next: inv => {
+        this.invoice.set(inv);
+        this.message.set(`Invoice #${inv.invoiceNumber} issued. Record the payment received below.`);
+        this.saving.set(false);
+        this.openPaymentModal();
+      },
+      error: error => {
+        this.error.set(financialMessage(error));
+        this.saving.set(false);
+      }
+    });
+  }
+
+  openPaymentModal() {
+    if (!this.invoice() || this.saving()) return;
     this.paymentAmount = this.invoice()!.balance;
     this.paymentRef = '';
     this.paymentError.set('');
     this.paymentAmountError.set('');
     this.showPaymentModal.set(true);
   }
-  closePaymentModal(){if(!this.saving())this.showPaymentModal.set(false);}
-  submitPayment(){
-    if(!this.invoice() || this.saving())return;
+
+  closePaymentModal() {
+    if (!this.saving()) this.showPaymentModal.set(false);
+  }
+
+  submitPayment() {
+    if (!this.invoice() || this.saving()) return;
     this.paymentError.set('');
     this.paymentAmountError.set('');
-    if(!Number.isFinite(this.paymentAmount) || this.paymentAmount <= 0){
+    if (!Number.isFinite(this.paymentAmount) || this.paymentAmount <= 0) {
       this.paymentAmountError.set('Enter an amount greater than zero.');
       return;
     }
-    if(this.paymentAmount > this.invoice()!.balance){
+    if (this.paymentAmount > this.invoice()!.balance) {
       this.paymentAmountError.set('Payment cannot exceed the remaining balance.');
       return;
     }
     this.saving.set(true);
     this.error.set('');
-    this.api.recordPayment(this.id, this.paymentAmount, this.paymentMethod, this.paymentRef || undefined).subscribe({
-      next:()=>{
-        this.message.set('Payment recorded successfully. The remaining balance is updated below.');
+    const amt = this.paymentAmount;
+    const method = this.paymentMethod;
+    const ref = this.paymentRef;
+    this.api.recordPayment(this.id, amt, method, ref || undefined).subscribe({
+      next: () => {
+        this.payments.update(list => [
+          {
+            id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+            amount: amt,
+            method,
+            date: new Date().toISOString(),
+            ref: ref || undefined
+          },
+          ...list
+        ]);
+        this.message.set('Payment recorded successfully. The balance has been updated.');
         this.saving.set(false);
         this.showPaymentModal.set(false);
         this.load();
       },
-      error:error=>{
+      error: error => {
         this.paymentError.set(financialMessage(error));
         this.saving.set(false);
       }
     });
   }
-  printDocument(){window.print();}
-  downloadPdf(){if(this.invoice()){this.api.downloadInvoicePdf(this.invoice()!.id,this.invoice()!.invoiceNumber);}}
+
+  printDocument() { window.print(); }
+  downloadPdf() { if (this.invoice()) { this.api.downloadInvoicePdf(this.invoice()!.id, this.invoice()!.invoiceNumber); } }
 }
 
 @Component({
