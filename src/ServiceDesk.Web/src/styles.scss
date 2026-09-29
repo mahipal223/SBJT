@@ -185,10 +185,10 @@
     }
 
     .data-table td:nth-child(5)::before {
-      content: 'Delivery';
+      content: 'Total';
     }
 
-    .data-table td:nth-child(7)::before {
+    .data-table td:nth-child(6)::before {
       content: 'Balance';
     }
   }
