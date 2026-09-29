@@ -107,6 +107,46 @@ Require(itemSet.Subtotal == 220m, "Job subtotal uses quantity and snapshotted pr
 Require(itemSet.Total == 222.84m, "Job total includes discount and tax");
 Require((await store.GetJobAsync(businessId, job.Id))?.Total == 222.84m, "Job header total follows its line items");
 
+var updatedCatalog = await store.UpdateCatalogItemAsync(businessId, catalogItem.Id, new UpdateCatalogItemCommand(
+    "Part", "Updated valve", "each", 25m, 75m, "TX-TAXABLE"));
+Require(updatedCatalog.UnitPrice == 75m, "Catalog item price updated successfully");
+
+// Verify that past job's items remain untouched (snapshotted immutability)
+var existingJobItems = await store.GetJobItemsAsync(businessId, job.Id);
+Require(existingJobItems.Items.First(x => x.CatalogItemId == catalogItem.Id).UnitPrice == 50m,
+    "Editing a catalog item does not alter existing job line items");
+Require((await store.GetJobAsync(businessId, job.Id))?.Total == 222.84m,
+    "Editing a catalog item does not alter existing job totals");
+
+// Archive (delete) catalog item
+await store.ArchiveCatalogItemAsync(businessId, catalogItem.Id);
+Require((await store.ListCatalogItemsAsync(businessId, null, null, 1, 25)).Items.All(x => x.Id != catalogItem.Id),
+    "Archived catalog item is removed from active price book");
+
+// Past job still has its items and totals intact after catalog item deletion
+var postArchiveJobItems = await store.GetJobItemsAsync(businessId, job.Id);
+Require(postArchiveJobItems.Items.Count == 2 && postArchiveJobItems.Total == 222.84m,
+    "Deleting/archiving a catalog item does not affect past job items or invoices");
+
+// Cannot add archived catalog item to new jobs
+var archivedCatalogRejected = false;
+try
+{
+    await store.ReplaceJobItemsAsync(businessId, job.Id,
+    [
+        new ReplaceJobItemCommand(catalogItem.Id, "Part", "Should fail", 1m, "each", 75m, 0m, 0m)
+    ]);
+}
+catch (WorkRuleException ex) when (ex.Code == "catalog_item_not_found") { archivedCatalogRejected = true; }
+Require(archivedCatalogRejected, "Cannot attach archived catalog item to jobs");
+
+// Restore active job items for subsequent tests
+await store.ReplaceJobItemsAsync(businessId, job.Id,
+[
+    new ReplaceJobItemCommand(null, "Part", catalogItem.Name, 2m, catalogItem.Unit, 50m, 5m, 7.84m),
+    new ReplaceJobItemCommand(null, "Labor", "Installation labor", 1.5m, "hour", 80m, 0m, 0m)
+]);
+
 var foreignCatalogRejected = false;
 try
 {

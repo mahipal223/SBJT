@@ -232,6 +232,8 @@ export class WorkApiService {
     return this.http.get<PageResult<CatalogItem>>(`${this.root}/catalog-items`, { params });
   }
   createCatalogItem(command: Omit<CatalogItem, 'id'|'isArchived'>) { return this.http.post<CatalogItem>(`${this.root}/catalog-items`, command); }
+  updateCatalogItem(id: string, command: Omit<CatalogItem, 'id'|'isArchived'>) { return this.http.put<CatalogItem>(`${this.root}/catalog-items/${id}`, command); }
+  deleteCatalogItem(id: string) { return this.http.delete<void>(`${this.root}/catalog-items/${id}`); }
   jobItems(jobId: string) { return this.http.get<JobItemSet>(`${this.root}/jobs/${jobId}/items`); }
   replaceJobItems(jobId: string, items: JobItem[]) { return this.http.put<JobItemSet>(`${this.root}/jobs/${jobId}/items`, items); }
   changeJobStatus(jobId: string, status: string, reason?: string) { return this.http.post<Job>(`${this.root}/jobs/${jobId}/status`, { status, reason }); }

@@ -34,6 +34,7 @@ public sealed record PageResult<T>(IReadOnlyList<T> Items, int Total, int Page, 
 
 public sealed record CatalogItemRecord(Guid Id, Guid BusinessId, string ItemType, string Name, string Unit, decimal UnitCost, decimal UnitPrice, string? TaxCategory, bool IsArchived);
 public sealed record CreateCatalogItemCommand(string ItemType, string Name, string Unit, decimal UnitCost, decimal UnitPrice, string? TaxCategory);
+public sealed record UpdateCatalogItemCommand(string ItemType, string Name, string Unit, decimal UnitCost, decimal UnitPrice, string? TaxCategory);
 public sealed record JobItemRecord(Guid Id, Guid BusinessId, Guid JobId, Guid? CatalogItemId, string ItemType, string Description, decimal Quantity, string Unit, decimal UnitPrice, decimal DiscountAmount, decimal TaxAmount, int SortOrder, decimal LineTotal);
 public sealed record ReplaceJobItemCommand(Guid? CatalogItemId, string ItemType, string Description, decimal Quantity, string Unit, decimal UnitPrice, decimal DiscountAmount, decimal TaxAmount);
 public sealed record JobItemSet(IReadOnlyList<JobItemRecord> Items, decimal Subtotal, decimal DiscountTotal, decimal TaxTotal, decimal Total);
@@ -49,7 +50,10 @@ public interface IWorkStore
     Task<JobRecord> ChangeJobStatusAsync(Guid businessId, Guid jobId, ChangeJobStatusCommand command, CancellationToken cancellationToken = default);
     Task<JobRecord> ScheduleJobAsync(Guid businessId, Guid jobId, ScheduleJobCommand command, CancellationToken cancellationToken = default);
     Task<PageResult<CatalogItemRecord>> ListCatalogItemsAsync(Guid businessId, string? search, string? itemType, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<CatalogItemRecord?> GetCatalogItemAsync(Guid businessId, Guid catalogItemId, CancellationToken cancellationToken = default);
     Task<CatalogItemRecord> CreateCatalogItemAsync(Guid businessId, CreateCatalogItemCommand command, CancellationToken cancellationToken = default);
+    Task<CatalogItemRecord> UpdateCatalogItemAsync(Guid businessId, Guid catalogItemId, UpdateCatalogItemCommand command, CancellationToken cancellationToken = default);
+    Task ArchiveCatalogItemAsync(Guid businessId, Guid catalogItemId, CancellationToken cancellationToken = default);
     Task<JobItemSet> GetJobItemsAsync(Guid businessId, Guid jobId, CancellationToken cancellationToken = default);
     Task<JobItemSet> ReplaceJobItemsAsync(Guid businessId, Guid jobId, IReadOnlyList<ReplaceJobItemCommand> commands, CancellationToken cancellationToken = default);
 }

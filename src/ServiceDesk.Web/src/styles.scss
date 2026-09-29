@@ -240,12 +240,25 @@
       content: 'Sale price';
     }
 
-    .data-table td:last-child::before {
+    .data-table td:nth-child(6)::before {
       content: 'Tax';
       display: block;
       color: var(--muted);
       font-size: 12px;
       margin-bottom: 4px;
+    }
+
+    .data-table td:last-child::before {
+      display: none !important;
+    }
+
+    .data-table td:last-child {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line-soft);
     }
   }
 

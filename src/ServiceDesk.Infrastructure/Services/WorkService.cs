@@ -673,6 +673,108 @@ public sealed class WorkService(BaseDAL baseDAL, ITenantContextAccessor tenantCo
             ?? throw new WorkRuleException("resource_not_found", "The created catalog item could not be read.");
     }
 
+    public async Task<CatalogItemRecord?> GetCatalogItemAsync(
+        Guid businessId,
+        Guid catalogItemId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT TOP (1) Id, BusinessId, ItemType, Name, Unit, UnitCost, UnitPrice, TaxCategory, ArchivedAt
+            FROM app.CatalogItems
+            WHERE BusinessId = @BusinessId AND Id = @ItemId AND ArchivedAt IS NULL;
+            """;
+
+        return await baseDAL.ExecuteSingleAsync(
+            businessId,
+            "Catalog.Get",
+            sql,
+            ReadCatalogItem,
+            [UniqueIdentifier("@BusinessId", businessId), UniqueIdentifier("@ItemId", catalogItemId)],
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<CatalogItemRecord> UpdateCatalogItemAsync(
+        Guid businessId,
+        Guid catalogItemId,
+        UpdateCatalogItemCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateCatalogItem(command.ItemType, command.Name, command.Unit, command.UnitCost, command.UnitPrice);
+
+        const string updateSql = """
+            UPDATE app.CatalogItems
+            SET ItemType = @ItemType,
+                Name = @Name,
+                Unit = @Unit,
+                UnitCost = @UnitCost,
+                UnitPrice = @UnitPrice,
+                TaxCategory = @TaxCategory,
+                UpdatedAt = SYSUTCDATETIME()
+            WHERE BusinessId = @BusinessId AND Id = @ItemId AND ArchivedAt IS NULL;
+            """;
+
+        var affected = await baseDAL.ExecuteNonQueryAsync(
+            businessId,
+            "Catalog.Update",
+            updateSql,
+            [
+                UniqueIdentifier("@BusinessId", businessId),
+                UniqueIdentifier("@ItemId", catalogItemId),
+                VarChar("@ItemType", command.ItemType, 32),
+                NVarChar("@Name", command.Name.Trim(), 200),
+                NVarChar("@Unit", command.Unit.Trim(), 32),
+                Decimal("@UnitCost", command.UnitCost, 19, 2),
+                Decimal("@UnitPrice", command.UnitPrice, 19, 4),
+                NVarChar("@TaxCategory", NullIfWhiteSpace(command.TaxCategory), 80)
+            ],
+            cancellationToken).ConfigureAwait(false);
+
+        if (affected == 0)
+        {
+            throw new WorkRuleException("resource_not_found", "The requested catalog item was not found.");
+        }
+
+        const string selectSql = """
+            SELECT TOP (1) Id, BusinessId, ItemType, Name, Unit, UnitCost, UnitPrice, TaxCategory, ArchivedAt
+            FROM app.CatalogItems
+            WHERE BusinessId = @BusinessId AND Id = @ItemId;
+            """;
+
+        return await baseDAL.ExecuteSingleAsync(
+            businessId,
+            "Catalog.Get",
+            selectSql,
+            ReadCatalogItem,
+            [UniqueIdentifier("@BusinessId", businessId), UniqueIdentifier("@ItemId", catalogItemId)],
+            cancellationToken).ConfigureAwait(false)
+            ?? throw new WorkRuleException("resource_not_found", "The catalog item could not be read.");
+    }
+
+    public async Task ArchiveCatalogItemAsync(
+        Guid businessId,
+        Guid catalogItemId,
+        CancellationToken cancellationToken = default)
+    {
+        const string archiveSql = """
+            UPDATE app.CatalogItems
+            SET ArchivedAt = SYSUTCDATETIME(),
+                UpdatedAt = SYSUTCDATETIME()
+            WHERE BusinessId = @BusinessId AND Id = @ItemId AND ArchivedAt IS NULL;
+            """;
+
+        var affected = await baseDAL.ExecuteNonQueryAsync(
+            businessId,
+            "Catalog.Archive",
+            archiveSql,
+            [UniqueIdentifier("@BusinessId", businessId), UniqueIdentifier("@ItemId", catalogItemId)],
+            cancellationToken).ConfigureAwait(false);
+
+        if (affected == 0)
+        {
+            throw new WorkRuleException("resource_not_found", "The requested catalog item was not found.");
+        }
+    }
+
     public async Task<JobItemSet> GetJobItemsAsync(Guid businessId, Guid jobId, CancellationToken cancellationToken = default)
     {
         await EnsureJobExistsAsync(businessId, jobId, cancellationToken).ConfigureAwait(false);
@@ -887,11 +989,14 @@ public sealed class WorkService(BaseDAL baseDAL, ITenantContextAccessor tenantCo
             _ => false
         };
 
-    private static void ValidateCatalogItem(CreateCatalogItemCommand command)
+    private static void ValidateCatalogItem(CreateCatalogItemCommand command) =>
+        ValidateCatalogItem(command.ItemType, command.Name, command.Unit, command.UnitCost, command.UnitPrice);
+
+    private static void ValidateCatalogItem(string itemType, string name, string unit, decimal unitCost, decimal unitPrice)
     {
-        if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Unit)
-            || command.UnitCost < 0 || command.UnitPrice < 0
-            || command.ItemType is not ("Service" or "Labor" or "Part"))
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(unit)
+            || unitCost < 0 || unitPrice < 0
+            || itemType is not ("Service" or "Labor" or "Part"))
         {
             throw new WorkRuleException("validation_failed", "Type, name, unit, and non-negative prices are required.");
         }

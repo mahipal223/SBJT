@@ -158,6 +158,15 @@ public sealed class InMemoryWorkStore : IWorkStore
         }
     }
 
+    public Task<CatalogItemRecord?> GetCatalogItemAsync(Guid businessId, Guid catalogItemId, CancellationToken cancellationToken = default)
+    {
+        lock (gate)
+        {
+            var item = catalogItems.FirstOrDefault(x => x.BusinessId == businessId && x.Id == catalogItemId && !x.IsArchived);
+            return Task.FromResult(item);
+        }
+    }
+
     public Task<CatalogItemRecord> CreateCatalogItemAsync(Guid businessId, CreateCatalogItemCommand command, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Unit) || command.UnitCost < 0 || command.UnitPrice < 0 || command.ItemType is not ("Service" or "Labor" or "Part"))
@@ -165,6 +174,42 @@ public sealed class InMemoryWorkStore : IWorkStore
         var item = new CatalogItemRecord(Guid.NewGuid(), businessId, command.ItemType, command.Name.Trim(), command.Unit.Trim(), command.UnitCost, command.UnitPrice, NullIfWhiteSpace(command.TaxCategory), false);
         lock (gate) catalogItems.Add(item);
         return Task.FromResult(item);
+    }
+
+    public Task<CatalogItemRecord> UpdateCatalogItemAsync(Guid businessId, Guid catalogItemId, UpdateCatalogItemCommand command, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Unit) || command.UnitCost < 0 || command.UnitPrice < 0 || command.ItemType is not ("Service" or "Labor" or "Part"))
+            throw new WorkRuleException("validation_failed", "Type, name, unit, and non-negative prices are required.");
+
+        lock (gate)
+        {
+            var index = catalogItems.FindIndex(x => x.BusinessId == businessId && x.Id == catalogItemId && !x.IsArchived);
+            if (index < 0) throw new WorkRuleException("resource_not_found", "The requested catalog item was not found.");
+
+            var updated = catalogItems[index] with
+            {
+                ItemType = command.ItemType,
+                Name = command.Name.Trim(),
+                Unit = command.Unit.Trim(),
+                UnitCost = command.UnitCost,
+                UnitPrice = command.UnitPrice,
+                TaxCategory = NullIfWhiteSpace(command.TaxCategory)
+            };
+            catalogItems[index] = updated;
+            return Task.FromResult(updated);
+        }
+    }
+
+    public Task ArchiveCatalogItemAsync(Guid businessId, Guid catalogItemId, CancellationToken cancellationToken = default)
+    {
+        lock (gate)
+        {
+            var index = catalogItems.FindIndex(x => x.BusinessId == businessId && x.Id == catalogItemId && !x.IsArchived);
+            if (index < 0) throw new WorkRuleException("resource_not_found", "The requested catalog item was not found.");
+
+            catalogItems[index] = catalogItems[index] with { IsArchived = true };
+            return Task.CompletedTask;
+        }
     }
 
     public Task<JobItemSet> GetJobItemsAsync(Guid businessId, Guid jobId, CancellationToken cancellationToken = default)
