@@ -254,17 +254,19 @@
   app-estimates-live,
   app-invoices-live {
     .toolbar {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 10px;
     }
 
     .toolbar>strong {
-      grid-column: 1 / -1;
+      width: 100%;
     }
 
     .toolbar>.search {
+      flex: 1 1 100%;
+      max-width: 100%;
       min-width: 0;
     }
 
@@ -272,13 +274,16 @@
       display: none;
     }
 
-    .toolbar>.btn {
-      justify-self: end;
+    .toolbar .filter-ng-select {
+      flex: 1 1 100% !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
     }
 
-    .toolbar .filter-ng-select {
-      width: 100%;
-      min-width: 0;
+    .toolbar .filter-ng-select .ng-select-container {
+      width: 100% !important;
+      max-width: 100% !important;
     }
 
     .search input {
@@ -989,7 +994,9 @@ h3,
 
 .search {
   position: relative;
-  flex: 1
+  flex: 0 1 340px;
+  max-width: 360px;
+  min-width: 180px;
 }
 
 .search input {
@@ -1981,14 +1988,20 @@ select:not(.filter-select):focus {
 }
 
 /* Toolbar Filter ng-select Component */
-.filter-ng-select {
-  min-width: 145px;
-  max-width: 200px;
+.filter-ng-select,
+.toolbar .filter-ng-select {
+  width: 200px !important;
+  max-width: 220px !important;
+  min-width: 150px !important;
+  flex: 0 0 200px !important;
   font-size: 13px;
   font-weight: 700;
 }
 
-.filter-ng-select .ng-select-container {
+.filter-ng-select .ng-select-container,
+.toolbar .filter-ng-select .ng-select-container {
+  width: 200px !important;
+  max-width: 220px !important;
   height: 40px !important;
   min-height: 40px !important;
   border-radius: 9px !important;

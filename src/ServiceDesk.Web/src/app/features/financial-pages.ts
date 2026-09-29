@@ -27,7 +27,7 @@ const financialMessage = (error: unknown) => error instanceof HttpErrorResponse
         <article class="card stat"><span class="stat-label">Pipeline value</span><strong class="stat-value">{{pipelineValue() | currency}}</strong><span class="stat-meta">Current results</span></article>
       </section>
       <section class="card section-gap">
-        <div class="toolbar"><ng-select class="filter-ng-select" [items]="estimateStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select><button class="btn small" (click)="load()">Refresh</button></div>
+        <div class="toolbar"><ng-select class="filter-ng-select" [items]="estimateStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select></div>
         @if(loading()){<div class="card-body muted">Loading estimates…</div>}
         @else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}
         @else if(!estimates().length){<div class="empty-state"><h2>No estimates yet</h2><p>Open a job with line items and choose Create estimate.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
@@ -89,7 +89,7 @@ export class EstimatesLivePage {
         <article class="card stat"><span class="stat-label">Drafts</span><strong class="stat-value">{{count('Draft')}}</strong><span class="stat-meta">Ready to issue</span></article>
       </section>}
       <section class="card section-gap">
-        <div class="toolbar">@if(loading() || error()){<strong>{{loading() ? 'Loading invoices…' : 'Invoices unavailable'}}</strong>}<ng-select class="filter-ng-select" [items]="invoiceStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select><button class="btn small" (click)="load()">Refresh</button></div>
+        <div class="toolbar">@if(loading() || error()){<strong>{{loading() ? 'Loading invoices…' : 'Invoices unavailable'}}</strong>}<ng-select class="filter-ng-select" [items]="invoiceStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select></div>
         @if(loading()){<div class="card-body muted">Loading invoices…</div>}
         @else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}
         @else if(!invoices().length){<div class="empty-state"><h2>No invoices yet</h2><p>Complete a job, then create its invoice from the job page.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
