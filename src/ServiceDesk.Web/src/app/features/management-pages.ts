@@ -32,8 +32,6 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
         <strong>{{ weekLabel() }}</strong>
         <button class="icon-btn" (click)="nextWeek()" title="Next week" aria-label="Next week">›</button>
       </div>
-      <span style="flex:1"></span>
-      <button class="btn" (click)="loadJobs()">↻ Refresh</button>
     </div>
 
     @if (loading()) {
@@ -131,8 +129,9 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
 </main>`,
   styles: `
 .schedule-main-card { min-width: 0; }
-.week-nav { display: flex; align-items: center; gap: 12px; }
-.toolbar { display: flex; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--line-soft); }
+.toolbar { display: flex; align-items: center; justify-content: center; padding: 14px 24px; border-bottom: 1px solid var(--line-soft); }
+.week-nav { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 320px; gap: 16px; }
+.week-nav strong { font-size: 14px; font-weight: 600; color: var(--ink); text-align: center; }
 .schedule-body { padding: 20px 24px 28px; }
 .calendar-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-bottom: 24px; }
 .calendar-day {
@@ -187,7 +186,7 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
 .agenda-list { display: grid; border: 1px solid var(--line-soft); border-radius: 10px; overflow: hidden; background: #fff; }
 .agenda-row {
   display: grid;
-  grid-template-columns: 100px minmax(0, 1fr) auto;
+  grid-template-columns: 130px minmax(0, 1fr) auto;
   gap: 20px;
   padding: 18px 24px;
   border-bottom: 1px solid var(--line-soft);
@@ -239,9 +238,47 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
   .calendar-strip { gap: 4px; margin-bottom: 16px; }
   .calendar-day { font-size: 9px; min-height: 56px; padding: 8px 2px; }
   .calendar-day b { font-size: 15px; }
-  .agenda-row { grid-template-columns: 80px minmax(0, 1fr) auto; padding: 14px 12px; gap: 10px; }
-  .agenda-row .avatar-stack { display: none; }
-  .toolbar { flex-wrap: wrap; padding: 12px; }
+  .toolbar { padding: 10px 14px; }
+  .week-nav { max-width: 100%; }
+  .agenda-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 14px;
+    gap: 10px;
+  }
+  .agenda-time {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .agenda-time small {
+    display: inline-block;
+    margin-top: 0;
+  }
+  .agenda-info {
+    gap: 4px;
+  }
+  .agenda-info .job-title {
+    font-size: 14px;
+    line-height: 1.35;
+  }
+  .agenda-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-soft);
+    margin-top: 2px;
+  }
+  .agenda-actions .avatar-stack {
+    display: flex;
+  }
+  .agenda-actions .btn {
+    padding: 7px 14px;
+    font-size: 12px;
+  }
 }
 `
 })
