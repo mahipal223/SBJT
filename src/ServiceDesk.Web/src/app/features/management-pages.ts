@@ -1,16 +1,17 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/auth.service';
 import { BusinessProfile, WorkspaceContext } from '../core/api.models';
-import { Customer, Job, WorkApiService } from '../core/work-api.service';
+import { AuditEvent, Customer, ExportRequest, Invitation, Job, TeamMember, WorkApiService } from '../core/work-api.service';
 import { NgSelectComponent } from '@ng-select/ng-select';
 import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCES } from '../core/reference-data';
 
 @Component({
   selector: 'app-schedule',
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   template: `
 <main class="page">
   <header class="page-head">
@@ -25,7 +26,7 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
         <button class="btn" (click)="goToToday()">Today</button>
         <button class="icon-btn" (click)="nextWeek()" title="Next week" aria-label="Next week">›</button>
       </div>
-      <a class="btn primary" routerLink="/app/jobs/new">＋ Create job</a>
+      <a class="btn primary" routerLink="/app/jobs/new" [queryParams]="{ scheduledDate: selectedDate() }">＋ Create job</a>
     </div>
   </header>
 
@@ -45,6 +46,19 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
         }
       </button>
     }
+  </div>
+
+  <div class="toolbar">
+    <div class="search">
+      <input placeholder="Search scheduled jobs, customers..." [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)">
+    </div>
+    <select class="filter-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" aria-label="Job status filter">
+      <option value="">Status: All</option>
+      <option value="InProgress">In progress</option>
+      <option value="Scheduled">Scheduled</option>
+      <option value="Completed">Completed</option>
+      <option value="Draft">Draft</option>
+    </select>
   </div>
 
   <!-- Selected Day Title -->
@@ -98,7 +112,7 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
         </svg>
         <h2>A little breathing room</h2>
         <p>No visits scheduled for this day.</p>
-        <a class="btn primary" routerLink="/app/jobs/new">＋ Schedule a job</a>
+        <a class="btn primary" routerLink="/app/jobs/new" [queryParams]="{ scheduledDate: selectedDate() }">＋ Schedule a job</a>
       </div>
     }
   </section>
@@ -311,6 +325,9 @@ export class SchedulePage implements OnInit {
     jobs: this.rawJobs().filter(job => job.scheduledDate === day.fullDate)
   })));
 
+  readonly searchQuery = signal('');
+  readonly statusFilter = signal('');
+
   readonly selectedDayTitle = computed(() => {
     const selected = this.selectedDate();
     const [y, m, d] = selected.split('-').map(Number);
@@ -321,7 +338,22 @@ export class SchedulePage implements OnInit {
 
   readonly selectedDayJobs = computed(() => {
     const selected = this.selectedDate();
-    return this.rawJobs().filter(j => j.scheduledDate === selected);
+    const query = this.searchQuery().trim().toLowerCase();
+    const status = this.statusFilter();
+    return this.rawJobs().filter(j => {
+      if (j.scheduledDate !== selected) return false;
+      if (status && j.status !== status) return false;
+      if (query) {
+        const customer = this.customers().get(j.customerId);
+        const customerName = customer?.name?.toLowerCase() ?? '';
+        const title = j.title?.toLowerCase() ?? '';
+        const num = String(j.jobNumber ?? '').toLowerCase();
+        if (!customerName.includes(query) && !title.includes(query) && !num.includes(query)) {
+          return false;
+        }
+      }
+      return true;
+    });
   });
 
   ngOnInit(): void {
@@ -435,13 +467,13 @@ export class SchedulePage implements OnInit {
 }
 
 
-@Component({selector:'app-catalog',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Price book</p><h1>Services & parts</h1><p>Reusable items keep estimates, jobs, and invoices consistent.</p></div><button class="btn primary">＋ Add item</button></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Active services</span><strong class="stat-value">28</strong><span class="stat-meta">Across 5 categories</span></article><article class="card stat"><span class="stat-label">Parts & materials</span><strong class="stat-value">146</strong><span class="stat-meta">12 low stock</span></article><article class="card stat"><span class="stat-label">Average markup</span><strong class="stat-value">34%</strong><span class="stat-meta">Materials only</span></article><article class="card stat"><span class="stat-label">Taxable items</span><strong class="stat-value">121</strong><span class="stat-meta">Texas rules applied</span></article></section><section class="card section-gap"><div class="toolbar"><div class="search"><input placeholder="Search service, SKU, or category"></div><select class="filter-select" aria-label="Catalog item type"><option>All item types</option><option>Services</option><option>Parts & materials</option></select></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Item</th><th>Type</th><th>Category / SKU</th><th>Cost</th><th>Sale price</th><th>Tax</th></tr></thead><tbody>@for(i of items;track i.name){<tr><td class="cell-main"><strong>{{i.name}}</strong><small>{{i.description}}</small></td><td><span class="badge" [class.blue]="i.type==='Part'">{{i.type}}</span></td><td>{{i.category}}</td><td>{{i.cost}}</td><td class="money">{{i.price}}</td><td>{{i.tax}}</td></tr>}</tbody></table></div></section></main>`})
+@Component({selector:'app-catalog',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Price book</p><h1>Services & parts</h1><p>Reusable items keep estimates, jobs, and invoices consistent.</p></div><button class="btn primary">＋ Add item</button></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Active services</span><strong class="stat-value">28</strong><span class="stat-meta">Across 5 categories</span></article><article class="card stat"><span class="stat-label">Parts & materials</span><strong class="stat-value">146</strong><span class="stat-meta">12 low stock</span></article><article class="card stat"><span class="stat-label">Average markup</span><strong class="stat-value">34%</strong><span class="stat-meta">Materials only</span></article><article class="card stat"><span class="stat-label">Taxable items</span><strong class="stat-value">121</strong><span class="stat-meta">Texas rules applied</span></article></section><div class="toolbar"><div class="search"><input placeholder="Search service, SKU, or category"></div><select class="filter-select" aria-label="Catalog item type"><option>All item types</option><option>Services</option><option>Parts & materials</option></select></div><section class="card section-gap"><div class="table-scroll"><table class="data-table"><thead><tr><th>Item</th><th>Type</th><th>Category / SKU</th><th>Cost</th><th>Sale price</th><th>Tax</th></tr></thead><tbody>@for(i of items;track i.name){<tr><td class="cell-main"><strong>{{i.name}}</strong><small>{{i.description}}</small></td><td><span class="badge" [class.blue]="i.type==='Part'">{{i.type}}</span></td><td>{{i.category}}</td><td>{{i.cost}}</td><td class="money">{{i.price}}</td><td>{{i.tax}}</td></tr>}</tbody></table></div></section></main>`})
 export class CatalogPage{items=[{name:'Diagnostic visit',description:'Standard on-site assessment',type:'Service',category:'General service',cost:'—',price:'$125.00',tax:'No'},{name:'Drain cleaning',description:'Up to 75 ft main line',type:'Service',category:'Plumbing',cost:'—',price:'$285.00',tax:'No'},{name:'Temperature relief valve',description:'3/4 in brass valve',type:'Part',category:'PLB-TRV-34',cost:'$31.50',price:'$68.00',tax:'Yes'},{name:'Brake pad set',description:'Ceramic front axle set',type:'Part',category:'AUT-BRK-102',cost:'$72.00',price:'$139.00',tax:'Yes'}]}
 
-@Component({selector:'app-estimates',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Sales pipeline</p><h1>Estimates</h1><p>Create options, send for approval, and convert accepted work into jobs.</p></div><button class="btn primary">＋ New estimate</button></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Draft</span><strong class="stat-value">5</strong><span class="stat-meta">$6,980 total</span></article><article class="card stat"><span class="stat-label">Sent</span><strong class="stat-value">3</strong><span class="stat-meta">Awaiting response</span></article><article class="card stat"><span class="stat-label">Approved</span><strong class="stat-value">68%</strong><span class="stat-meta">Last 90 days</span></article><article class="card stat"><span class="stat-label">Won value</span><strong class="stat-value">$12,480</strong><span class="stat-meta">This month</span></article></section><section class="card section-gap"><div class="toolbar"><div class="search"><input placeholder="Search estimate or customer"></div><select class="filter-select" aria-label="Estimate status"><option>Status: All</option><option>Draft</option><option>Sent</option><option>Approved</option><option>Declined</option><option>Expired</option></select></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Estimate</th><th>Customer</th><th>Created</th><th>Expires</th><th>Status</th><th>Total</th></tr></thead><tbody><tr><td><b>#EST-1032</b></td><td>Sarah Miller</td><td>Sep 10</td><td>Oct 10</td><td><span class="badge amber">Sent</span></td><td class="money">$2,840.00</td></tr><tr><td><b>#EST-1031</b></td><td>Olivia Davis</td><td>Sep 8</td><td>Oct 8</td><td><span class="badge">Approved</span></td><td class="money">$1,460.00</td></tr><tr><td><b>#EST-1030</b></td><td>James Wilson</td><td>Sep 6</td><td>Oct 6</td><td><span class="badge gray">Draft</span></td><td class="money">$620.00</td></tr></tbody></table></div></section></main>`})
+@Component({selector:'app-estimates',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Sales pipeline</p><h1>Estimates</h1><p>Create options, send for approval, and convert accepted work into jobs.</p></div><button class="btn primary">＋ New estimate</button></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Draft</span><strong class="stat-value">5</strong><span class="stat-meta">$6,980 total</span></article><article class="card stat"><span class="stat-label">Sent</span><strong class="stat-value">3</strong><span class="stat-meta">Awaiting response</span></article><article class="card stat"><span class="stat-label">Approved</span><strong class="stat-value">68%</strong><span class="stat-meta">Last 90 days</span></article><article class="card stat"><span class="stat-label">Won value</span><strong class="stat-value">$12,480</strong><span class="stat-meta">This month</span></article></section><div class="toolbar"><div class="search"><input placeholder="Search estimate or customer"></div><select class="filter-select" aria-label="Estimate status"><option>Status: All</option><option>Draft</option><option>Sent</option><option>Approved</option><option>Declined</option><option>Expired</option></select></div><section class="card section-gap"><div class="table-scroll"><table class="data-table"><thead><tr><th>Estimate</th><th>Customer</th><th>Created</th><th>Expires</th><th>Status</th><th>Total</th></tr></thead><tbody><tr><td><b>#EST-1032</b></td><td>Sarah Miller</td><td>Sep 10</td><td>Oct 10</td><td><span class="badge amber">Sent</span></td><td class="money">$2,840.00</td></tr><tr><td><b>#EST-1031</b></td><td>Olivia Davis</td><td>Sep 8</td><td>Oct 8</td><td><span class="badge">Approved</span></td><td class="money">$1,460.00</td></tr><tr><td><b>#EST-1030</b></td><td>James Wilson</td><td>Sep 6</td><td>Oct 6</td><td><span class="badge gray">Draft</span></td><td class="money">$620.00</td></tr></tbody></table></div></section></main>`})
 export class EstimatesPage{}
 
-@Component({selector:'app-invoices',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Accounts receivable</p><h1>Invoices & payments</h1><p>Send professional invoices and track every payment.</p></div><button class="btn primary">＋ New invoice</button></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Outstanding</span><strong class="stat-value">$7,450</strong><span class="stat-meta">8 open invoices</span></article><article class="card stat"><span class="stat-label">Overdue</span><strong class="stat-value">$1,250</strong><span class="stat-meta" style="color:var(--red)">3 need follow-up</span></article><article class="card stat"><span class="stat-label">Paid this month</span><strong class="stat-value">$16,820</strong><span class="stat-meta">21 payments</span></article><article class="card stat"><span class="stat-label">Average payment time</span><strong class="stat-value">4.2 days</strong><span class="stat-meta">↓ 1.1 days</span></article></section><section class="card section-gap"><div class="toolbar"><div class="search"><input placeholder="Search invoice or customer"></div><select class="filter-select" aria-label="Invoice status"><option>Status: All</option><option>Draft</option><option>Sent</option><option>Paid</option><option>Overdue</option></select><button class="btn hide-mobile">Export</button></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Invoice</th><th>Customer</th><th>Issued / Due</th><th>Status</th><th>Total</th><th>Balance</th></tr></thead><tbody>@for(i of invoices;track i.id){<tr><td><b>{{i.id}}</b></td><td>{{i.customer}}</td><td><span class="cell-main"><strong>{{i.issued}}</strong><small>Due {{i.due}}</small></span></td><td><span class="badge" [class.red]="i.status==='Overdue'" [class.amber]="i.status==='Sent'" [class.gray]="i.status==='Draft'">{{i.status}}</span></td><td class="money">{{i.total}}</td><td class="money">{{i.balance}}</td></tr>}</tbody></table></div></section></main>`})
+@Component({selector:'app-invoices',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Accounts receivable</p><h1>Invoices & payments</h1><p>Send professional invoices and track every payment.</p></div><button class="btn primary">＋ New invoice</button></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Outstanding</span><strong class="stat-value">$7,450</strong><span class="stat-meta">8 open invoices</span></article><article class="card stat"><span class="stat-label">Overdue</span><strong class="stat-value">$1,250</strong><span class="stat-meta" style="color:var(--red)">3 need follow-up</span></article><article class="card stat"><span class="stat-label">Paid this month</span><strong class="stat-value">$16,820</strong><span class="stat-meta">21 payments</span></article><article class="card stat"><span class="stat-label">Average payment time</span><strong class="stat-value">4.2 days</strong><span class="stat-meta">↓ 1.1 days</span></article></section><div class="toolbar"><div class="search"><input placeholder="Search invoice or customer"></div><select class="filter-select" aria-label="Invoice status"><option>Status: All</option><option>Draft</option><option>Sent</option><option>Paid</option><option>Overdue</option></select><button class="btn hide-mobile">Export</button></div><section class="card section-gap"><div class="table-scroll"><table class="data-table"><thead><tr><th>Invoice</th><th>Customer</th><th>Issued / Due</th><th>Status</th><th>Total</th><th>Balance</th></tr></thead><tbody>@for(i of invoices;track i.id){<tr><td><b>{{i.id}}</b></td><td>{{i.customer}}</td><td><span class="cell-main"><strong>{{i.issued}}</strong><small>Due {{i.due}}</small></span></td><td><span class="badge" [class.red]="i.status==='Overdue'" [class.amber]="i.status==='Sent'" [class.gray]="i.status==='Draft'">{{i.status}}</span></td><td class="money">{{i.total}}</td><td class="money">{{i.balance}}</td></tr>}</tbody></table></div></section></main>`})
 export class InvoicesPage{invoices=[{id:'#INV-1048',customer:'Olivia Davis',issued:'Aug 4',due:'Sep 2',status:'Overdue',total:'$850.00',balance:'$850.00'},{id:'#INV-1055',customer:'Michael Brown',issued:'Sep 3',due:'Sep 17',status:'Sent',total:'$425.00',balance:'$425.00'},{id:'#INV-1056',customer:'Sarah Miller',issued:'Sep 8',due:'Sep 22',status:'Paid',total:'$245.00',balance:'$0.00'},{id:'#INV-1057',customer:'James Wilson',issued:'Sep 10',due:'Sep 24',status:'Draft',total:'$620.00',balance:'$620.00'}]}
 
 @Component({selector:'app-reports',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Business intelligence</p><h1>Reports</h1><p>Understand revenue, jobs, customers, and technician performance.</p></div><div class="page-actions"><button class="btn">Sep 1–30, 2026⌄</button><button class="btn primary">Export report</button></div></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Revenue</span><strong class="stat-value">$18,940</strong><span class="stat-meta">↑ 12.4%</span></article><article class="card stat"><span class="stat-label">Jobs completed</span><strong class="stat-value">68</strong><span class="stat-meta">↑ 8 jobs</span></article><article class="card stat"><span class="stat-label">Average job</span><strong class="stat-value">$278</strong><span class="stat-meta">↑ $18</span></article><article class="card stat"><span class="stat-label">New customers</span><strong class="stat-value">14</strong><span class="stat-meta">↑ 3 customers</span></article></section><section class="grid cols-2 section-gap"><article class="card"><div class="card-head"><h2>Revenue trend</h2><span class="badge">+12.4%</span></div><div class="chart">@for(h of bars;track $index){<span [style.height.%]="h"></span>}</div><div class="chart-labels"><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span></div></article><article class="card"><div class="card-head"><h2>Revenue by service</h2></div><div class="card-body grid"><div class="usage"><div class="usage-head"><b>Plumbing repair</b><span>$7,840 · 41%</span></div><div class="progress"><span style="width:41%"></span></div></div><div class="usage"><div class="usage-head"><b>Installation</b><span>$5,670 · 30%</span></div><div class="progress"><span style="width:30%"></span></div></div><div class="usage"><div class="usage-head"><b>Maintenance</b><span>$3,420 · 18%</span></div><div class="progress"><span style="width:18%"></span></div></div><div class="usage"><div class="usage-head"><b>Other</b><span>$2,010 · 11%</span></div><div class="progress"><span style="width:11%"></span></div></div></div></article></section><div class="callout section-gap"><strong>Advanced reports are included in your Team plan.</strong> Reports enforce your workspace and role permissions before returning business data.</div></main>`,styles:`.chart{height:250px;display:flex;align-items:end;gap:9%;padding:35px 30px 0}.chart span{flex:1;min-width:18px;border-radius:6px 6px 0 0;background:linear-gradient(#43b9ad,var(--teal))}.chart-labels{display:flex;justify-content:space-around;padding:12px 24px 20px;border-top:1px solid var(--line-soft);color:var(--muted);font-size:11px}`})
@@ -449,41 +481,230 @@ export class ReportsPage{bars=[45,62,54,71,68,88]}
 
 @Component({
   selector: 'app-team',
+  imports: [FormsModule, DatePipe],
   template: `
 <main class="page">
   <header class="page-head">
-    <div><p class="eyebrow">People & access</p><h1>Team & permissions</h1><p>Membership details for {{ businessName() }}.</p></div>
-    <button class="btn primary" disabled title="Staff invitations are not available yet">＋ Invite staff</button>
+    <div>
+      <p class="eyebrow">People & access</p>
+      <h1>Team & permissions</h1>
+      <p>Membership, roles, and staff invitations for {{ businessName() }}.</p>
+    </div>
+    @if (!soloMode()) {
+      <button class="btn primary" (click)="openInviteModal()">＋ Invite staff</button>
+    }
   </header>
+
   @if (error()) {
-    <div class="callout" role="alert">{{ error() }}</div>
-  } @else if (soloMode()) {
-    <div class="callout"><strong>Solo workspace.</strong> Team tools stay hidden from navigation until team mode is enabled.</div>
+    <div class="callout section-gap" role="alert">{{ error() }}</div>
   }
+  @if (successMsg()) {
+    <div class="callout section-gap" style="border-color:var(--teal);background:var(--teal-tint);color:var(--navy)">{{ successMsg() }}</div>
+  }
+  @if (soloMode()) {
+    <div class="callout section-gap"><strong>Solo workspace.</strong> Team tools stay hidden from navigation until team mode is enabled.</div>
+  }
+
   <section class="grid cols-3 section-gap">
-    <article class="card stat"><span class="stat-label">Active staff</span><strong class="stat-value">1</strong><span class="stat-meta">Workspace owner</span></article>
-    <article class="card stat"><span class="stat-label">Pending invitations</span><strong class="stat-value">0</strong><span class="stat-meta">Invitation workflow not enabled</span></article>
-    <article class="card stat"><span class="stat-label">Current role</span><strong class="stat-value">{{ role() }}</strong><span class="stat-meta">Authenticated membership</span></article>
+    <article class="card stat">
+      <span class="stat-label">Active staff</span>
+      <strong class="stat-value">{{ activeCount() }}</strong>
+      <span class="stat-meta">Workspace team members</span>
+    </article>
+    <article class="card stat">
+      <span class="stat-label">Pending invitations</span>
+      <strong class="stat-value">{{ pendingCount() }}</strong>
+      <span class="stat-meta">Awaiting employee acceptance</span>
+    </article>
+    <article class="card stat">
+      <span class="stat-label">Seat quota</span>
+      <strong class="stat-value">{{ seatUsageDisplay() }}</strong>
+      <span class="stat-meta">Active + pending seats allocated</span>
+    </article>
   </section>
+
   <section class="card section-gap">
-    <div class="card-head"><h2>Workspace member</h2></div>
-    <div class="table-scroll"><table class="data-table"><thead><tr><th>Team member</th><th>Role</th><th>Status</th></tr></thead><tbody><tr><td><span class="person"><span class="avatar">{{ initials() }}</span><span class="cell-main"><strong>{{ auth.fullName() || 'Workspace owner' }}</strong><small>{{ auth.email() }}</small></span></span></td><td>{{ role() }}</td><td><span class="badge">Active</span></td></tr></tbody></table></div>
+    <div class="card-head">
+      <h2>Workspace members ({{ members().length }})</h2>
+    </div>
+    @if (loading() && members().length === 0) {
+      <div class="callout" style="margin:20px">Loading team members…</div>
+    } @else {
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Team member</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of members(); track m.id) {
+              <tr>
+                <td>
+                  <span class="person">
+                    <span class="avatar">{{ getInitials(m.fullName) }}</span>
+                    <span class="cell-main">
+                      <strong>{{ m.fullName }}</strong>
+                      <small>{{ m.email }}</small>
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  <span class="badge" [class.blue]="m.role === 'Owner'" [class.teal]="m.role === 'Manager'" [class.gray]="m.role === 'Technician'">
+                    {{ m.role }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge" [class.gray]="m.status !== 'Active'">{{ m.status }}</span>
+                </td>
+                <td class="muted small">{{ m.createdAt | date:'mediumDate' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="muted" style="text-align:center;padding:24px">No team members found.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   </section>
+
+  @if (pendingInvitations().length > 0) {
+    <section class="card section-gap">
+      <div class="card-head">
+        <h2>Pending invitations ({{ pendingInvitations().length }})</h2>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Invited email</th>
+              <th>Assigned role</th>
+              <th>Status</th>
+              <th>Expires</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (inv of pendingInvitations(); track inv.id) {
+              <tr>
+                <td><b>{{ inv.email }}</b></td>
+                <td>
+                  <span class="badge" [class.teal]="inv.role === 'Manager'" [class.gray]="inv.role === 'Technician'">
+                    {{ inv.role }}
+                  </span>
+                </td>
+                <td><span class="badge amber">Pending</span></td>
+                <td class="muted small">{{ inv.expiresAt | date:'mediumDate' }}</td>
+                <td>
+                  <button class="btn small" (click)="revokeInvite(inv.id)" [disabled]="revokingId() === inv.id">
+                    {{ revokingId() === inv.id ? 'Revoking…' : 'Revoke' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <!-- Invite Staff Modal -->
+  @if (showInviteModal()) {
+    <div class="quick-modal-backdrop" (click)="closeInviteModal()">
+      <div class="quick-modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <h3>Invite staff member</h3>
+            <p>Send an invitation to join {{ businessName() }}.</p>
+          </div>
+          <button type="button" class="modal-close-btn" (click)="closeInviteModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          @if (inviteError()) {
+            <div class="callout" style="border-color:var(--red);color:var(--red);margin-bottom:14px" role="alert">
+              {{ inviteError() }}
+            </div>
+          }
+          <div class="field">
+            <label for="invite-email">Staff work email *</label>
+            <input id="invite-email" type="email" [(ngModel)]="inviteEmail" placeholder="colleague@example.com" (keydown.enter)="sendInvite()">
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label for="invite-role">Access role *</label>
+            <select id="invite-role" class="filter-select" style="width:100%;height:40px" [(ngModel)]="inviteRole">
+              <option value="Technician">Technician — Assigned jobs, mobile visits, notes</option>
+              <option value="Manager">Manager — Dispatch, scheduling, catalog, customers</option>
+            </select>
+          </div>
+          <div style="margin-top:14px;padding:10px 12px;background:#f8fafb;border-radius:5px;border:1px solid var(--line-soft)">
+            <small class="muted" style="display:block">
+              <strong>Plan seat capacity:</strong> {{ activeCount() + pendingCount() }} of {{ seatLimit() ?? 'unlimited' }} seats used.
+            </small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" (click)="closeInviteModal()" [disabled]="sendingInvite()">Cancel</button>
+          <button type="button" class="btn primary" (click)="sendInvite()" [disabled]="sendingInvite() || !isInviteValid()">
+            {{ sendingInvite() ? 'Sending…' : 'Send invitation' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </main>`
 })
 export class TeamPage implements OnInit {
   readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);
+  private readonly api = inject(WorkApiService);
 
   readonly businessName = signal(this.auth.businessName());
   readonly role = signal(this.auth.role());
   readonly soloMode = signal(false);
   readonly error = signal('');
+  readonly successMsg = signal('');
+  readonly loading = signal(false);
+
+  readonly members = signal<TeamMember[]>([]);
+  readonly invitations = signal<Invitation[]>([]);
+  readonly seatLimit = signal<number | null>(null);
+
+  readonly showInviteModal = signal(false);
+  readonly inviteEmail = signal('');
+  readonly inviteRole = signal<'Manager' | 'Technician'>('Technician');
+  readonly sendingInvite = signal(false);
+  readonly inviteError = signal('');
+  readonly revokingId = signal<string | null>(null);
+
+  readonly activeCount = computed(() => this.members().filter(m => m.status === 'Active').length);
+  readonly pendingInvitations = computed(() => this.invitations().filter(i => i.status === 'Pending'));
+  readonly pendingCount = computed(() => this.pendingInvitations().length);
+
+  readonly seatUsageDisplay = computed(() => {
+    const limit = this.seatLimit();
+    const used = this.activeCount() + this.pendingCount();
+    return limit ? `${used} / ${limit}` : `${used} active`;
+  });
+
+  readonly isInviteValid = computed(() => {
+    const email = this.inviteEmail().trim();
+    return !!email && email.includes('@') && email.includes('.');
+  });
+
   readonly initials = computed(() => {
     const name = this.auth.fullName().trim();
     if (!name) return '?';
-    return name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+    return this.getInitials(name);
   });
+
+  getInitials(name: string): string {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return '?';
+    return trimmed.split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+  }
 
   ngOnInit(): void {
     const businessId = this.auth.businessId();
@@ -494,7 +715,93 @@ export class TeamPage implements OnInit {
         this.role.set(workspace.role);
         this.soloMode.set(workspace.business.soloMode);
       },
-      error: () => this.error.set('Workspace membership could not be loaded.')
+      error: () => {}
+    });
+
+    this.loadTeam();
+  }
+
+  loadTeam(): void {
+    this.loading.set(true);
+    this.error.set('');
+    this.api.getTeam().subscribe({
+      next: overview => {
+        this.members.set(overview.members ?? []);
+        this.invitations.set(overview.invitations ?? []);
+        this.seatLimit.set(overview.planSeatLimit);
+        this.loading.set(false);
+      },
+      error: () => {
+        // Fallback to workspace single member if endpoint unavailable
+        this.loading.set(false);
+        if (this.members().length === 0) {
+          this.members.set([{
+            id: this.auth.userId() || 'owner-id',
+            userId: this.auth.userId() || 'user-id',
+            fullName: this.auth.fullName() || 'Workspace owner',
+            email: this.auth.email() || '',
+            role: (this.role() as any) || 'Owner',
+            status: 'Active',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            version: '1'
+          }]);
+        }
+      }
+    });
+  }
+
+  openInviteModal(): void {
+    this.inviteEmail.set('');
+    this.inviteRole.set('Technician');
+    this.inviteError.set('');
+    this.showInviteModal.set(true);
+  }
+
+  closeInviteModal(): void {
+    if (this.sendingInvite()) return;
+    this.showInviteModal.set(false);
+  }
+
+  sendInvite(): void {
+    if (!this.isInviteValid() || this.sendingInvite()) return;
+    this.sendingInvite.set(true);
+    this.inviteError.set('');
+
+    this.api.inviteStaff({
+      email: this.inviteEmail().trim(),
+      role: this.inviteRole()
+    }).subscribe({
+      next: created => {
+        this.sendingInvite.set(false);
+        this.showInviteModal.set(false);
+        this.successMsg.set(`Invitation successfully sent to ${created.email}.`);
+        this.loadTeam();
+        setTimeout(() => this.successMsg.set(''), 6000);
+      },
+      error: err => {
+        this.sendingInvite.set(false);
+        this.inviteError.set(err?.error?.detail || err?.error?.title || 'Failed to send invitation. Please verify the email and try again.');
+      }
+    });
+  }
+
+  revokeInvite(invitationId: string): void {
+    if (this.revokingId()) return;
+    this.revokingId.set(invitationId);
+    this.error.set('');
+
+    this.api.revokeInvitation(invitationId).subscribe({
+      next: () => {
+        this.revokingId.set(null);
+        this.successMsg.set('Invitation revoked.');
+        this.loadTeam();
+        setTimeout(() => this.successMsg.set(''), 4000);
+      },
+      error: err => {
+        this.revokingId.set(null);
+        this.error.set(err?.error?.detail || 'Failed to revoke invitation.');
+      }
     });
   }
 }
@@ -504,7 +811,7 @@ export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percen
 
 @Component({
   selector: 'app-settings',
-  imports: [RouterLink, FormsModule, NgSelectComponent],
+  imports: [RouterLink, FormsModule, NgSelectComponent, DatePipe],
   template: `
 <main class="page">
   <header class="page-head">
@@ -513,7 +820,9 @@ export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percen
       <h1>Business settings</h1>
       <p>Identity, billing, security, data, and account controls.</p>
     </div>
-    <button class="btn primary" (click)="save()" [disabled]="saving() || (tab() === 'profile' && !isProfileValid())">{{ saving() ? 'Saving…' : 'Save changes' }}</button>
+    @if (tab() === 'profile' || tab() === 'notifications') {
+      <button class="btn primary" (click)="save()" [disabled]="saving() || (tab() === 'profile' && !isProfileValid())">{{ saving() ? 'Saving…' : 'Save changes' }}</button>
+    }
   </header>
 
   @if (savedMsg()) {
@@ -523,12 +832,12 @@ export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percen
   }
 
   <nav class="tabs">
-    <a [class.active]="tab() === 'profile'" (click)="tab.set('profile')" style="cursor:pointer">Business profile</a>
-    <a [class.active]="tab() === 'notifications'" (click)="tab.set('notifications')" style="cursor:pointer">Notifications</a>
-    <a>Billing & tax</a>
+    <a [class.active]="tab() === 'profile'" (click)="selectTab('profile')" style="cursor:pointer">Business profile</a>
+    <a [class.active]="tab() === 'notifications'" (click)="selectTab('notifications')" style="cursor:pointer">Notifications</a>
+    <a [class.active]="tab() === 'billing'" (click)="selectTab('billing')" style="cursor:pointer">Billing & tax</a>
     <a routerLink="/app/settings/smtp">Outbound Email (SMTP)</a>
-    <a>Security</a>
-    <a>Data</a>
+    <a [class.active]="tab() === 'security'" (click)="selectTab('security')" style="cursor:pointer">Security & audit</a>
+    <a [class.active]="tab() === 'data'" (click)="selectTab('data')" style="cursor:pointer">Data & export</a>
   </nav>
 
   @if (tab() === 'profile') {
@@ -691,13 +1000,159 @@ export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percen
       </aside>
     </section>
   }
+
+  @if (tab() === 'billing') {
+    <section class="split">
+      <article class="card">
+        <div class="card-head"><h2>Billing & Tax Configuration</h2></div>
+        <div class="card-body form-grid">
+          <div class="field wide">
+            <label>Invoicing & billing email</label>
+            <input [value]="profile()?.billingEmail || ''" readonly class="muted" style="background:#f8fafb">
+            <small class="muted" style="font-size:11px">Customer invoices and payment receipts send from this business contact.</small>
+          </div>
+          <div class="field">
+            <label>Settlement currency</label>
+            <input [value]="profile()?.currency || 'USD'" readonly class="muted" style="background:#f8fafb">
+          </div>
+          <div class="field">
+            <label>Default pricing tax rule</label>
+            <p style="margin:8px 0 0;font-size:13px;color:var(--muted)">Individual services and parts specify tax exemption or standard rate in the price book.</p>
+          </div>
+        </div>
+      </article>
+
+      <aside class="grid">
+        <article class="card">
+          <div class="card-head"><h2>Subscription & Quotas</h2></div>
+          <div class="card-body">
+            <p class="muted" style="margin-top:0">Manage your subscription plan, staff seat limits, and monthly work order capacity.</p>
+            <a class="btn primary" routerLink="/app/subscription" style="display:block;text-align:center;text-decoration:none">View plan & usage limits →</a>
+          </div>
+        </article>
+      </aside>
+    </section>
+  }
+
+  @if (tab() === 'security') {
+    <section class="card">
+      <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h2>Security & audit trail</h2>
+          <p class="muted" style="margin:4px 0 0;font-size:12px">Immutable record of tenant operations, updates, and configuration actions.</p>
+        </div>
+        <button class="btn small" (click)="loadAuditEvents()" [disabled]="auditLoading()">Refresh log</button>
+      </div>
+      @if (auditLoading()) {
+        <div class="card-body muted">Loading security audit events…</div>
+      } @else if (auditError()) {
+        <div class="card-body"><div class="callout error-text">{{ auditError() }}</div></div>
+      } @else if (!auditEvents().length) {
+        <div class="empty-state"><h2>No audit events recorded</h2><p>Actions performed in this workspace will be recorded here.</p></div>
+      } @else {
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>Entity type</th>
+                <th>Entity ID</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (evt of auditEvents(); track evt.id) {
+                <tr>
+                  <td><span class="cell-main"><strong>{{ evt.createdAt | date:'MMM d, y' }}</strong><small>{{ evt.createdAt | date:'shortTime' }}</small></span></td>
+                  <td><span class="badge" [class.teal]="evt.action.includes('Created') || evt.action.includes('Approved')" [class.blue]="evt.action.includes('Updated')" [class.amber]="evt.action.includes('Sent')">{{ evt.action }}</span></td>
+                  <td>{{ evt.entityType }}</td>
+                  <td><small class="muted" style="font-family:monospace">{{ evt.entityId ? evt.entityId.slice(0, 8) + '…' : '—' }}</small></td>
+                  <td><small class="muted">{{ evt.changes || '—' }}</small></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+
+  @if (tab() === 'data') {
+    <section class="split" style="margin-bottom:20px">
+      <article class="card">
+        <div class="card-head"><h2>Export workspace data</h2></div>
+        <div class="card-body">
+          <p class="muted" style="margin-top:0">Export complete or module-specific records in CSV format for backup, migration, or external accounting.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px">
+            <button class="btn primary" (click)="triggerExport('FullBusiness')" [disabled]="creatingExport()">{{ creatingExport() ? 'Exporting…' : 'Export all data' }}</button>
+            <button class="btn" (click)="triggerExport('Customers')" [disabled]="creatingExport()">Export customers</button>
+            <button class="btn" (click)="triggerExport('Jobs')" [disabled]="creatingExport()">Export jobs</button>
+            <button class="btn" (click)="triggerExport('Invoices')" [disabled]="creatingExport()">Export invoices</button>
+          </div>
+        </div>
+      </article>
+      <aside class="grid">
+        <article class="card">
+          <div class="card-head"><h2>Data protection & privacy</h2></div>
+          <div class="card-body">
+            <p class="muted" style="margin-top:0;font-size:13px">Export packages are encrypted at rest and automatically expire after 7 days. Personal information complies with tenant isolation standards.</p>
+          </div>
+        </article>
+      </aside>
+    </section>
+
+    <section class="card">
+      <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
+        <h2>Export history</h2>
+        <button class="btn small" (click)="loadExports()" [disabled]="exportsLoading()">Refresh</button>
+      </div>
+      @if (exportsLoading()) {
+        <div class="card-body muted">Loading export history…</div>
+      } @else if (exportError()) {
+        <div class="card-body"><div class="callout error-text">{{ exportError() }}</div></div>
+      } @else if (!exports().length) {
+        <div class="empty-state"><h2>No exports generated yet</h2><p>Click one of the buttons above to generate your first export.</p></div>
+      } @else {
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Export type</th>
+                <th>Requested</th>
+                <th>Status</th>
+                <th>Expires</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (exp of exports(); track exp.id) {
+                <tr>
+                  <td><strong>{{ exp.exportType }}</strong></td>
+                  <td>{{ exp.createdAt | date:'MMM d, y, h:mm a' }}</td>
+                  <td><span class="badge" [class.teal]="exp.status==='Completed'" [class.amber]="exp.status==='Pending'">{{ exp.status }}</span></td>
+                  <td>{{ exp.expiresAt ? (exp.expiresAt | date:'MMM d, y') : '—' }}</td>
+                  <td style="text-align:right">
+                    @if (exp.status === 'Completed') {
+                      <button class="btn small" (click)="downloadExport(exp)">Download CSV</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
 </main>`
 })
 export class SettingsPage implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
+  private readonly workApi = inject(WorkApiService);
 
-  readonly tab = signal<'profile' | 'notifications'>('profile');
+  readonly tab = signal<'profile' | 'notifications' | 'billing' | 'security' | 'data'>('profile');
   readonly savedMsg = signal('');
   readonly saving = signal(false);
   readonly profileLoading = signal(true);
@@ -892,6 +1347,77 @@ export class SettingsPage implements OnInit {
         this.saving.set(false);
         this.savedMsg.set('Notification preferences could not be saved.');
         setTimeout(() => this.savedMsg.set(''), 4000);
+      }
+    });
+  }
+
+  readonly exports = signal<ExportRequest[]>([]);
+  readonly exportsLoading = signal(false);
+  readonly exportError = signal('');
+  readonly creatingExport = signal(false);
+
+  readonly auditEvents = signal<AuditEvent[]>([]);
+  readonly auditLoading = signal(false);
+  readonly auditError = signal('');
+
+  selectTab(t: 'profile' | 'notifications' | 'billing' | 'security' | 'data'): void {
+    this.tab.set(t);
+    if (t === 'data' && !this.exports().length) {
+      this.loadExports();
+    }
+    if (t === 'security' && !this.auditEvents().length) {
+      this.loadAuditEvents();
+    }
+  }
+
+  loadExports(): void {
+    this.exportsLoading.set(true);
+    this.exportError.set('');
+    this.workApi.listExports().subscribe({
+      next: data => {
+        this.exports.set(data);
+        this.exportsLoading.set(false);
+      },
+      error: () => {
+        this.exportError.set('Could not load exports.');
+        this.exportsLoading.set(false);
+      }
+    });
+  }
+
+  triggerExport(exportType = 'FullBusiness'): void {
+    this.creatingExport.set(true);
+    this.exportError.set('');
+    this.workApi.createExport(exportType).subscribe({
+      next: () => {
+        this.creatingExport.set(false);
+        this.loadExports();
+        this.savedMsg.set(`Export for ${exportType} created successfully.`);
+        setTimeout(() => this.savedMsg.set(''), 4000);
+      },
+      error: err => {
+        this.creatingExport.set(false);
+        this.exportError.set(err?.error?.detail || 'Failed to create export.');
+      }
+    });
+  }
+
+  downloadExport(exp: ExportRequest): void {
+    const fileName = `${exp.exportType.toLowerCase()}-export-${exp.id.slice(0, 8)}.csv`;
+    this.workApi.downloadExport(exp.id, fileName);
+  }
+
+  loadAuditEvents(): void {
+    this.auditLoading.set(true);
+    this.auditError.set('');
+    this.workApi.listAuditEvents(50).subscribe({
+      next: events => {
+        this.auditEvents.set(events);
+        this.auditLoading.set(false);
+      },
+      error: () => {
+        this.auditError.set('Could not load security audit events.');
+        this.auditLoading.set(false);
       }
     });
   }

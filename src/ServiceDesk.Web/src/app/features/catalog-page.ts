@@ -41,29 +41,6 @@ import { CATALOG_UNITS } from '../core/reference-data';
     <button class="btn primary" id="open-add-item-btn" (click)="openCreateForm()">＋ Add item</button>
   </header>
 
-  <section class="grid cols-4">
-    <article class="card stat">
-      <span class="stat-label">Active items</span>
-      <strong class="stat-value">{{items().length}}</strong>
-      <span class="stat-meta">In your price book</span>
-    </article>
-    <article class="card stat">
-      <span class="stat-label">Services</span>
-      <strong class="stat-value">{{count('Service')}}</strong>
-      <span class="stat-meta">Reusable work</span>
-    </article>
-    <article class="card stat">
-      <span class="stat-label">Parts</span>
-      <strong class="stat-value">{{count('Part')}}</strong>
-      <span class="stat-meta">Materials and parts</span>
-    </article>
-    <article class="card stat">
-      <span class="stat-label">Average price</span>
-      <strong class="stat-value">{{average()|currency}}</strong>
-      <span class="stat-meta">Across active items</span>
-    </article>
-  </section>
-
   <!-- Add / Edit Catalog Item Dialog -->
   <dialog #itemDialog class="catalog-dialog" aria-labelledby="catalog-dialog-title" (cancel)="cancelDialog($event)" (close)="showForm.set(false)">
     <div class="catalog-dialog-header">
@@ -123,9 +100,6 @@ import { CATALOG_UNITS } from '../core/reference-data';
       <p style="margin: 0 0 14px; font-size: 14px; line-height: 1.5;">
         Are you sure you want to remove <strong>{{deletingItem()?.name}}</strong> from your price book?
       </p>
-      <div class="callout" style="margin: 0; font-size: 12.5px; line-height: 1.5;">
-        <strong>Safe deletion:</strong> Past jobs, estimates, and invoices that used this item are preserved with their original line items, descriptions, and pricing untouched.
-      </div>
     </div>
     <footer class="catalog-dialog-footer">
       <button class="btn" type="button" [disabled]="saving()" (click)="closeDeleteDialog()">Cancel</button>
@@ -133,14 +107,17 @@ import { CATALOG_UNITS } from '../core/reference-data';
     </footer>
   </dialog>
 
+  <!-- Price Book Toolbar -->
+  <div class="toolbar">
+    <label class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input placeholder="Search service, SKU, or category" [(ngModel)]="search" (ngModelChange)="load()">
+    </label>
+    <ng-select class="filter-ng-select" [items]="typeFilterOptions" bindLabel="label" bindValue="value" [(ngModel)]="type" (ngModelChange)="load()" [searchable]="false" [clearable]="false" aria-label="Catalog item type"></ng-select>
+  </div>
+
   <!-- Price Book Table -->
   <section class="card section-gap">
-    <div class="toolbar">
-      <div class="search">
-        <input placeholder="Search service or part" [(ngModel)]="search" (ngModelChange)="load()">
-      </div>
-      <ng-select class="filter-ng-select" [items]="typeFilterOptions" bindLabel="label" bindValue="value" [(ngModel)]="type" (ngModelChange)="load()" [searchable]="false" [clearable]="false" aria-label="Catalog item type"></ng-select>
-    </div>
 
     @if(loading()){
       <div class="card-body muted">Loading catalog…</div>

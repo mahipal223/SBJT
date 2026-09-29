@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IAuditService, AuditService>();
             services.AddScoped<IDataExportService, DataExportService>();
             services.AddScoped<IReportService, ReportService>();
+            services.AddScoped<ITeamService, TeamService>();
             services.AddScoped<IPlatformAdminService, PlatformAdminService>();
             services.AddSingleton<ServiceDesk.Application.Security.IPasswordHasher, ServiceDesk.Infrastructure.Security.PasswordHasher>();
             services.AddSingleton<ServiceDesk.Application.Security.ITokenIssuer, ServiceDesk.Infrastructure.Security.JwtTokenIssuer>();

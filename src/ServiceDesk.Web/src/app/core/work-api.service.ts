@@ -210,6 +210,50 @@ export interface AuditEvent {
   createdAt: string;
 }
 
+export interface NotificationPreferences {
+  jobAssignedEmail: boolean;
+  invoiceIssuedEmail: boolean;
+  paymentReceivedEmail: boolean;
+  dailyDigestEmail: boolean;
+  alertEmailRecipient?: string;
+}
+
+export interface TeamMember {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  role: 'Owner' | 'Manager' | 'Technician';
+  status: 'Active' | 'Inactive';
+  createdAt: string;
+  updatedAt: string;
+  version: string;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  role: 'Manager' | 'Technician';
+  status: 'Pending' | 'Accepted' | 'Revoked' | 'Expired';
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+  version: string;
+}
+
+export interface TeamOverview {
+  members: TeamMember[];
+  invitations: Invitation[];
+  activeMemberCount: number;
+  pendingInvitationCount: number;
+  planSeatLimit: number | null;
+}
+
+export interface InviteStaffRequest {
+  email: string;
+  role: 'Manager' | 'Technician';
+}
+
 @Injectable({ providedIn: 'root' })
 export class WorkApiService {
   private readonly http = inject(HttpClient);
@@ -342,5 +386,26 @@ export class WorkApiService {
   }
   listAuditEvents(limit = 50) {
     return this.http.get<AuditEvent[]>(`${this.root}/audit-events`, { params: new HttpParams().set('limit', limit) });
+  }
+  getNotificationPreferences() {
+    return this.http.get<NotificationPreferences>(`${this.root}/notifications/preferences`);
+  }
+  updateNotificationPreferences(prefs: NotificationPreferences) {
+    return this.http.patch<NotificationPreferences>(`${this.root}/notifications/preferences`, prefs);
+  }
+  getTeam() {
+    return this.http.get<TeamOverview>(`${this.root}/team`);
+  }
+  getTeamMembers() {
+    return this.http.get<TeamMember[]>(`${this.root}/members`);
+  }
+  getInvitations() {
+    return this.http.get<Invitation[]>(`${this.root}/invitations`);
+  }
+  inviteStaff(command: InviteStaffRequest) {
+    return this.http.post<Invitation>(`${this.root}/invitations`, command);
+  }
+  revokeInvitation(invitationId: string) {
+    return this.http.post<void>(`${this.root}/invitations/${invitationId}/revoke`, {});
   }
 }

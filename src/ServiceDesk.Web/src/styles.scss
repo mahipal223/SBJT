@@ -278,9 +278,12 @@
     }
 
     .toolbar>.search {
-      flex: 1 1 100%;
-      max-width: 100%;
-      min-width: 0;
+      flex: 0 0 44px !important;
+      max-width: 100% !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      height: 44px !important;
+      min-height: 44px !important;
     }
 
     .toolbar>span {
@@ -340,11 +343,12 @@
     }
 
     .toolbar {
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 5px;
-      margin-bottom: 12px;
-      padding: 12px;
+      background: transparent !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      margin-bottom: 14px !important;
+      padding: 0 !important;
+      box-shadow: none !important;
     }
 
     .data-table tbody {
@@ -367,10 +371,10 @@
       overflow: visible;
     }
 
+    .page .toolbar,
     .page .job-list-card .filters-toolbar {
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 5px;
+      background: transparent;
+      border: 0;
       margin-bottom: 12px;
     }
 
@@ -926,7 +930,8 @@ h3,
 }
 
 .grid.cols-4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr))
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 24px;
 }
 
 .grid.cols-3 {
@@ -1001,35 +1006,74 @@ h3,
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 15px 18px;
-  border-bottom: 1px solid var(--line-soft)
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.toolbar+section.card,
+.toolbar+.card {
+  margin-top: 0 !important;
 }
 
 .search {
   position: relative;
-  flex: 0 1 340px;
-  max-width: 360px;
-  min-width: 180px;
-}
-
-.search input {
-  width: 100%;
-  height: 42px;
-  padding: 0 14px 0 38px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   border: 1px solid var(--line);
+  background: #fff;
   border-radius: 5px;
-  background: #f9fbfc;
-  outline: 0
-}
-
-.search::before {
-  content: '⌕';
-  position: absolute;
-  left: 13px;
-  top: 7px;
+  padding: 0 12px;
+  min-width: 180px;
+  max-width: 380px;
+  flex: 1;
+  height: 44px;
+  min-height: 44px;
   color: var(--muted);
-  font-size: 20px
+  transition: border-color .15s, box-shadow .15s;
+
+  svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+
+  input {
+    min-width: 0;
+    width: 100%;
+    border: 0 !important;
+    outline: none !important;
+    background: transparent !important;
+    font-size: 13px;
+    color: var(--ink);
+    height: 100% !important;
+    padding: 0 !important;
+    min-height: auto !important;
+  }
+
+  &:focus-within {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+  }
+
+  &:not(:has(svg))::before {
+    content: '⌕';
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 18px;
+    pointer-events: none;
+  }
+
+  &:not(:has(svg)) input {
+    padding-left: 24px !important;
+  }
 }
 
 .field,
@@ -1490,6 +1534,7 @@ h3,
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
+    margin-bottom: 16px !important;
   }
 
   .grid.cols-3,
@@ -1564,7 +1609,11 @@ h3,
   }
 
   .search {
-    flex-basis: 100%
+    flex-basis: auto !important;
+    width: 100% !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    flex: 0 0 44px !important;
   }
 
   .hide-mobile {
@@ -2488,74 +2537,97 @@ select:not(.filter-select):focus {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 18px;
+  width: 100%;
 
   .search-wrap {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 9px;
     border: 1px solid var(--line);
     background: #fff;
     border-radius: 5px;
     padding: 0 12px;
-    min-width: 220px;
-    max-width: 360px;
+    min-width: 180px;
+    max-width: 380px;
     flex: 1;
-    height: 40px;
+    height: 44px;
     color: var(--muted);
+    transition: border-color .15s, box-shadow .15s;
+
+    svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+      color: var(--muted);
+    }
 
     input {
       min-width: 0;
       width: 100%;
-      border: 0;
-      outline: none;
-      background: transparent;
+      border: 0 !important;
+      outline: none !important;
+      background: transparent !important;
       font-size: 13px;
       color: var(--ink);
+      height: 100% !important;
+      padding: 0 !important;
+      min-height: auto !important;
+    }
+
+    &:focus-within {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
     }
   }
+}
 
-  .status-chips {
-    display: flex;
+.filters,
+.status-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--muted);
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 12px;
+    min-height: 40px;
+    cursor: pointer;
+    transition: all .15s;
 
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border: 1px solid transparent;
-      background: #f1f5f7;
+    span.count,
+    span {
+      font-size: 10px;
+      background: rgba(0, 0, 0, 0.05);
       color: var(--muted);
+      padding: 2px 6px;
       border-radius: 5px;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 7px 12px;
-      cursor: pointer;
-      transition: all .15s;
+      font-weight: 700;
+    }
 
-      span.count {
-        font-size: 10px;
-        background: rgba(0, 0, 0, 0.07);
-        padding: 1px 6px;
-        border-radius: 5px;
-      }
+    &:hover {
+      background: #eef4f6;
+      color: var(--ink);
+    }
 
-      &:hover {
-        background: #e5edf0;
-        color: var(--ink);
-      }
+    &.active {
+      background: #e4f0eb;
+      border-color: #cddfd8;
+      color: #236652;
 
-      &.active {
-        background: var(--mint);
-        border-color: #cddfd8;
-        color: var(--teal);
-
-        span.count {
-          background: rgba(8, 127, 116, 0.15);
-          color: var(--teal);
-        }
+      span.count,
+      span {
+        background: rgba(35, 102, 82, 0.15);
+        color: #236652;
       }
     }
   }
@@ -2685,23 +2757,36 @@ select:not(.filter-select):focus {
     word-break: break-word !important;
   }
 
+  .toolbar,
   .filters-toolbar {
     flex-direction: column !important;
     align-items: stretch !important;
-    padding: 12px 14px !important;
+    padding: 0 !important;
     gap: 10px !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     box-sizing: border-box !important;
+    margin-bottom: 14px !important;
 
+    .search,
     .search-wrap {
       max-width: 100% !important;
       width: 100% !important;
       min-width: 0 !important;
       box-sizing: border-box !important;
+      height: 44px !important;
+      min-height: 44px !important;
+      flex: 0 0 44px !important;
+
+      input {
+        height: 100% !important;
+        min-height: 42px !important;
+        line-height: normal !important;
+      }
     }
 
+    .filters,
     .status-chips {
       display: flex !important;
       gap: 6px !important;
@@ -3655,6 +3740,7 @@ select:not(.filter-select):focus {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
+    margin-bottom: 16px !important;
   }
 
   .progress-track {
@@ -4538,6 +4624,7 @@ app-customers-live .page .page-head {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px 12px !important;
   align-items: center !important;
+  margin-bottom: 22px !important;
 }
 
 app-customers-live .page .page-head>div:first-child {
@@ -5033,7 +5120,7 @@ app-customers-live .page .page-head .page-actions .btn {
     line-height: 1.4;
   }
 
-  > div:last-child {
+  >div:last-child {
     text-align: right;
 
     @media (max-width: 540px) {
@@ -5210,7 +5297,7 @@ app-customers-live .page .page-head .page-actions .btn {
 .search input,
 .search-wrap,
 .filter-select,
-.page .page-head > .btn,
+.page .page-head>.btn,
 .page .page-head .page-actions .btn,
 .ng-select .ng-select-container,
 .filter-ng-select .ng-select-container,

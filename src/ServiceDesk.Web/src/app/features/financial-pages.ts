@@ -27,13 +27,19 @@ const financialMessage = (error: unknown) => error instanceof HttpErrorResponse
         <article class="card stat"><span class="stat-label">Approved</span><strong class="stat-value">{{count('Approved')}}</strong><span class="stat-meta">Accepted scope</span></article>
         <article class="card stat"><span class="stat-label">Pipeline value</span><strong class="stat-value">{{pipelineValue() | currency}}</strong><span class="stat-meta">Current results</span></article>
       </section>
+      <div class="toolbar">
+        <label class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input aria-label="Search estimates" placeholder="Search estimate or customer…" [(ngModel)]="search">
+        </label>
+        <ng-select class="filter-ng-select" [items]="estimateStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select>
+      </div>
       <section class="card section-gap">
-        <div class="toolbar"><ng-select class="filter-ng-select" [items]="estimateStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select></div>
         @if(loading()){<div class="card-body muted">Loading estimates…</div>}
         @else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}
-        @else if(!estimates().length){<div class="empty-state"><h2>No estimates yet</h2><p>Open a job with line items and choose Create estimate.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
+        @else if(!filteredEstimates().length){<div class="empty-state"><h2>No estimates found</h2><p>Try clearing your search or status filter.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
         @else {<div class="table-scroll"><table class="data-table"><thead><tr><th>Estimate</th><th>Customer</th><th>Created</th><th>Expires</th><th>Status</th><th>Total</th><th></th></tr></thead><tbody>
-          @for(e of estimates();track e.id){<tr><td><span class="cell-main"><a [routerLink]="['/app/estimates',e.id]"><strong>#{{e.estimateNumber}}</strong></a><small>{{e.items.length}} line items · revision {{e.revision}}</small></span></td><td>{{e.customerName}}</td><td>{{e.createdAt|date:'MMM d, y'}}</td><td>{{e.validUntil|date:'MMM d, y'}}</td><td><span class="badge" [class.gray]="e.status==='Draft'" [class.amber]="e.status==='Sent'" [class.teal]="e.status==='Approved'">{{e.status}}</span></td><td class="money">{{e.total|currency}}</td><td><div class="page-actions" style="flex-wrap: nowrap; justify-content: flex-end;">@if(e.status==='Draft'){<button class="btn small" [disabled]="savingId()===e.id" (click)="send(e)">Send</button><button class="btn small primary" [disabled]="savingId()===e.id" (click)="quickApprove(e)">Approve</button>}@else if(e.status==='Sent'){<button class="btn small primary" [disabled]="savingId()===e.id" (click)="quickApprove(e)">Approve</button>}@else if(e.status==='Approved'){<a class="btn small" [routerLink]="['/app/jobs', e.jobId]">View job</a>}</div></td></tr>}
+          @for(e of filteredEstimates();track e.id){<tr><td><span class="cell-main"><a [routerLink]="['/app/estimates',e.id]"><strong>#{{e.estimateNumber}}</strong></a><small>{{e.items.length}} line items · revision {{e.revision}}</small></span></td><td>{{e.customerName}}</td><td>{{e.createdAt|date:'MMM d, y'}}</td><td>{{e.validUntil|date:'MMM d, y'}}</td><td><span class="badge" [class.gray]="e.status==='Draft'" [class.amber]="e.status==='Sent'" [class.teal]="e.status==='Approved'">{{e.status}}</span></td><td class="money">{{e.total|currency}}</td><td><div class="page-actions" style="flex-wrap: nowrap; justify-content: flex-end;">@if(e.status==='Draft'){<button class="btn small" [disabled]="savingId()===e.id" (click)="send(e)">Send</button><button class="btn small primary" [disabled]="savingId()===e.id" (click)="quickApprove(e)">Approve</button>}@else if(e.status==='Sent'){<button class="btn small primary" [disabled]="savingId()===e.id" (click)="quickApprove(e)">Approve</button>}@else if(e.status==='Approved'){<a class="btn small" [routerLink]="['/app/jobs', e.jobId]">View job</a>}</div></td></tr>}
         </tbody></table></div>}
       </section>
     </main>`
@@ -45,6 +51,16 @@ export class EstimatesLivePage {
   readonly error = signal('');
   readonly savingId = signal('');
   readonly pipelineValue = computed(() => this.estimates().filter(x => x.status !== 'Declined' && x.status !== 'Expired').reduce((sum, x) => sum + x.total, 0));
+  search = '';
+  readonly filteredEstimates = computed(() => {
+    const q = this.search.trim().toLowerCase();
+    const list = this.estimates();
+    if (!q) return list;
+    return list.filter(e =>
+      (e.estimateNumber && e.estimateNumber.toLowerCase().includes(q)) ||
+      (e.customerName && e.customerName.toLowerCase().includes(q))
+    );
+  });
   status = '';
   readonly estimateStatusOptions = [
     { value: '', label: 'Status: All' },
@@ -89,13 +105,22 @@ export class EstimatesLivePage {
         <article class="card stat"><span class="stat-label">Paid</span><strong class="stat-value">{{paid()|currency}}</strong><span class="stat-meta">Settled invoices</span></article>
         <article class="card stat"><span class="stat-label">Drafts</span><strong class="stat-value">{{count('Draft')}}</strong><span class="stat-meta">Ready to issue</span></article>
       </section>}
+      <div class="toolbar">
+        <label class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input aria-label="Search invoices" placeholder="Search invoice or customer…" [(ngModel)]="search">
+        </label>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          @if(loading() || error()){<strong>{{loading() ? 'Loading invoices…' : 'Invoices unavailable'}}</strong>}
+          <ng-select class="filter-ng-select" [items]="invoiceStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select>
+        </div>
+      </div>
       <section class="card section-gap">
-        <div class="toolbar">@if(loading() || error()){<strong>{{loading() ? 'Loading invoices…' : 'Invoices unavailable'}}</strong>}<ng-select class="filter-ng-select" [items]="invoiceStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select></div>
         @if(loading()){<div class="card-body muted">Loading invoices…</div>}
         @else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}
-        @else if(!invoices().length){<div class="empty-state"><h2>No invoices yet</h2><p>Complete a job, then create its invoice from the job page.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
+        @else if(!filteredInvoices().length){<div class="empty-state"><h2>No invoices found</h2><p>Try clearing your search or status filter.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
         @else {<div class="table-scroll"><table class="data-table"><thead><tr><th>Invoice</th><th>Customer</th><th>Issued / due</th><th>Status</th><th>Total</th><th>Balance</th><th></th></tr></thead><tbody>
-          @for(i of invoices();track i.id){<tr><td><span class="cell-main"><a [routerLink]="['/app/invoices',i.id]"><strong>#{{i.invoiceNumber}}</strong></a><small>{{i.items.length}} line items</small></span></td><td>{{i.customerName}}</td><td><span class="cell-main"><strong>{{i.issuedOn?(i.issuedOn|date:'MMM d, y'):'Not issued'}}</strong><small>{{i.dueOn?'Due '+(i.dueOn|date:'MMM d, y'):'Draft'}}</small></span></td><td><span class="badge" [class.gray]="i.status==='Draft'" [class.red]="i.isOverdue" [class.teal]="i.paymentStatus==='Paid'">{{i.isOverdue?'Overdue':i.paymentStatus==='Paid'?'Paid':i.status}}</span></td><td class="money">{{i.total|currency}}</td><td class="money">{{i.balance|currency}}</td><td><div class="page-actions" style="flex-wrap: nowrap; justify-content: flex-end;">@if(i.status==='Draft'){<button class="btn small primary" [disabled]="savingId()===i.id" (click)="issue(i)">Issue</button>}@else if(i.status==='Issued'&&i.balance>0){<button class="btn small primary" [disabled]="savingId()===i.id" (click)="pay(i)">Record paid</button>}</div></td></tr>}
+          @for(i of filteredInvoices();track i.id){<tr><td><span class="cell-main"><a [routerLink]="['/app/invoices',i.id]"><strong>#{{i.invoiceNumber}}</strong></a><small>{{i.items.length}} line items</small></span></td><td>{{i.customerName}}</td><td><span class="cell-main"><strong>{{i.issuedOn?(i.issuedOn|date:'MMM d, y'):'Not issued'}}</strong><small>{{i.dueOn?'Due '+(i.dueOn|date:'MMM d, y'):'Draft'}}</small></span></td><td><span class="badge" [class.gray]="i.status==='Draft'" [class.red]="i.isOverdue" [class.teal]="i.paymentStatus==='Paid'">{{i.isOverdue?'Overdue':i.paymentStatus==='Paid'?'Paid':i.status}}</span></td><td class="money">{{i.total|currency}}</td><td class="money">{{i.balance|currency}}</td><td><div class="page-actions" style="flex-wrap: nowrap; justify-content: flex-end;">@if(i.status==='Draft'){<button class="btn small primary" [disabled]="savingId()===i.id" (click)="issue(i)">Issue</button>}@else if(i.status==='Issued'&&i.balance>0){<button class="btn small primary" [disabled]="savingId()===i.id" (click)="pay(i)">Record paid</button>}</div></td></tr>}
         </tbody></table></div>}
       </section>
     </main>`
@@ -106,6 +131,16 @@ export class InvoicesLivePage {
   readonly loading = signal(true);
   readonly error = signal('');
   readonly savingId = signal('');
+  search = '';
+  readonly filteredInvoices = computed(() => {
+    const q = this.search.trim().toLowerCase();
+    const list = this.invoices();
+    if (!q) return list;
+    return list.filter(i =>
+      (i.invoiceNumber && i.invoiceNumber.toLowerCase().includes(q)) ||
+      (i.customerName && i.customerName.toLowerCase().includes(q))
+    );
+  });
   status = '';
   readonly invoiceStatusOptions = [
     { value: '', label: 'Status: All' },

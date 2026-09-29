@@ -14,7 +14,8 @@ const messageFrom = (error: unknown) => error instanceof HttpErrorResponse
 
 @Component({selector:'app-customers-live',imports:[RouterLink,FormsModule,DatePipe,forwardRef(() => CustomerFormLivePage)],template:`
 <main class="page"><header class="page-head"><div><p class="eyebrow">Customer management</p><h1>Customers</h1><p>People, properties, job history, and billing details.</p></div><div class="page-actions"><button class="btn primary" (click)="openCustomer()">＋ New customer</button></div></header>
-<section class="card"><div class="toolbar"><div class="search"><input aria-label="Search customers" placeholder="Search name, phone, email, or address" [(ngModel)]="search" (ngModelChange)="load()"></div></div>
+<div class="toolbar"><label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><input aria-label="Search customers" placeholder="Search name, phone, email, or address" [(ngModel)]="search" (ngModelChange)="load()"></label></div>
+<section class="card">
 @if(loading()){<div class="card-body muted">Loading customers…</div>}@else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}@else if(!customers().length){<div class="empty-state"><h2>No customers yet</h2><p>Add your first customer to create a job.</p><button class="btn primary" (click)="openCustomer()">＋ New customer</button></div>}@else{
 <div class="table-scroll"><table class="data-table"><thead><tr><th>Customer</th><th>Contact</th><th>Service address</th><th>Type</th><th>Status</th></tr></thead><tbody>@for(c of customers();track c.id){<tr><td><a class="person link" [routerLink]="['/app/customers',c.id]"><span class="avatar">{{initials(c.name)}}</span><span class="cell-main"><strong>{{c.name}}</strong><small>Added {{c.createdAt | date:'MMM yyyy'}}</small></span></a></td><td><span class="cell-main"><strong>{{c.phone}}</strong><small>{{c.email || 'No email'}}</small></span></td><td>{{c.addressLine1}}, {{c.city}}, {{c.stateCode}} {{c.postalCode}}</td><td>{{c.customerType}}</td><td><span class="badge" [class.gray]="c.isArchived">{{c.isArchived?'Archived':'Active'}}</span></td></tr>}</tbody></table></div>}</section><dialog #customerDialog class="customer-dialog" aria-labelledby="customer-popup-title" (cancel)="cancelCustomer($event)"><app-customer-form-live #customerForm [popup]="true" (cancelled)="closeCustomer()" (saved)="customerSaved()"></app-customer-form-live></dialog></main>`})
 export class CustomersLivePage {
@@ -234,30 +235,31 @@ export class CustomerFormLivePage {
     </article>
   </section>
 
-  <section class="card section-gap job-list-card">
-    <div class="filters-toolbar">
-      <div class="search-wrap">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input aria-label="Search jobs" placeholder="Search jobs, customers, or numbers…" [(ngModel)]="search">
-      </div>
-      <div class="status-chips" role="group" aria-label="Filter jobs by status">
-        <button type="button" class="chip" [class.active]="status===''" (click)="setStatus('')">
-          All <span class="count">{{jobs().length}}</span>
-        </button>
-        <button type="button" class="chip" [class.active]="status==='Draft'" (click)="setStatus('Draft')">
-          Draft <span class="count">{{statusCount('Draft')}}</span>
-        </button>
-        <button type="button" class="chip" [class.active]="status==='Scheduled'" (click)="setStatus('Scheduled')">
-          Scheduled <span class="count">{{statusCount('Scheduled')}}</span>
-        </button>
-        <button type="button" class="chip" [class.active]="status==='InProgress'" (click)="setStatus('InProgress')">
-          In progress <span class="count">{{statusCount('InProgress')}}</span>
-        </button>
-        <button type="button" class="chip" [class.active]="status==='Completed'" (click)="setStatus('Completed')">
-          Completed <span class="count">{{statusCount('Completed')}}</span>
-        </button>
-      </div>
+  <div class="toolbar">
+    <label class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input data-input="job-search" aria-label="Search jobs" placeholder="Search jobs, customers, or numbers…" [(ngModel)]="search">
+    </label>
+    <div class="filters" role="group" aria-label="Filter jobs by status">
+      <button type="button" class="chip" [class.active]="status===''" (click)="setStatus('')">
+        All <span class="count">{{jobs().length}}</span>
+      </button>
+      <button type="button" class="chip" [class.active]="status==='Draft'" (click)="setStatus('Draft')">
+        Draft <span class="count">{{statusCount('Draft')}}</span>
+      </button>
+      <button type="button" class="chip" [class.active]="status==='Scheduled'" (click)="setStatus('Scheduled')">
+        Scheduled <span class="count">{{statusCount('Scheduled')}}</span>
+      </button>
+      <button type="button" class="chip" [class.active]="status==='InProgress'" (click)="setStatus('InProgress')">
+        In progress <span class="count">{{statusCount('InProgress')}}</span>
+      </button>
+      <button type="button" class="chip" [class.active]="status==='Completed'" (click)="setStatus('Completed')">
+        Completed <span class="count">{{statusCount('Completed')}}</span>
+      </button>
     </div>
+  </div>
+
+  <section class="card section-gap job-list-card">
 
     @if (loading()) {
       <div class="card-body muted">Loading jobs…</div>
@@ -879,6 +881,10 @@ export class JobFormLivePage {
     const prefillCustomer = this.route.snapshot.queryParamMap.get('customerId');
     if (prefillCustomer) {
       this.model.customerId = prefillCustomer;
+    }
+    const prefillDate = this.route.snapshot.queryParamMap.get('scheduledDate');
+    if (prefillDate) {
+      this.model.scheduledDate = prefillDate;
     }
     this.api.customers().subscribe({
       next: r => this.customers.set(r.items),
