@@ -20,120 +20,106 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
       <p>{{ weekLabel() }} · All seven days, in workspace local time.</p>
     </div>
     <div class="page-actions">
-      <button class="btn" (click)="goToToday()">Today</button>
+      <div class="week-nav">
+        <button class="icon-btn" (click)="prevWeek()" title="Previous week" aria-label="Previous week">‹</button>
+        <button class="btn" (click)="goToToday()">Today</button>
+        <button class="icon-btn" (click)="nextWeek()" title="Next week" aria-label="Next week">›</button>
+      </div>
       <a class="btn primary" routerLink="/app/jobs/new">＋ Create job</a>
     </div>
   </header>
 
-  <section class="card schedule-main-card">
-    <div class="toolbar">
-      <div class="week-nav">
-        <button class="icon-btn" (click)="prevWeek()" title="Previous week" aria-label="Previous week">‹</button>
-        <strong>{{ weekLabel() }}</strong>
-        <button class="icon-btn" (click)="nextWeek()" title="Next week" aria-label="Next week">›</button>
-      </div>
-    </div>
-
-    @if (loading()) {
-      <div class="callout" style="margin: 16px 20px;">Loading scheduled jobs…</div>
-    } @else if (error()) {
-      <div class="callout" style="margin: 16px 20px;" role="alert">{{ error() }}</div>
+  <!-- Prototype Calendar Strip: 7 days directly on page -->
+  <div class="calendar-strip" role="tablist" aria-label="Select day">
+    @for (day of days(); track day.fullDate) {
+      <button type="button"
+              class="calendar-day"
+              [class.active]="selectedDate() === day.fullDate"
+              [class.today]="day.isToday"
+              (click)="selectDate(day.fullDate)"
+              [attr.aria-pressed]="selectedDate() === day.fullDate">
+        <span class="day-name">{{ day.name }}</span>
+        <b>{{ day.date }}</b>
+        @if (hasJobs(day.fullDate)) {
+          <i title="Has scheduled visits"></i>
+        }
+      </button>
     }
+  </div>
 
-    <div class="schedule-body">
-      <!-- Prototype Calendar Strip: 7 days -->
-      <div class="calendar-strip" role="tablist" aria-label="Select day">
-        @for (day of days(); track day.fullDate) {
-          <button type="button"
-                  class="calendar-day"
-                  [class.active]="selectedDate() === day.fullDate"
-                  [class.today]="day.isToday"
-                  (click)="selectDate(day.fullDate)"
-                  [attr.aria-pressed]="selectedDate() === day.fullDate">
-            <span class="day-name">{{ day.name }}</span>
-            <b>{{ day.date }}</b>
-            @if (hasJobs(day.fullDate)) {
-              <i title="Has scheduled visits"></i>
+  <!-- Selected Day Title -->
+  <h2 class="schedule-title">
+    {{ selectedDayTitle() }}
+    <span class="muted small">· {{ selectedDayJobs().length }} visit{{ selectedDayJobs().length === 1 ? '' : 's' }}</span>
+  </h2>
+
+  <!-- The only card on the page: Agenda List -->
+  <section class="card">
+    @if (loading()) {
+      <div class="callout" style="margin: 20px;">Loading scheduled jobs…</div>
+    } @else if (error()) {
+      <div class="callout" style="margin: 20px;" role="alert">{{ error() }}</div>
+    } @else if (selectedDayJobs().length > 0) {
+      @for (job of selectedDayJobs(); track job.id) {
+        <div class="agenda-row">
+          <div class="agenda-time">
+            <strong>{{ formatTimeStart(job.arrivalWindow) }}</strong>
+            @if (formatTimeEnd(job.arrivalWindow)) {
+              <small>{{ formatTimeEnd(job.arrivalWindow) }}</small>
             }
-          </button>
-        }
-      </div>
-
-      <!-- Selected Day Title -->
-      <div class="schedule-day-header">
-        <h2 class="schedule-title">
-          {{ selectedDayTitle() }}
-          <span class="muted small">· {{ selectedDayJobs().length }} visit{{ selectedDayJobs().length === 1 ? '' : 's' }}</span>
-        </h2>
-      </div>
-
-      <!-- Agenda List matching prototype -->
-      <div class="agenda-list">
-        @if (selectedDayJobs().length > 0) {
-          @for (job of selectedDayJobs(); track job.id) {
-            <div class="agenda-row">
-              <div class="agenda-time">
-                <strong>{{ job.arrivalWindow || 'Flexible' }}</strong>
-                <small>{{ formatDateShort(job.scheduledDate) }}</small>
-              </div>
-              <div class="agenda-info">
-                <a class="job-title" [routerLink]="['/app/jobs', job.id]">
-                  #{{ job.jobNumber }} · {{ job.title }}
-                </a>
-                <p>{{ getCustomerName(job.customerId) }}@if (getCustomerLocation(job.customerId)) { · {{ getCustomerLocation(job.customerId) }} }</p>
-                <span class="badge" [class.amber]="job.status === 'InProgress'" [class.blue]="job.status === 'Scheduled'" [class.teal]="job.status === 'Completed'" [class.gray]="job.status === 'Draft'">
-                  {{ formatStatus(job.status) }}
-                </span>
-              </div>
-              <div class="agenda-actions">
-                <span class="avatar-stack">
-                  <span class="person-dot">SD</span>
-                  <span>{{ job.assignedMemberId ? 'Assigned' : 'Unassigned' }}</span>
-                </span>
-                <a class="btn small" [class.primary]="job.status === 'InProgress'" [routerLink]="['/app/jobs', job.id]">
-                  {{ job.status === 'InProgress' ? 'Continue' : job.status === 'Completed' ? 'View job' : 'Open job' }} →
-                </a>
-              </div>
-            </div>
-          }
-        } @else {
-          <div class="empty-state">
-            <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" fill="none" stroke-width="1.7">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            <h2>A little breathing room</h2>
-            <p>No visits scheduled for this day.</p>
-            <a class="btn primary" routerLink="/app/jobs/new">＋ Schedule a job</a>
           </div>
-        }
+          <div class="agenda-info">
+            <a class="job-title" [routerLink]="['/app/jobs', job.id]">
+              #{{ job.jobNumber }} · {{ job.title }}
+            </a>
+            <p>{{ getCustomerName(job.customerId) }}@if (getCustomerLocation(job.customerId)) { · {{ getCustomerLocation(job.customerId) }} }</p>
+            <span class="badge" [class.amber]="job.status === 'InProgress'" [class.blue]="job.status === 'Scheduled'" [class.teal]="job.status === 'Completed'" [class.gray]="job.status === 'Draft'">
+              {{ formatStatus(job.status) }}
+            </span>
+          </div>
+          <div class="agenda-actions">
+            <span class="avatar-stack">
+              <span class="person-dot">SD</span>
+              <span>{{ job.assignedMemberId ? 'Assigned' : 'Unassigned' }}</span>
+            </span>
+            <a class="btn small" [class.primary]="job.status === 'InProgress'" [routerLink]="['/app/jobs', job.id]">
+              {{ job.status === 'InProgress' ? 'Continue' : job.status === 'Completed' ? 'View job' : 'Open job' }} →
+            </a>
+          </div>
+        </div>
+      }
+    } @else {
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" fill="none" stroke-width="1.7">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <h2>A little breathing room</h2>
+        <p>No visits scheduled for this day.</p>
+        <a class="btn primary" routerLink="/app/jobs/new">＋ Schedule a job</a>
       </div>
-
-      <!-- Preserved mobile-agenda structure for unit test compliance -->
-      <div class="mobile-agenda" style="display:none">
-        @for (day of agenda(); track day.fullDate) {
-          <section class="agenda-day" [class.today]="day.isToday">
-            <h2>{{ day.name }} {{ day.date }}</h2>
-            @for (job of day.jobs; track job.id) {
-              <a class="job-block" [routerLink]="['/app/jobs', job.id]">
-                <b>{{ job.title }}</b><small>{{ job.arrivalWindow || 'Time not set' }} · {{ job.status }}</small>
-              </a>
-            } @empty { <p class="muted">No visits scheduled.</p> }
-          </section>
-        }
-      </div>
-    </div>
+    }
   </section>
+
+  <!-- Preserved mobile-agenda structure for unit test compliance -->
+  <div class="mobile-agenda" style="display:none">
+    @for (day of agenda(); track day.fullDate) {
+      <section class="agenda-day" [class.today]="day.isToday">
+        <h2>{{ day.name }} {{ day.date }}</h2>
+        @for (job of day.jobs; track job.id) {
+          <a class="job-block" [routerLink]="['/app/jobs', job.id]">
+            <b>{{ job.title }}</b><small>{{ job.arrivalWindow || 'Time not set' }} · {{ job.status }}</small>
+          </a>
+        } @empty { <p class="muted">No visits scheduled.</p> }
+      </section>
+    }
+  </div>
 </main>`,
   styles: `
-.schedule-main-card { min-width: 0; }
-.toolbar { display: flex; align-items: center; justify-content: center; padding: 14px 24px; border-bottom: 1px solid var(--line-soft); }
-.week-nav { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 320px; gap: 16px; }
-.week-nav strong { font-size: 14px; font-weight: 600; color: var(--ink); text-align: center; }
-.schedule-body { padding: 20px 24px 28px; }
-.calendar-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-bottom: 24px; }
+.week-nav { display: flex; align-items: center; gap: 8px; }
+.calendar-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin: 18px 0 24px; }
 .calendar-day {
   background: #fff;
   border: 1px solid var(--line);
@@ -141,7 +127,7 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
   padding: 12px 6px;
   text-align: center;
   font-size: 11px;
-  min-height: 72px;
+  min-height: 70px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -156,9 +142,9 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
 .calendar-day:hover { border-color: var(--teal); background: #f8fbfa; }
 .calendar-day.active {
   border-color: var(--teal);
-  background: var(--teal-tint);
+  background: var(--teal-tint, #edf6f1);
   color: var(--teal-dark);
-  box-shadow: 0 2px 6px rgba(8, 127, 116, 0.15);
+  box-shadow: 0 2px 6px rgba(8, 127, 116, 0.12);
 }
 .calendar-day.today .day-name,
 .calendar-day.today b { color: var(--teal); }
@@ -173,47 +159,47 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
 .calendar-day b { font-size: 20px; font-weight: 700; line-height: 1.2; }
 .calendar-day i {
   display: block;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   background: var(--teal);
   border-radius: 50%;
   margin-top: 3px;
 }
 .calendar-day.active i { background: var(--teal-dark); }
-.schedule-day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.schedule-title { font-size: 18px; font-weight: 700; color: var(--ink); margin: 0; }
+.schedule-title { font-size: 18px; font-weight: 700; color: var(--ink); margin: 0 0 16px 2px; }
 .schedule-title .muted { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 6px; }
-.agenda-list { display: grid; border: 1px solid var(--line-soft); border-radius: 10px; overflow: hidden; background: #fff; }
+
 .agenda-row {
   display: grid;
-  grid-template-columns: 130px minmax(0, 1fr) auto;
-  gap: 20px;
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--line-soft);
+  grid-template-columns: 85px minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line-soft, #edf1f2);
   align-items: center;
   transition: background .15s;
 }
 .agenda-row:hover { background: #fafcfb; }
 .agenda-row:last-child { border-bottom: 0; }
-.agenda-time { font-size: 13px; font-weight: 700; color: var(--ink); }
-.agenda-time small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 3px; }
-.agenda-info { display: grid; gap: 4px; }
-.agenda-info .job-title { font-size: 14px; font-weight: 700; color: var(--ink); text-decoration: none; }
+.agenda-time { font-size: 12px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+.agenda-time strong { display: block; }
+.agenda-time small { display: block; font-size: 10px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+.agenda-info { display: grid; gap: 3px; min-width: 0; }
+.agenda-info .job-title { font-size: 13px; font-weight: 650; color: var(--ink); text-decoration: none; }
 .agenda-info .job-title:hover { color: var(--teal); text-decoration: underline; }
-.agenda-info p { font-size: 12px; color: var(--muted); margin: 0; }
+.agenda-info p { font-size: 11px; color: var(--muted); margin: 0; }
 .agenda-info .badge { margin-top: 4px; width: fit-content; }
-.agenda-actions { display: flex; align-items: center; gap: 16px; }
-.avatar-stack { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.agenda-actions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.avatar-stack { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); }
 .person-dot {
   display: grid;
   place-items: center;
   background: #edf4f1;
   color: var(--teal-dark);
   border: 1px solid var(--line);
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
 }
 .empty-state { text-align: center; padding: 56px 20px; }
@@ -233,52 +219,30 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
   font-size: 18px;
 }
 .icon-btn:hover { background: #f4f7f9; }
-@media (max-width: 720px) {
-  .schedule-body { padding: 14px 12px 20px; }
-  .calendar-strip { gap: 4px; margin-bottom: 16px; }
-  .calendar-day { font-size: 9px; min-height: 56px; padding: 8px 2px; }
+
+@media (max-width: 650px) {
+  .calendar-strip { gap: 4px; margin: 12px 0 16px; }
+  .calendar-day { font-size: 9px; min-height: 56px; padding: 6px 2px; border-radius: 8px; }
   .calendar-day b { font-size: 15px; }
-  .toolbar { padding: 10px 14px; }
-  .week-nav { max-width: 100%; }
+  .schedule-title { font-size: 16px; margin-bottom: 12px; }
   .agenda-row {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 62px minmax(0, 1fr) auto;
     padding: 14px 14px;
     gap: 10px;
   }
-  .agenda-time {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 12px;
+  .agenda-row .avatar-stack {
+    display: none;
   }
-  .agenda-time small {
-    display: inline-block;
-    margin-top: 0;
+  .agenda-actions .btn.small {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
   }
-  .agenda-info {
-    gap: 4px;
-  }
-  .agenda-info .job-title {
-    font-size: 14px;
-    line-height: 1.35;
-  }
-  .agenda-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 10px;
-    border-top: 1px solid var(--line-soft);
-    margin-top: 2px;
-  }
-  .agenda-actions .avatar-stack {
-    display: flex;
-  }
-  .agenda-actions .btn {
-    padding: 7px 14px;
-    font-size: 12px;
-  }
+  .agenda-time { font-size: 11px; }
+  .agenda-time small { font-size: 9px; }
+  .agenda-info .job-title { font-size: 12px; }
+  .agenda-info p { font-size: 10px; }
 }
 `
 })
@@ -416,6 +380,18 @@ export class SchedulePage implements OnInit {
     const [y, m, d] = dateStr.split('-').map(Number);
     if (!y || !m || !d) return dateStr;
     return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  formatTimeStart(window?: string): string {
+    if (!window) return 'Flexible';
+    const parts = window.split(/[–-]/);
+    return parts[0].trim();
+  }
+
+  formatTimeEnd(window?: string): string {
+    if (!window) return '';
+    const parts = window.split(/[–-]/);
+    return parts.length > 1 ? parts[1].trim() : '';
   }
 
   formatStatus(status: string): string {
