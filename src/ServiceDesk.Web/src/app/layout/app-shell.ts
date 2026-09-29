@@ -119,26 +119,26 @@ import { WorkspaceContext } from '../core/api.models';
 .app-sidebar::-webkit-scrollbar-thumb { background: #274d5d; border-radius: 3px; }
 .brand-row { display: flex; align-items: center; justify-content: space-between; padding: 0 9px; }
 .brand { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 19px; font-weight: 800; text-decoration: none; }
-.brand > span { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 8px; color: var(--navy); background: #65d0c5; font-size: 16px; }
+.brand > span { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 5px; color: var(--navy); background: #65d0c5; font-size: 16px; }
 .close-menu { display: none; border: 0; color: #fff; background: transparent; font-size: 28px; cursor: pointer; }
-.workspace-picker { width: 100%; display: grid; grid-template-columns: 35px 1fr; align-items: center; gap: 10px; margin: 22px 0; padding: 10px; border: 1px solid #31505d; border-radius: 10px; color: #fff; background: #173846; text-align: left; }
-.workspace-logo { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 8px; color: #14323e; background: #ccebe5; font-size: 11px; font-weight: 800; }
+.workspace-picker { width: 100%; display: grid; grid-template-columns: 35px 1fr; align-items: center; gap: 10px; margin: 22px 0; padding: 10px; border: 1px solid #31505d; border-radius: 5px; color: #fff; background: #173846; text-align: left; }
+.workspace-logo { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 5px; color: #14323e; background: #ccebe5; font-size: 11px; font-weight: 800; }
 .workspace-picker span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
 .workspace-picker strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-picker small { color: #aac0c9; font-size: 10px; }
 .app-sidebar nav p { margin: 16px 10px 6px; color: #78939e; font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-.app-sidebar nav a { position: relative; display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 8px; color: #c9d7dd; font-size: 13px; font-weight: 600; text-decoration: none; }
+.app-sidebar nav a { position: relative; display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 5px; color: #c9d7dd; font-size: 13px; font-weight: 600; text-decoration: none; }
 .app-sidebar nav a:hover, .app-sidebar nav a.active { color: #fff; background: #1c4653; }
 .app-sidebar nav a.active::before { content: ''; position: absolute; left: -14px; width: 3px; height: 22px; border-radius: 0 4px 4px 0; background: #59c7bc; }
 .app-sidebar .nav-icon { width: 19px; text-align: center; font-size: 15px; }
 .app-sidebar nav em { margin-left: auto; min-width: 20px; padding: 2px 6px; border-radius: 10px; color: #fff; background: #b14b45; font-size: 9px; font-style: normal; text-align: center; }
 .sidebar-footer { display: grid; gap: 10px; margin-top: auto; padding-top: 22px; }
-.plan-mini { display: flex; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid #31505d; border-radius: 9px; }
+.plan-mini { display: flex; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid #31505d; border-radius: 5px; }
 .plan-mini > span { display: grid; gap: 3px; }
 .plan-mini b { font-size: 11px; }
 .plan-mini small { color: #8fa8b2; font-size: 10px; }
 .plan-mini a { align-self: center; color: #6fd1c7; font-size: 10px; font-weight: 700; text-decoration: none; }
-.user-card { display: flex; align-items: center; gap: 10px; padding: 10px; border: 0; color: #fff; background: transparent; text-align: left; cursor: pointer; border-radius: 8px; transition: background .15s; }
+.user-card { display: flex; align-items: center; gap: 10px; padding: 10px; border: 0; color: #fff; background: transparent; text-align: left; cursor: pointer; border-radius: 5px; transition: background .15s; }
 .user-card:hover { background: #1c4653; }
 .user-card > span:last-child { display: grid; gap: 2px; }
 .user-card strong { font-size: 11px; }
@@ -146,12 +146,12 @@ import { WorkspaceContext } from '../core/api.models';
 .app-content { min-width: 0; max-width: 100%; width: 100%; overflow-x: clip; }
 .topbar { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--line); background: #fff; }
 .menu-button { display: none; border: 0; background: transparent; font-size: 21px; cursor: pointer; line-height: 1; }
-.top-search { width: min(440px, 50vw); height: 38px; display: flex; align-items: center; gap: 9px; padding: 0 11px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); background: #f8fafb; font-size: 12px; text-decoration: none; }
+.top-search { width: min(440px, 50vw); height: 38px; display: flex; align-items: center; gap: 9px; padding: 0 11px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); background: #f8fafb; font-size: 12px; text-decoration: none; }
 .top-search kbd { margin-left: auto; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; font-size: 9px; }
 .top-actions { display: flex; align-items: center; gap: 9px; }
 .top-actions button { position: relative; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: #fff; cursor: pointer; }
 .top-actions i { position: absolute; right: 4px; top: 3px; width: 7px; height: 7px; border: 2px solid #fff; border-radius: 50%; background: #e05252; }
-.btn-logout { width: auto !important; height: 34px !important; border-radius: 6px !important; padding: 0 12px !important; font-size: 12px !important; font-weight: 600; color: var(--navy) !important; background: #f0f4f6 !important; border: 1px solid var(--line) !important; cursor: pointer; transition: background .15s; }
+.btn-logout { width: auto !important; height: 34px !important; border-radius: 5px !important; padding: 0 12px !important; font-size: 12px !important; font-weight: 600; color: var(--navy) !important; background: #f0f4f6 !important; border: 1px solid var(--line) !important; cursor: pointer; transition: background .15s; }
 .btn-logout:hover { background: #e2ebef !important; }
 .avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: var(--teal); color: #fff; font-size: 11px; font-weight: 800; cursor: pointer; }
 .bottom-nav, .scrim { display: none; }
@@ -175,7 +175,7 @@ import { WorkspaceContext } from '../core/api.models';
   .bottom-nav a.active, .bottom-nav .active { background: transparent !important; background-color: transparent !important; color: var(--teal) !important; font-weight: 700 !important; }
   .bottom-nav a.active svg, .bottom-nav .active svg { color: var(--teal) !important; stroke: var(--teal) !important; }
   .bottom-nav .create { background: transparent !important; background-color: transparent !important; }
-  .bottom-nav a.create svg, .bottom-nav a.create.active svg { width: 30px !important; height: 30px !important; padding: 5px !important; border-radius: 9px !important; background: var(--teal) !important; color: #fff !important; stroke: #fff !important; stroke-width: 2.4 !important; }
+  .bottom-nav a.create svg, .bottom-nav a.create.active svg { width: 30px !important; height: 30px !important; padding: 5px !important; border-radius: 5px !important; background: var(--teal) !important; color: #fff !important; stroke: #fff !important; stroke-width: 2.4 !important; }
 }
 @media (max-width: 520px) {
   .top-search span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

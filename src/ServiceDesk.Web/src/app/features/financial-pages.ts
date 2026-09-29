@@ -295,12 +295,6 @@ export class InvoicesLivePage {
                   }
                 </div>
               </section>
-
-              <div class="summary-meta">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span>Design preview. Sending, approval, and payments are simulated in this tab.</span>
-              </div>
-
               <div style="display: flex; gap: 10px;">
                 <button class="btn" style="flex: 1;" (click)="downloadPdf()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Download PDF</button>
                 <button class="btn" style="flex: 1;" (click)="printDocument()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg> Print</button>
@@ -454,9 +448,7 @@ interface PaymentHistoryItem {
                 <button class="btn" [disabled]="saving()" (click)="issueAndSettle()" id="issue-settle-btn">Issue & record payment</button>
               } @else if(inv.status==='Issued' && inv.balance > 0){
                 <button class="btn primary" [disabled]="saving()" (click)="openPaymentModal()" id="open-pay-btn">Record payment ({{inv.balance|currency}})</button>
-              } @else if(inv.paymentStatus==='Paid'){
-                <span class="badge teal" style="padding: 6px 14px; font-size: 13px; font-weight: 600;">Paid</span>
-              }
+              } 
             </div>
           </header>
 
@@ -614,12 +606,6 @@ interface PaymentHistoryItem {
                   }
                 </div>
               </section>
-
-              <div class="summary-meta">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span>Design preview. Sending, approval, and payments are simulated in this tab.</span>
-              </div>
-
               <div style="display: flex; gap: 10px;">
                 <button class="btn" style="flex: 1;" (click)="downloadPdf()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Download PDF</button>
                 <button class="btn" style="flex: 1;" (click)="printDocument()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg> Print</button>

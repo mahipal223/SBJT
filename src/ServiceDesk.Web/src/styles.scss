@@ -329,7 +329,7 @@
     .toolbar {
       background: white;
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 5px;
       margin-bottom: 12px;
       padding: 12px;
     }
@@ -342,7 +342,7 @@
     .data-table tr {
       background: white;
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 5px;
     }
   }
 
@@ -357,7 +357,7 @@
     .page .job-list-card .filters-toolbar {
       background: white;
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 5px;
       margin-bottom: 12px;
     }
 
@@ -421,7 +421,7 @@ select {
   min-height: 42px;
   padding: 0 38px 0 13px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 5px;
   color: var(--ink);
   background-color: #fff;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23647985' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
@@ -664,7 +664,7 @@ app-technician .tech-page>header button {
   z-index: 100;
   max-width: min(360px, calc(100vw - 32px));
   padding: 13px 16px;
-  border-radius: 9px;
+  border-radius: 5px;
   color: #fff;
   background: var(--navy);
   box-shadow: var(--shadow);
@@ -725,7 +725,8 @@ body:has(app-technician) .mobile-nav {
   --red-bg: #ffeded;
   --blue: #3568b8;
   --blue-bg: #edf4ff;
-  --shadow: 0 12px 32px rgba(18, 45, 59, .08)
+  --shadow: 0 12px 32px rgba(18, 45, 59, .08);
+  --radius: 5px;
 }
 
 *,
@@ -822,7 +823,7 @@ h3,
   gap: 8px;
   padding: 0 16px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 5px;
   color: var(--ink);
   background: #fff;
   font-weight: 700;
@@ -861,7 +862,7 @@ h3,
   display: grid;
   place-items: center;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 5px;
   background: #fff;
   color: var(--ink);
   cursor: pointer
@@ -869,7 +870,7 @@ h3,
 
 .card {
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: 5px;
   background: var(--surface);
   box-shadow: 0 1px 1px rgba(16, 41, 54, .02);
   width: 100%;
@@ -1004,7 +1005,7 @@ h3,
   height: 42px;
   padding: 0 14px 0 38px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 5px;
   background: #f9fbfc;
   outline: 0
 }
@@ -1050,7 +1051,7 @@ h3,
   min-height: 43px;
   padding: 10px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 5px;
   color: var(--ink);
   background: #fff;
   outline: 0;
@@ -1296,7 +1297,7 @@ h3,
   display: grid;
   place-items: center;
   margin: 0 auto 16px;
-  border-radius: 14px;
+  border-radius: 5px;
   color: var(--teal);
   background: var(--teal-tint);
   font-size: 24px
@@ -1315,7 +1316,7 @@ h3,
 .callout {
   padding: 17px 19px;
   border-left: 4px solid var(--teal);
-  border-radius: 8px;
+  border-radius: 5px;
   background: var(--teal-tint);
   color: #24574f;
   margin-bottom: 22px
@@ -1445,7 +1446,7 @@ h3,
       padding: 8px 14px !important;
       font-size: 12px !important;
       font-weight: 700 !important;
-      border-radius: 8px !important;
+      border-radius: 5px !important;
       margin-top: 2px !important;
       align-self: flex-start !important;
     }
@@ -1499,7 +1500,7 @@ h3,
   .stat {
     min-height: auto !important;
     padding: 12px 14px !important;
-    border-radius: 12px !important;
+    border-radius: 5px !important;
     min-width: 0 !important;
     overflow: hidden !important;
     position: relative !important;
@@ -1741,7 +1742,7 @@ button:disabled {
   width: 30px !important;
   height: 30px !important;
   padding: 5px !important;
-  border-radius: 9px !important;
+  border-radius: 5px !important;
   background: var(--teal) !important;
   color: #ffffff !important;
   stroke: #ffffff !important;
@@ -1865,7 +1866,7 @@ select:not(.filter-select):focus {
   height: 44px !important;
   min-height: 44px !important;
   border: 1px solid var(--line) !important;
-  border-radius: 8px !important;
+  border-radius: 5px !important;
   background: #fff !important;
   color: var(--ink) !important;
   box-shadow: none !important;
@@ -2004,7 +2005,7 @@ select:not(.filter-select):focus {
   max-width: 220px !important;
   height: 40px !important;
   min-height: 40px !important;
-  border-radius: 9px !important;
+  border-radius: 5px !important;
   border: 1px solid var(--line) !important;
   background: #fff !important;
   font-weight: 700 !important;
@@ -2030,7 +2031,7 @@ select:not(.filter-select):focus {
 
 .ng-dropdown-panel {
   border: 1px solid var(--line) !important;
-  border-radius: 9px !important;
+  border-radius: 5px !important;
   box-shadow: 0 10px 25px rgba(16, 41, 54, 0.12) !important;
   margin-top: 4px !important;
   background: #fff !important;
@@ -2179,7 +2180,7 @@ select:not(.filter-select):focus {
   justify-content: space-between;
   padding: 11px 14px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 5px;
   text-decoration: none;
   color: var(--ink);
   background: #fbfdfd;
@@ -2273,7 +2274,7 @@ select:not(.filter-select):focus {
   padding: 8px 12px;
   background: #f8fafb;
   border: 1px solid var(--line-soft);
-  border-radius: 8px;
+  border-radius: 5px;
   margin-top: 4px;
   animation: field-err-in .15s ease-out;
 
@@ -2346,7 +2347,7 @@ select:not(.filter-select):focus {
   width: 100%;
   max-width: 520px;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 5px;
   border: 1px solid var(--line);
   box-shadow: 0 20px 40px rgba(10, 28, 36, 0.2);
   overflow: hidden;
@@ -2384,7 +2385,7 @@ select:not(.filter-select):focus {
       align-items: center;
       justify-content: center;
       border: 1.5px solid var(--teal);
-      border-radius: 9px;
+      border-radius: 5px;
       background: #fff;
       color: var(--teal);
       font-size: 16px;
@@ -2483,7 +2484,7 @@ select:not(.filter-select):focus {
     gap: 8px;
     border: 1px solid var(--line);
     background: #fff;
-    border-radius: 8px;
+    border-radius: 5px;
     padding: 0 12px;
     min-width: 220px;
     max-width: 360px;
@@ -2514,7 +2515,7 @@ select:not(.filter-select):focus {
       border: 1px solid transparent;
       background: #f1f5f7;
       color: var(--muted);
-      border-radius: 7px;
+      border-radius: 5px;
       font-size: 12px;
       font-weight: 600;
       padding: 7px 12px;
@@ -2525,7 +2526,7 @@ select:not(.filter-select):focus {
         font-size: 10px;
         background: rgba(0, 0, 0, 0.07);
         padding: 1px 6px;
-        border-radius: 10px;
+        border-radius: 5px;
       }
 
       &:hover {
@@ -2595,7 +2596,7 @@ select:not(.filter-select):focus {
   display: block;
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 5px;
   padding: 14px 16px;
   text-decoration: none;
   color: inherit;
@@ -2723,7 +2724,7 @@ select:not(.filter-select):focus {
   margin-bottom: 24px;
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 5px;
   padding: 16px 24px;
   justify-content: space-between;
   align-items: center;
@@ -2854,7 +2855,7 @@ select:not(.filter-select):focus {
     flex: 1;
     min-height: 44px;
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 5px;
     background: #fff;
     padding: 11px 14px;
     font-size: 13px;
@@ -2891,7 +2892,7 @@ select:not(.filter-select):focus {
 
   .card-head {
     background: #f9fbfa;
-    border-radius: 12px 12px 0 0;
+    border-radius: 5px 5px 0 0;
   }
 
   .summary-line {
@@ -2940,7 +2941,7 @@ select:not(.filter-select):focus {
 
   .summary-meta {
     background: #f6f8f7;
-    border-radius: 8px;
+    border-radius: 5px;
     padding: 12px 14px;
     margin-top: 18px;
     display: flex;
@@ -3000,7 +3001,7 @@ select:not(.filter-select):focus {
     padding: 12px 18px !important;
     background: #ffffff !important;
     border: 1px solid var(--line) !important;
-    border-radius: 12px !important;
+    border-radius: 5px !important;
     box-shadow: 0 4px 24px rgba(16, 41, 54, 0.10) !important;
 
     .form-actions-mobile-total {
@@ -3031,7 +3032,7 @@ select:not(.filter-select):focus {
       min-height: 44px !important;
       font-size: 13.5px !important;
       font-weight: 600 !important;
-      border-radius: 9px !important;
+      border-radius: 5px !important;
       padding: 0 18px !important;
       white-space: nowrap !important;
       display: inline-flex !important;
@@ -3172,7 +3173,7 @@ select:not(.filter-select):focus {
     border: 1px solid transparent;
     background: none;
     color: var(--muted);
-    border-radius: 8px;
+    border-radius: 5px;
     font-size: 12px;
     font-weight: 500;
     padding: 7px 14px;
@@ -3209,7 +3210,7 @@ select:not(.filter-select):focus {
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 5px;
   background: #fff;
   transition: all .15s ease;
 
@@ -3217,7 +3218,7 @@ select:not(.filter-select):focus {
     width: 40px;
     height: 40px;
     min-width: 40px;
-    border-radius: 10px;
+    border-radius: 5px;
     background: #edf4f1;
     color: var(--teal);
     display: grid;
@@ -3258,7 +3259,7 @@ select:not(.filter-select):focus {
     min-width: 38px;
     min-height: 38px;
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 5px;
     background: #fff;
     color: var(--ink);
     display: inline-flex;
@@ -3333,7 +3334,7 @@ select:not(.filter-select):focus {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    border-radius: 8px;
+    border-radius: 5px;
 
     &:disabled {
       background: #94c7bd !important;
@@ -3501,7 +3502,7 @@ select:not(.filter-select):focus {
   align-items: center;
   border: 1px solid var(--line);
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: 5px;
   margin-top: 10px;
   text-decoration: none;
   background: #fff;
@@ -3609,7 +3610,7 @@ select:not(.filter-select):focus {
       padding: 8px 14px !important;
       font-size: 12px !important;
       font-weight: 700 !important;
-      border-radius: 8px !important;
+      border-radius: 5px !important;
       margin-top: 2px !important;
       align-self: flex-start !important;
     }
@@ -3647,7 +3648,7 @@ select:not(.filter-select):focus {
     padding: 12px 10px;
     gap: 4px;
     margin-bottom: 18px;
-    border-radius: 10px;
+    border-radius: 5px;
   }
 
   .progress-step {
@@ -3677,7 +3678,7 @@ select:not(.filter-select):focus {
   }
 
   .card {
-    border-radius: 12px;
+    border-radius: 5px;
   }
 
   .card-head {
@@ -3937,7 +3938,7 @@ select:not(.filter-select):focus {
     align-items: center !important;
     justify-content: center !important;
     border: 1.5px solid var(--teal) !important;
-    border-radius: 8px !important;
+    border-radius: 5px !important;
     background: #fff !important;
     color: var(--teal) !important;
     font-size: 15px !important;
@@ -3981,7 +3982,7 @@ select:not(.filter-select):focus {
     .search-wrap {
       height: 38px !important;
       padding: 0 10px !important;
-      border-radius: 7px !important;
+      border-radius: 5px !important;
 
       input {
         font-size: 11.5px !important;
@@ -3997,7 +3998,7 @@ select:not(.filter-select):focus {
         font-size: 11px !important;
         padding: 5px 10px !important;
         min-height: 30px !important;
-        border-radius: 6px !important;
+        border-radius: 5px !important;
         font-style: normal !important;
       }
     }
@@ -4005,13 +4006,13 @@ select:not(.filter-select):focus {
     .catalog-choice {
       padding: 9px 12px !important;
       gap: 10px !important;
-      border-radius: 9px !important;
+      border-radius: 5px !important;
 
       .item-symbol {
         width: 32px !important;
         height: 32px !important;
         min-width: 32px !important;
-        border-radius: 7px !important;
+        border-radius: 5px !important;
         font-size: 15px !important;
       }
 
@@ -4563,7 +4564,7 @@ app-customers-live .page .page-head .page-actions .btn {
 .page .page-head .page-actions .btn {
   min-height: 44px !important;
   padding: 8px 14px !important;
-  border-radius: 8px !important;
+  border-radius: 5px !important;
   font-size: var(--control-text-size, 14px) !important;
 }
 
@@ -4881,7 +4882,7 @@ app-customers-live .page .page-head .page-actions .btn {
   align-items: flex-start;
   gap: 12px;
   padding: 14px 18px;
-  border-radius: 10px;
+  border-radius: 5px;
   border: 1px solid #d4e7de;
   background: #edf7f1;
   font-size: 13px;
@@ -4929,7 +4930,7 @@ app-customers-live .page .page-head .page-actions .btn {
   padding: 36px 40px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 5px;
   box-shadow: 0 4px 20px rgba(18, 45, 59, 0.04);
 
   @media (max-width: 600px) {
@@ -4959,7 +4960,7 @@ app-customers-live .page .page-head .page-actions .btn {
     place-items: center;
     width: 32px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: 5px;
     background: #a7e7d0;
     color: #163d3c;
     font-size: 18px;
@@ -5154,7 +5155,7 @@ app-customers-live .page .page-head .page-actions .btn {
 
 .summary-meta {
   background: #f6f8f7;
-  border-radius: 8px;
+  border-radius: 5px;
   padding: 14px;
   display: flex;
   gap: 10px;
@@ -5174,4 +5175,47 @@ app-customers-live .page .page-head .page-actions .btn {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* ─── Standard 5px border-radius across cards, buttons, inputs, modals, and panels ─── */
+.card,
+.document-paper,
+.quick-modal-card,
+.customer-dialog,
+.customer-popup,
+.customer-tile,
+.job-card,
+.stat,
+.btn,
+.icon-btn,
+.field input,
+.field select,
+.field textarea,
+.form-field input,
+.form-field select,
+.form-field textarea,
+.search input,
+.search-wrap,
+.filter-select,
+.page .page-head > .btn,
+.page .page-head .page-actions .btn,
+.ng-select .ng-select-container,
+.filter-ng-select .ng-select-container,
+.toolbar .filter-ng-select .ng-select-container,
+.ng-dropdown-panel,
+.info-banner,
+.callout,
+.summary-meta,
+.catalog-choice,
+.catalog-choice .item-symbol,
+.filters-toolbar,
+.period-buttons .btn,
+.brand-mark,
+.progress-track,
+.mobile-job,
+.doc-pill,
+.summary-card,
+.summary-card .card-head,
+.demo-toast {
+  border-radius: 5px !important;
 }
