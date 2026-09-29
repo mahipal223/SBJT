@@ -1225,8 +1225,12 @@ export class JobFormLivePage {
 })
 export class CustomerLivePage {
   private api=inject(WorkApiService);customer=signal<Customer|null>(null);customerJobs=signal<Job[]>([]);customerEstimates=signal<Estimate[]>([]);customerInvoices=signal<Invoice[]>([]);activeTab=signal<'jobs'|'estimates'|'invoices'>('jobs');loading=signal(true);error=signal('');
+  private route=inject(ActivatedRoute);
   constructor(){
-    const id=inject(ActivatedRoute).snapshot.paramMap.get('id')!;
+    this.load();
+  }
+  load(){
+    const id=this.route.snapshot.paramMap.get('id')!;
     this.api.customer(id).subscribe({
       next:c=>{
         this.customer.set(c);
@@ -1689,6 +1693,9 @@ export class JobLivePage {
   });
 
   constructor(){
+    this.load();
+  }
+  load(){
     this.api.catalog().subscribe({next:r=>this.catalog.set(r.items),error:()=>{}});
     this.api.jobItems(this.id).subscribe({next:r=>this.items.set(r),error:()=>{}});
     this.loadFinancials();

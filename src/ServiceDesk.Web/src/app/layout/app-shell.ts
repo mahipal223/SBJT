@@ -50,11 +50,28 @@ import { WorkspaceContext } from '../core/api.models';
         ⌕ <span>Search jobs…</span>
       </a>
       <div class="top-actions">
+        <button class="btn-refresh" type="button" (click)="triggerRefresh()" [disabled]="refreshing()" [class.spinning]="refreshing()" title="Refresh page" aria-label="Refresh page">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
         <button class="btn-logout" type="button" (click)="logout()" title="Sign out">Sign out</button>
         <span class="avatar" aria-label="Signed-in user">{{ userInitials() }}</span>
       </div>
     </header>
-    <router-outlet />
+    <div class="pull-to-refresh-indicator" [class.visible]="pullDistance() > 8 || refreshing()" [class.refreshing]="refreshing()" [style.transform]="'translate(-50%, ' + pullOffset() + 'px)'" [attr.aria-hidden]="!refreshing() && pullDistance() <= 8">
+      <div class="ptr-circle" [class.ready]="pullDistance() >= pullThreshold">
+        @if (refreshing()) {
+          <div class="ptr-spinner" aria-label="Refreshing"></div>
+        } @else {
+          <svg class="ptr-arrow" [style.transform]="'rotate(' + pullAngle() + 'deg)'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <polyline points="19 12 12 19 5 12"></polyline>
+          </svg>
+        }
+      </div>
+    </div>
+    <router-outlet (activate)="onActivate($event)" />
   </section>
   <nav class="bottom-nav" aria-label="Mobile navigation" [attr.inert]="drawer() ? '' : null">
     <a routerLink="/app/overview" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
@@ -148,7 +165,6 @@ import { WorkspaceContext } from '../core/api.models';
 }
 @media (max-width: 520px) {
   .top-search span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .top-actions button { display: none; }
   .btn-logout { display: none !important; }
 }
 `
@@ -164,6 +180,97 @@ export class AppShell implements OnInit {
 
   readonly drawer = signal(false);
   readonly workspace = signal<WorkspaceContext | null>(null);
+  readonly pullDistance = signal(0);
+  readonly refreshing = signal(false);
+  readonly pullThreshold = 65;
+  private activeComponent: any = null;
+  private startY = 0;
+  private startX = 0;
+  private isTrackingTouch = false;
+
+  readonly pullOffset = computed(() => {
+    if (this.refreshing()) return 55;
+    return Math.min(this.pullDistance() * 0.8, 68);
+  });
+
+  readonly pullAngle = computed(() => {
+    const p = Math.min(this.pullDistance() / this.pullThreshold, 1);
+    return Math.round(p * 180);
+  });
+
+  onActivate(component: any) {
+    this.activeComponent = component;
+  }
+
+  @HostListener('window:touchstart', ['$event'])
+  onTouchStart(event: TouchEvent) {
+    if (this.refreshing() || this.drawer()) return;
+    if (window.scrollY <= 1 && document.documentElement.scrollTop <= 1) {
+      this.startY = event.touches[0].clientY;
+      this.startX = event.touches[0].clientX;
+      this.isTrackingTouch = true;
+    }
+  }
+
+  @HostListener('window:touchmove', ['$event'])
+  onTouchMove(event: TouchEvent) {
+    if (!this.isTrackingTouch || this.refreshing()) return;
+    if (window.scrollY > 2 || document.documentElement.scrollTop > 2) {
+      this.isTrackingTouch = false;
+      this.pullDistance.set(0);
+      return;
+    }
+    const currentY = event.touches[0].clientY;
+    const currentX = event.touches[0].clientX;
+    const deltaY = currentY - this.startY;
+    const deltaX = Math.abs(currentX - this.startX);
+
+    if (deltaY > 0 && deltaY > deltaX) {
+      const dist = Math.min(deltaY * 0.45, 90);
+      this.pullDistance.set(dist);
+      if (dist >= this.pullThreshold && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try { navigator.vibrate(8); } catch {}
+      }
+    } else if (deltaY < 0) {
+      this.pullDistance.set(0);
+    }
+  }
+
+  @HostListener('window:touchend')
+  onTouchEnd() {
+    if (!this.isTrackingTouch) return;
+    this.isTrackingTouch = false;
+    if (this.pullDistance() >= this.pullThreshold) {
+      this.triggerRefresh();
+    } else {
+      this.pullDistance.set(0);
+    }
+  }
+
+  triggerRefresh() {
+    if (this.refreshing()) return;
+    this.refreshing.set(true);
+
+    const comp = this.activeComponent;
+    if (comp) {
+      if (typeof comp.load === 'function') {
+        comp.load();
+      } else if (typeof comp.loadJobs === 'function') {
+        comp.loadJobs();
+      } else if (typeof comp.loadDashboard === 'function') {
+        comp.loadDashboard();
+      } else if (typeof comp.refresh === 'function') {
+        comp.refresh();
+      } else if (typeof comp.ngOnInit === 'function') {
+        comp.ngOnInit();
+      }
+    }
+
+    setTimeout(() => {
+      this.refreshing.set(false);
+      this.pullDistance.set(0);
+    }, 750);
+  }
 
   readonly workspaceName = computed(() => this.workspace()?.business.name ?? this.auth.businessName());
   readonly workspaceInitials = computed(() => {

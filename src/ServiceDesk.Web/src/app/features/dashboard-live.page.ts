@@ -52,7 +52,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
       </aside>
     </div>
   }
-  <footer class="overview-refresh"><button class="icon-btn" type="button" (click)="loadDashboard()" [disabled]="loading()" [attr.aria-label]="loading() ? 'Refreshing dashboard' : 'Refresh dashboard'" [attr.aria-busy]="loading()" title="Refresh dashboard"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 19.7 12M4.3 12a8 8 0 0 0 13.6 5.9"/></svg></button></footer>
+
 </main>`,
   styles: `
 :host { display:block; }
@@ -62,9 +62,9 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
 .intro { margin:0; color:var(--muted); }
 .overview-actions { display:flex; gap:10px; flex-shrink:0; }
 .overview-actions .btn { min-height:44px; }
-.overview-refresh { display:flex; justify-content:flex-end; margin-top:20px; }
-.overview-refresh .icon-btn { width:44px; height:44px; color:var(--teal); }
-.overview-refresh .icon-btn:disabled { opacity:.5; cursor:wait; }
+
+
+
 @media(max-width:880px) { .overview-actions a.primary { display:none; } }
 .overview-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
 .overview-metric { min-width:0; display:flex; flex-direction:column; gap:14px; padding:22px; background:white; border:1px solid var(--line); border-radius:14px; color:var(--ink); text-decoration:none; }

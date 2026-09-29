@@ -120,7 +120,7 @@ export class InvoicesLivePage {
   count(status: string) { return this.invoices().filter(x => x.status === status).length; }
   deliveryLabel(status: string): string { return status === 'NotSent' ? 'Not sent' : status; }
   issue(invoice: Invoice) { const issued = new Date(); const due = new Date(issued); due.setDate(due.getDate() + 14); this.mutate(invoice.id, this.api.issueInvoice(invoice.id, this.date(issued), this.date(due))); }
-  pay(invoice: Invoice) { this.savingId.set(invoice.id); this.error.set(''); this.api.recordPayment(invoice.id, invoice.balance, 'Credit Card').subscribe({next: () => this.load(), error: error => {this.error.set(financialMessage(error)); this.savingId.set('');}}); }
+  pay(invoice: Invoice) { this.savingId.set(invoice.id); this.error.set(''); this.api.recordPayment(invoice.id, invoice.balance, 'Card').subscribe({next: () => this.load(), error: error => {this.error.set(financialMessage(error)); this.savingId.set('');}}); }
   private mutate(id: string, request: ReturnType<WorkApiService['issueInvoice']>) { this.savingId.set(id); this.error.set(''); request.subscribe({next: updated => {this.invoices.update(rows => rows.map(x => x.id === updated.id ? updated : x)); this.savingId.set('');}, error: error => {this.error.set(financialMessage(error)); this.savingId.set('');}}); }
   private date(value: Date) { return value.toISOString().slice(0, 10); }
 }

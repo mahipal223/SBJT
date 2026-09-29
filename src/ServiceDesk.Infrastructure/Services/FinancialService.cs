@@ -955,7 +955,13 @@ public sealed class FinancialService(
         RecordPaymentCommand command,
         CancellationToken cancellationToken = default)
     {
-        if (command.Amount <= 0 || command.Method is not ("Cash" or "Check" or "BankTransfer" or "Card"))
+        var method = command.Method?.Trim() switch
+        {
+            "Credit Card" or "CreditCard" => "Card",
+            var m => m
+        };
+
+        if (command.Amount <= 0 || method is not ("Cash" or "Check" or "BankTransfer" or "Card"))
         {
             throw new FinancialRuleException("validation_failed", "Enter a positive amount and a valid payment method.");
         }
@@ -1033,7 +1039,7 @@ public sealed class FinancialService(
                     UniqueIdentifier("@MemberId", actor.MemberId),
                     UniqueIdentifier("@UserId", actor.UserId),
                     Decimal("@Amount", command.Amount, 19, 2),
-                    VarChar("@Method", command.Method, 32),
+                    VarChar("@Method", method, 32),
                     NVarChar("@ExternalReference", NullIfWhiteSpace(command.ExternalReference), 200),
                     DateTime2("@PaidAt", paidAt.UtcDateTime)
                 ]);
@@ -1043,7 +1049,7 @@ public sealed class FinancialService(
             IsolationLevel.Serializable,
             cancellationToken);
 
-        return new PaymentRecord(paymentId, invoiceId, command.Amount, command.Method, "Succeeded", NullIfWhiteSpace(command.ExternalReference), paidAt);
+        return new PaymentRecord(paymentId, invoiceId, command.Amount, method, "Succeeded", NullIfWhiteSpace(command.ExternalReference), paidAt);
     }
 
     public async Task<EstimateRecord> GetEstimateAsync(Guid businessId, Guid estimateId, CancellationToken cancellationToken = default)
