@@ -20,7 +20,9 @@ interface SmtpSettings {
 <div class="smtp-page">
 
   <div class="page-header">
-    <div class="header-icon">✉️</div>
+    <div class="header-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+    </div>
     <div>
       <h1>Platform Email (SMTP)</h1>
       <p>Configure the platform-wide email server used for OTP verification, invitations, and system notifications.</p>
@@ -31,7 +33,7 @@ interface SmtpSettings {
   @if (settings()?.isConfigured) {
     <div class="status-banner configured">
       <span class="status-dot"></span>
-      SMTP is configured and active — <strong>{{ settings()?.host }}</strong>
+      SMTP is configured and active - <strong>{{ settings()?.host }}</strong>
     </div>
   } @else {
     <div class="status-banner unconfigured">
@@ -42,18 +44,23 @@ interface SmtpSettings {
 
   <!-- Error / Success messages -->
   @if (errorMsg()) {
-    <div class="alert alert-error" role="alert">⚠️ {{ errorMsg() }}</div>
+    <div class="alert alert-error" role="alert">
+      <svg class="inline-warn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {{ errorMsg() }}
+    </div>
   }
   @if (successMsg()) {
-    <div class="alert alert-success" role="alert">✅ {{ successMsg() }}</div>
+    <div class="alert alert-success" role="alert">
+      <svg class="inline-ok" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+      {{ successMsg() }}
+    </div>
   }
 
   <!-- Settings Form -->
   <div class="card">
     <h2>SMTP Server Settings</h2>
     <p class="hint">
-      These settings are saved to <code>appsettings.Development.json</code> and applied on the next API restart.
-      In production, use environment variables instead.
+      Configure the platform-wide SMTP mail relay for customer notifications, invoice deliveries, and administrative alerts.
     </p>
 
     <form (ngSubmit)="save()" #smtpForm="ngForm" novalidate>
@@ -148,45 +155,31 @@ interface SmtpSettings {
 
     @if (testResult()) {
       <div class="alert" [class.alert-success]="testResult()!.success" [class.alert-error]="!testResult()!.success">
-        {{ testResult()!.success ? '✅' : '⚠️' }} {{ testResult()!.message }}
+        @if (testResult()!.success) {
+          <svg class="inline-ok" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        } @else {
+          <svg class="inline-warn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        }
+        {{ testResult()!.message }}
       </div>
     }
   </div>
 
-  <!-- Quick setup guides -->
-  <div class="card guides-card">
-    <h2>Quick Setup Guide</h2>
-    <div class="guides-grid">
-      <div class="guide">
-        <h3>📧 Gmail</h3>
-        <ul>
-          <li><strong>Host:</strong> smtp.gmail.com</li>
-          <li><strong>Port:</strong> 587</li>
-          <li><strong>Username:</strong> your Gmail address</li>
-          <li><strong>Password:</strong> <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a> (requires 2FA)</li>
-          <li><strong>SSL:</strong> ✅ On</li>
-        </ul>
+  <!-- Delivery & Security Standards -->
+  <div class="card advisory-card">
+    <h2>Delivery & Security Standards</h2>
+    <div class="advisory-grid">
+      <div class="advisory-item">
+        <h3>STARTTLS (Port 587)</h3>
+        <p>Recommended standard for modern cloud transactional mail services including AWS SES, Postmark, and SendGrid.</p>
       </div>
-      <div class="guide">
-        <h3>📬 Brevo (free 300/day)</h3>
-        <ul>
-          <li><strong>Host:</strong> smtp-relay.brevo.com</li>
-          <li><strong>Port:</strong> 587</li>
-          <li><strong>Username:</strong> your Brevo email</li>
-          <li><strong>Password:</strong> SMTP Key from dashboard</li>
-          <li><strong>SSL:</strong> ✅ On</li>
-        </ul>
+      <div class="advisory-item">
+        <h3>Implicit TLS (Port 465)</h3>
+        <p>Supported for secure mail relays requiring SSL negotiation immediately upon TCP socket establishment.</p>
       </div>
-      <div class="guide">
-        <h3>🖥️ Mailhog (local dev)</h3>
-        <ul>
-          <li><strong>Host:</strong> localhost</li>
-          <li><strong>Port:</strong> 1025</li>
-          <li><strong>Username:</strong> (leave blank)</li>
-          <li><strong>Password:</strong> (leave blank)</li>
-          <li><strong>SSL:</strong> ❌ Off</li>
-        </ul>
-        <p class="guide-note">View emails at <a href="http://localhost:8025" target="_blank">localhost:8025</a></p>
+      <div class="advisory-item">
+        <h3>Sender Domain Authentication</h3>
+        <p>Ensure SPF (Sender Policy Framework) and DKIM keys are published in your DNS to maximize deliverability to recipient inboxes.</p>
       </div>
     </div>
   </div>
@@ -231,7 +224,7 @@ interface SmtpSettings {
       align-items: center;
       gap: 10px;
       padding: 12px 18px;
-      border-radius: 10px;
+      border-radius: 5px;
       font-size: 14px;
       font-weight: 500;
     }
@@ -257,7 +250,7 @@ interface SmtpSettings {
     .card {
       background: #fff;
       border: 1px solid #e4eaed;
-      border-radius: 14px;
+      border-radius: 5px;
       padding: 28px;
     }
     .card h2 {
@@ -299,7 +292,7 @@ interface SmtpSettings {
     .req { color: #e53e3e; }
     .field input {
       border: 1.5px solid #d0dbe1;
-      border-radius: 8px;
+      border-radius: 5px;
       padding: 9px 13px;
       font-size: 14px;
       color: #1a2e38;
@@ -338,7 +331,7 @@ interface SmtpSettings {
       background: #087f74;
       color: #fff;
       border: none;
-      border-radius: 8px;
+      border-radius: 5px;
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
@@ -360,7 +353,7 @@ interface SmtpSettings {
       background: #f0f9f8;
       color: #087f74;
       border: 1.5px solid #087f74;
-      border-radius: 8px;
+      border-radius: 5px;
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
@@ -373,32 +366,36 @@ interface SmtpSettings {
     /* Alerts */
     .alert {
       padding: 12px 16px;
-      border-radius: 8px;
+      border-radius: 5px;
       font-size: 13px;
       font-weight: 500;
       margin-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     .alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
     .alert-error   { background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; }
 
-    /* Guides */
-    .guides-card { background: #f8fafc; }
-    .guides-grid {
+    /* Advisory Standards */
+    .advisory-card { background: #f8fafc; border: 1px solid var(--line); border-radius: 5px; padding: 24px; }
+    .advisory-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
+      gap: 18px;
       margin-top: 16px;
     }
-    .guide {
+    .advisory-item {
       background: #fff;
-      border: 1px solid #e4eaed;
-      border-radius: 10px;
-      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      padding: 16px;
     }
-    .guide h3 { margin: 0 0 12px; font-size: 14px; font-weight: 700; color: #0f2a35; }
-    .guide ul { margin: 0; padding: 0 0 0 14px; font-size: 13px; color: #4a6272; line-height: 1.8; }
-    .guide a { color: #087f74; }
-    .guide-note { margin: 10px 0 0; font-size: 12px; color: #7b8f9a; }
+    .advisory-item h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--ink); }
+    .advisory-item p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.55; }
+    .inline-warn { color: var(--red); flex-shrink: 0; }
+    .inline-ok { color: var(--teal-dark); flex-shrink: 0; }
+    .header-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 5px; background: var(--teal-tint); color: var(--teal-dark); border: 1px solid #b7e8de; }
   `,
 })
 export class PlatformSmtpComponent implements OnInit {

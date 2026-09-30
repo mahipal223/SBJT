@@ -53,9 +53,12 @@ const getErrorMessage = (error: unknown) => {
         <section class="card card-body muted">Loading subscription & quota details…</section>
       } @else if(overview(); as data){
         @if(hasExceededQuota(data)){
-          <div class="callout warning-banner section-gap" style="border-left:4px solid var(--amber);background:var(--amber-bg);color:#7a4b0a;padding:16px 20px;border-radius:10px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div class="callout warning-banner section-gap" style="border-left:4px solid var(--amber);background:var(--amber-bg);color:#7a4b0a;padding:16px 20px;border-radius:5px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
             <div>
-              <strong style="font-size:15px">⚠️ Plan quota limit reached</strong>
+              <strong style="font-size:15px;display:inline-flex;align-items:center;gap:6px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Plan quota limit reached
+              </strong>
               <p style="margin:4px 0 0;font-size:13px">One or more plan limits have been reached in your workspace. Upgrade your plan to prevent service interruptions.</p>
             </div>
             <button class="btn primary" (click)="scrollToPlans()">Upgrade plan now</button>
@@ -196,8 +199,9 @@ const getErrorMessage = (error: unknown) => {
                     {{ changing() ? 'Switching…' : (p.price > data.subscription.price ? 'Upgrade to ' + p.name : 'Switch to ' + p.name) }}
                   </button>
                   <button class="btn stripe-btn" [disabled]="changing()" (click)="checkoutWithStripe(p)"
-                          style="margin-top:8px;width:100%;background:#635bff;color:#fff;border:none;font-weight:700">
-                    💳 Checkout with Stripe
+                          style="margin-top:8px;width:100%;background:#635bff;color:#fff;border:none;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:6px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    Checkout with Stripe
                   </button>
                 }
               </article>

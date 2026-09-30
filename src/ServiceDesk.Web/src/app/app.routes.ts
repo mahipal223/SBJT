@@ -5,8 +5,7 @@ import { LoginPage } from './features/auth/login.page';
 import { CallbackPage } from './features/auth/callback.page';
 import { OnboardingPage } from './features/auth/onboarding.page';
 import { AppShell } from './layout/app-shell';
-import { CustomerDetailPage, CustomerFormPage, CustomersPage, DashboardPage, JobDetailPage, JobFormPage, JobsPage } from './features/prototype-pages';
-import { AdminPage, ReportsPage, SchedulePage, SettingsPage, SubscriptionPage, TeamPage, TechnicianPage } from './features/management-pages';
+import { SchedulePage, SettingsPage, TeamPage, TechnicianPage } from './features/management-pages';
 import { CustomerFormLivePage, CustomerLivePage, CustomersLivePage, JobFormLivePage, JobLivePage, JobsLivePage } from './features/work-pages';
 import { CatalogLivePage } from './features/catalog-page';
 import { EstimateDetailLivePage, EstimatesLivePage, InvoiceDetailLivePage, InvoicesLivePage, PublicEstimatePage } from './features/financial-pages';
@@ -34,11 +33,11 @@ export const routes: Routes = [
       { path: 'customers', component: CustomersLivePage, title: 'Customers | ServiceDesk' },
       { path: 'customers/new', component: CustomerFormLivePage, title: 'New Customer | ServiceDesk' },
       { path: 'customers/:id', component: CustomerLivePage, title: 'Customer Details | ServiceDesk' },
-      { path: 'customers/detail', component: CustomerDetailPage, title: 'Customer Details | ServiceDesk' },
+      { path: 'customers/detail', redirectTo: 'customers', pathMatch: 'full' },
       { path: 'jobs', component: JobsLivePage, title: 'Jobs | ServiceDesk' },
       { path: 'jobs/new', component: JobFormLivePage, title: 'New Job | ServiceDesk' },
       { path: 'jobs/:id', component: JobLivePage, title: 'Job Details | ServiceDesk' },
-      { path: 'jobs/detail', component: JobDetailPage, title: 'Job Details | ServiceDesk' },
+      { path: 'jobs/detail', redirectTo: 'jobs', pathMatch: 'full' },
       { path: 'schedule', component: SchedulePage, title: 'Schedule | ServiceDesk' },
       { path: 'catalog', component: CatalogLivePage, title: 'Services & Parts | ServiceDesk' },
       { path: 'estimates', component: EstimatesLivePage, title: 'Estimates | ServiceDesk' },

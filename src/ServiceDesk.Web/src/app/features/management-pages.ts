@@ -137,7 +137,7 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
 .calendar-day {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 5px;
   padding: 12px 6px;
   text-align: center;
   font-size: 11px;
@@ -236,7 +236,7 @@ import { CURRENCIES, INDUSTRIES, STATE_CITIES, TIMEZONES, US_STATES_AND_PROVINCE
 
 @media (max-width: 650px) {
   .calendar-strip { gap: 4px; margin: 12px 0 16px; }
-  .calendar-day { font-size: 9px; min-height: 56px; padding: 6px 2px; border-radius: 8px; }
+  .calendar-day { font-size: 9px; min-height: 56px; padding: 6px 2px; border-radius: 5px; }
   .calendar-day b { font-size: 15px; }
   .schedule-title { font-size: 16px; margin-bottom: 12px; }
   .agenda-row {
@@ -384,7 +384,7 @@ export class SchedulePage implements OnInit {
           }
           this.customers.set(map);
         },
-        error: () => {}
+        error: () => { }
       });
     }
   }
@@ -467,17 +467,6 @@ export class SchedulePage implements OnInit {
 }
 
 
-@Component({selector:'app-catalog',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Price book</p><h1>Services & parts</h1><p>Reusable items keep estimates, jobs, and invoices consistent.</p></div><button class="btn primary">＋ Add item</button></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Active services</span><strong class="stat-value">28</strong><span class="stat-meta">Across 5 categories</span></article><article class="card stat"><span class="stat-label">Parts & materials</span><strong class="stat-value">146</strong><span class="stat-meta">12 low stock</span></article><article class="card stat"><span class="stat-label">Average markup</span><strong class="stat-value">34%</strong><span class="stat-meta">Materials only</span></article><article class="card stat"><span class="stat-label">Taxable items</span><strong class="stat-value">121</strong><span class="stat-meta">Texas rules applied</span></article></section><div class="toolbar"><div class="search"><input placeholder="Search service, SKU, or category"></div><select class="filter-select" aria-label="Catalog item type"><option>All item types</option><option>Services</option><option>Parts & materials</option></select></div><section class="card section-gap"><div class="table-scroll"><table class="data-table"><thead><tr><th>Item</th><th>Type</th><th>Category / SKU</th><th>Cost</th><th>Sale price</th><th>Tax</th></tr></thead><tbody>@for(i of items;track i.name){<tr><td class="cell-main"><strong>{{i.name}}</strong><small>{{i.description}}</small></td><td><span class="badge" [class.blue]="i.type==='Part'">{{i.type}}</span></td><td>{{i.category}}</td><td>{{i.cost}}</td><td class="money">{{i.price}}</td><td>{{i.tax}}</td></tr>}</tbody></table></div></section></main>`})
-export class CatalogPage{items=[{name:'Diagnostic visit',description:'Standard on-site assessment',type:'Service',category:'General service',cost:'—',price:'$125.00',tax:'No'},{name:'Drain cleaning',description:'Up to 75 ft main line',type:'Service',category:'Plumbing',cost:'—',price:'$285.00',tax:'No'},{name:'Temperature relief valve',description:'3/4 in brass valve',type:'Part',category:'PLB-TRV-34',cost:'$31.50',price:'$68.00',tax:'Yes'},{name:'Brake pad set',description:'Ceramic front axle set',type:'Part',category:'AUT-BRK-102',cost:'$72.00',price:'$139.00',tax:'Yes'}]}
-
-@Component({selector:'app-estimates',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Sales pipeline</p><h1>Estimates</h1><p>Create options, send for approval, and convert accepted work into jobs.</p></div><button class="btn primary">＋ New estimate</button></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Draft</span><strong class="stat-value">5</strong><span class="stat-meta">$6,980 total</span></article><article class="card stat"><span class="stat-label">Sent</span><strong class="stat-value">3</strong><span class="stat-meta">Awaiting response</span></article><article class="card stat"><span class="stat-label">Approved</span><strong class="stat-value">68%</strong><span class="stat-meta">Last 90 days</span></article><article class="card stat"><span class="stat-label">Won value</span><strong class="stat-value">$12,480</strong><span class="stat-meta">This month</span></article></section><div class="toolbar"><div class="search"><input placeholder="Search estimate or customer"></div><select class="filter-select" aria-label="Estimate status"><option>Status: All</option><option>Draft</option><option>Sent</option><option>Approved</option><option>Declined</option><option>Expired</option></select></div><section class="card section-gap"><div class="table-scroll"><table class="data-table"><thead><tr><th>Estimate</th><th>Customer</th><th>Created</th><th>Expires</th><th>Status</th><th>Total</th></tr></thead><tbody><tr><td><b>#EST-1032</b></td><td>Sarah Miller</td><td>Sep 10</td><td>Oct 10</td><td><span class="badge amber">Sent</span></td><td class="money">$2,840.00</td></tr><tr><td><b>#EST-1031</b></td><td>Olivia Davis</td><td>Sep 8</td><td>Oct 8</td><td><span class="badge">Approved</span></td><td class="money">$1,460.00</td></tr><tr><td><b>#EST-1030</b></td><td>James Wilson</td><td>Sep 6</td><td>Oct 6</td><td><span class="badge gray">Draft</span></td><td class="money">$620.00</td></tr></tbody></table></div></section></main>`})
-export class EstimatesPage{}
-
-@Component({selector:'app-invoices',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Accounts receivable</p><h1>Invoices & payments</h1><p>Send professional invoices and track every payment.</p></div><button class="btn primary">＋ New invoice</button></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Outstanding</span><strong class="stat-value">$7,450</strong><span class="stat-meta">8 open invoices</span></article><article class="card stat"><span class="stat-label">Overdue</span><strong class="stat-value">$1,250</strong><span class="stat-meta" style="color:var(--red)">3 need follow-up</span></article><article class="card stat"><span class="stat-label">Paid this month</span><strong class="stat-value">$16,820</strong><span class="stat-meta">21 payments</span></article><article class="card stat"><span class="stat-label">Average payment time</span><strong class="stat-value">4.2 days</strong><span class="stat-meta">↓ 1.1 days</span></article></section><div class="toolbar"><div class="search"><input placeholder="Search invoice or customer"></div><select class="filter-select" aria-label="Invoice status"><option>Status: All</option><option>Draft</option><option>Sent</option><option>Paid</option><option>Overdue</option></select><button class="btn hide-mobile">Export</button></div><section class="card section-gap"><div class="table-scroll"><table class="data-table"><thead><tr><th>Invoice</th><th>Customer</th><th>Issued / Due</th><th>Status</th><th>Total</th><th>Balance</th></tr></thead><tbody>@for(i of invoices;track i.id){<tr><td><b>{{i.id}}</b></td><td>{{i.customer}}</td><td><span class="cell-main"><strong>{{i.issued}}</strong><small>Due {{i.due}}</small></span></td><td><span class="badge" [class.red]="i.status==='Overdue'" [class.amber]="i.status==='Sent'" [class.gray]="i.status==='Draft'">{{i.status}}</span></td><td class="money">{{i.total}}</td><td class="money">{{i.balance}}</td></tr>}</tbody></table></div></section></main>`})
-export class InvoicesPage{invoices=[{id:'#INV-1048',customer:'Olivia Davis',issued:'Aug 4',due:'Sep 2',status:'Overdue',total:'$850.00',balance:'$850.00'},{id:'#INV-1055',customer:'Michael Brown',issued:'Sep 3',due:'Sep 17',status:'Sent',total:'$425.00',balance:'$425.00'},{id:'#INV-1056',customer:'Sarah Miller',issued:'Sep 8',due:'Sep 22',status:'Paid',total:'$245.00',balance:'$0.00'},{id:'#INV-1057',customer:'James Wilson',issued:'Sep 10',due:'Sep 24',status:'Draft',total:'$620.00',balance:'$620.00'}]}
-
-@Component({selector:'app-reports',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Business intelligence</p><h1>Reports</h1><p>Understand revenue, jobs, customers, and technician performance.</p></div><div class="page-actions"><button class="btn">Sep 1–30, 2026⌄</button><button class="btn primary">Export report</button></div></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Revenue</span><strong class="stat-value">$18,940</strong><span class="stat-meta">↑ 12.4%</span></article><article class="card stat"><span class="stat-label">Jobs completed</span><strong class="stat-value">68</strong><span class="stat-meta">↑ 8 jobs</span></article><article class="card stat"><span class="stat-label">Average job</span><strong class="stat-value">$278</strong><span class="stat-meta">↑ $18</span></article><article class="card stat"><span class="stat-label">New customers</span><strong class="stat-value">14</strong><span class="stat-meta">↑ 3 customers</span></article></section><section class="grid cols-2 section-gap"><article class="card"><div class="card-head"><h2>Revenue trend</h2><span class="badge">+12.4%</span></div><div class="chart">@for(h of bars;track $index){<span [style.height.%]="h"></span>}</div><div class="chart-labels"><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span></div></article><article class="card"><div class="card-head"><h2>Revenue by service</h2></div><div class="card-body grid"><div class="usage"><div class="usage-head"><b>Plumbing repair</b><span>$7,840 · 41%</span></div><div class="progress"><span style="width:41%"></span></div></div><div class="usage"><div class="usage-head"><b>Installation</b><span>$5,670 · 30%</span></div><div class="progress"><span style="width:30%"></span></div></div><div class="usage"><div class="usage-head"><b>Maintenance</b><span>$3,420 · 18%</span></div><div class="progress"><span style="width:18%"></span></div></div><div class="usage"><div class="usage-head"><b>Other</b><span>$2,010 · 11%</span></div><div class="progress"><span style="width:11%"></span></div></div></div></article></section><div class="callout section-gap"><strong>Advanced reports are included in your Team plan.</strong> Reports enforce your workspace and role permissions before returning business data.</div></main>`,styles:`.chart{height:250px;display:flex;align-items:end;gap:9%;padding:35px 30px 0}.chart span{flex:1;min-width:18px;border-radius:6px 6px 0 0;background:linear-gradient(#43b9ad,var(--teal))}.chart-labels{display:flex;justify-content:space-around;padding:12px 24px 20px;border-top:1px solid var(--line-soft);color:var(--muted);font-size:11px}`})
-export class ReportsPage{bars=[45,62,54,71,68,88]}
 
 @Component({
   selector: 'app-team',
@@ -715,7 +704,7 @@ export class TeamPage implements OnInit {
         this.role.set(workspace.role);
         this.soloMode.set(workspace.business.soloMode);
       },
-      error: () => {}
+      error: () => { }
     });
 
     this.loadTeam();
@@ -806,8 +795,6 @@ export class TeamPage implements OnInit {
   }
 }
 
-@Component({selector:'app-subscription',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Billing & entitlement</p><h1>Subscription</h1><p>Your API checks these limits before accepting restricted actions.</p></div><button class="btn">Billing history</button></header><section class="split"><div class="grid"><article class="card"><div class="card-head"><div><p class="eyebrow">Current plan</p><h2>Team</h2></div><span class="badge">Active</span></div><div class="card-body"><div class="price"><strong>$49</strong><span>/ month<br><small>Billed monthly</small></span></div><p class="muted">For growing service businesses that need dispatch, permissions, and reports.</p><div class="page-actions"><button class="btn primary">Change plan</button><button class="btn">Manage payment method</button></div></div></article><article class="card"><div class="card-head"><h2>Usage and plan limits</h2><small class="muted">Billing period: Sep 1–30</small></div><div class="card-body grid">@for(u of usage;track u.name){<div class="usage"><div class="usage-head"><b>{{u.name}}</b><span>{{u.display}}</span></div><div class="progress"><span [style.width.%]="u.percent" [style.background]="u.percent>80?'var(--amber)':'var(--teal)'"></span></div><small class="muted">{{u.description}}</small></div>}</div></article></div><aside class="grid"><article class="card"><div class="card-head"><h2>Included features</h2></div><div class="card-body list"><div class="list-row"><span>✓ Estimates</span><b>Enabled</b></div><div class="list-row"><span>✓ Advanced reports</span><b>Enabled</b></div><div class="list-row"><span>✓ Data export</span><b>Enabled</b></div><div class="list-row"><span>✓ Audit history</span><b>365 days</b></div></div></article><article class="card"><div class="card-head"><h2>Next invoice</h2></div><div class="card-body"><strong style="font-size:24px">$49.00</strong><p class="muted">Due October 1, 2026<br>Visa ending in 4242</p></div></article></aside></section><section class="card section-gap"><div class="card-head"><h2>How limit checks work</h2></div><div class="table-scroll"><table class="data-table"><thead><tr><th>User action</th><th>Feature code</th><th>API rule</th><th>Limit display</th></tr></thead><tbody><tr><td>Invite employee</td><td><code>staff.seats</code></td><td>Active + pending must fit limit</td><td>5 staff seats</td></tr><tr><td>Upload job photo</td><td><code>storage.bytes</code></td><td>Used + reserved upload size</td><td>10 GB storage</td></tr><tr><td>Create job</td><td><code>jobs.per_period</code></td><td>Created within billing period</td><td>500 jobs per billing period</td></tr><tr><td>Open advanced reports</td><td><code>reports.advanced.enabled</code></td><td>Entitlement must be enabled</td><td>Advanced reports enabled</td></tr><tr><td>Use estimates</td><td><code>estimates.enabled</code></td><td>Entitlement must be enabled</td><td>Estimates enabled</td></tr></tbody></table></div></section></main>`,styles:`.price{display:flex;align-items:center;gap:12px;margin-bottom:16px}.price>strong{font-family:Manrope;font-size:46px}.price span{color:var(--muted);line-height:1.2}.price small{font-size:10px}code{padding:3px 5px;border-radius:4px;background:#eef3f5;font-size:11px}`})
-export class SubscriptionPage{usage=[{name:'Staff seats',display:'3 of 5',percent:60,description:'Active users plus pending invitations'},{name:'Jobs this period',display:'84 of 500',percent:17,description:'Resets October 1'},{name:'File storage',display:'2.4 GB of 10 GB',percent:24,description:'Photos, documents, and exports'}]}
 
 @Component({
   selector: 'app-settings',
@@ -1266,7 +1253,7 @@ export class SettingsPage implements OnInit {
             this.recipientEmail.set(pref.alertEmailRecipient);
           }
         },
-        error: () => {}
+        error: () => { }
       });
     }
   }
@@ -1424,8 +1411,248 @@ export class SettingsPage implements OnInit {
 }
 
 
-@Component({selector:'app-admin',template:`<main class="page"><header class="page-head"><div><p class="eyebrow">Platform operations</p><h1>Platform administration</h1><p>Monitor tenants, subscriptions, security events, and service health.</p></div><span class="badge red">Platform admin only</span></header><section class="grid cols-4"><article class="card stat"><span class="stat-label">Active businesses</span><strong class="stat-value">1,284</strong><span class="stat-meta">+42 this month</span></article><article class="card stat"><span class="stat-label">Monthly recurring revenue</span><strong class="stat-value">$48.6K</strong><span class="stat-meta">↑ 8.2%</span></article><article class="card stat"><span class="stat-label">Trial conversion</span><strong class="stat-value">31.4%</strong><span class="stat-meta">Last 30 days</span></article><article class="card stat"><span class="stat-label">Service health</span><strong class="stat-value">99.98%</strong><span class="stat-meta">All systems operational</span></article></section><section class="grid cols-2 section-gap"><article class="card"><div class="card-head"><h2>Tenant workspaces</h2><button class="btn small">View all</button></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Business</th><th>Plan</th><th>Users</th><th>Status</th></tr></thead><tbody><tr><td>Northstar Services</td><td>Team</td><td>3</td><td><span class="badge">Active</span></td></tr><tr><td>Precision Auto Care</td><td>Pro</td><td>8</td><td><span class="badge">Active</span></td></tr><tr><td>BrightWire Electric</td><td>Solo</td><td>1</td><td><span class="badge amber">Trial</span></td></tr></tbody></table></div></article><article class="card"><div class="card-head"><h2>Recent security & audit events</h2><button class="btn small">Open audit explorer</button></div><div class="card-body list"><div class="list-row"><span class="cell-main"><strong>Plan entitlement changed</strong><small>platform-admin@servicedesk · 4 min ago</small></span><span class="badge blue">Plan</span></div><div class="list-row"><span class="cell-main"><strong>Tenant export completed</strong><small>Northstar Services · 18 min ago</small></span><span class="badge">Export</span></div><div class="list-row"><span class="cell-main"><strong>Failed owner login</strong><small>IP 192.0.2.14 · 22 min ago</small></span><span class="badge red">Security</span></div></div></article></section><section class="card section-gap"><div class="card-head"><h2>Platform controls</h2></div><div class="card-body grid cols-3"><button class="btn">Manage plans & entitlements</button><button class="btn">Review backup jobs</button><button class="btn">Inspect webhook failures</button><button class="btn">Manage feature flags</button><button class="btn">View support access log</button><button class="btn">Export platform metrics</button></div></section></main>`})
-export class AdminPage{}
+@Component({
+  selector: 'app-technician',
+  imports: [RouterLink, FormsModule, DatePipe],
+  template: `
+<main class="tech-page">
+  <header>
+    <a routerLink="/app/jobs">‹ Back to jobs</a>
+    <span>Technician View</span>
+    <button type="button" class="tech-refresh-btn" (click)="load()" title="Refresh" aria-label="Refresh">↻</button>
+  </header>
 
-@Component({selector:'app-technician',imports:[RouterLink],template:`<main class="tech-page"><header><a routerLink="/app/jobs/detail">‹ Back</a><span>Job #J-1084</span><button>•••</button></header><section class="tech-hero"><span class="badge amber">In progress</span><h1>Water heater inspection</h1><p>Sarah Miller</p></section><section class="tech-card"><small>NEXT APPOINTMENT · 9:00–10:30 AM</small><h2>2401 Lakeview Drive</h2><p>Austin, TX 78703</p><div class="tech-actions"><button>☎ Call</button><button>◇ Message</button><button>↗ Navigate</button></div></section><section class="tech-card"><h2>Work instructions</h2><p>Inspect the existing 50-gallon water heater, test pressure and temperature controls, and provide replacement options.</p><div class="callout"><b>Access note:</b> Gate code 2468.</div></section><section class="tech-card"><div class="card-head"><h2>Checklist</h2><b>2 / 4</b></div>@for(item of checks;track item.label){<label class="check-row"><input type="checkbox" [checked]="item.done"><span>{{item.label}}</span></label>}</section><section class="tech-card"><h2>Photos & notes</h2><div class="upload">＋<b>Add job photos</b><small>Camera or photo library</small></div><textarea rows="3" placeholder="Add an internal note…"></textarea></section><button class="complete">Complete job</button></main>`,styles:`:host{display:block;background:#edf2f4;min-height:100vh}.tech-page{max-width:520px;min-height:100vh;margin:auto;padding-bottom:100px;background:#f7f9fa}.tech-page>header{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:#fff;background:var(--navy)}header a{color:#fff;text-decoration:none}header button{border:0;color:#fff;background:transparent}.tech-hero{padding:24px 18px 12px}.tech-hero h1{margin:12px 0 4px;font-size:25px}.tech-hero p{margin:0;color:var(--muted)}.tech-card{margin:12px;padding:18px;border:1px solid var(--line);border-radius:13px;background:#fff}.tech-card>small{color:var(--teal);font-size:9px;font-weight:800}.tech-card h2{margin:8px 0;font-size:17px}.tech-card p{color:var(--muted);line-height:1.5}.tech-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}.tech-actions button{min-height:46px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:11px;font-weight:700}.check-row{display:flex;gap:12px;padding:14px 0;border-top:1px solid var(--line-soft)}.check-row input{accent-color:var(--teal)}.upload{display:grid;place-items:center;gap:5px;padding:20px;border:1px dashed #aebfc6;border-radius:9px;color:var(--teal)}.upload small{color:var(--muted)}textarea{width:100%;margin-top:12px;padding:11px;border:1px solid var(--line);border-radius:8px}.complete{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:min(calc(100% - 36px),484px);min-height:52px;border:0;border-radius:10px;color:#fff;background:var(--teal);font-weight:800;box-shadow:var(--shadow)}`})
-export class TechnicianPage{checks=[{label:'Confirm shutoff valve condition',done:true},{label:'Test temperature and pressure valve',done:true},{label:'Check tank and connections for leaks',done:false},{label:'Explain findings to customer',done:false}]}
+  @if (loading()) {
+    <div class="tech-loading">Loading assigned visits…</div>
+  } @else if (error()) {
+    <div class="tech-card callout error-text">
+      <p>{{ error() }}</p>
+      <button class="btn small" (click)="load()">Try again</button>
+    </div>
+  } @else if (currentJob(); as job) {
+    @if (jobs().length > 1) {
+      <div class="tech-switcher">
+        <label for="tech-job-select">Active visit:</label>
+        <select id="tech-job-select" [ngModel]="selectedJobId()" (ngModelChange)="selectJob($event)">
+          @for (j of jobs(); track j.id) {
+            <option [value]="j.id">#{{ j.jobNumber }} · {{ j.title }} ({{ j.status }})</option>
+          }
+        </select>
+      </div>
+    }
+
+    <section class="tech-hero">
+      <div class="tech-hero-meta">
+        <span class="badge" [class.amber]="job.status==='InProgress'" [class.blue]="job.status==='Scheduled'" [class.teal]="job.status==='Completed'" [class.gray]="job.status==='Draft'">
+          {{ job.status }}
+        </span>
+        <span class="job-ref">#{{ job.jobNumber }}</span>
+      </div>
+      <h1>{{ job.title }}</h1>
+      <p>{{ customer()?.name || 'Customer' }}</p>
+    </section>
+
+    <section class="tech-card">
+      <small>SCHEDULED · {{ job.scheduledDate ? (job.scheduledDate | date:'mediumDate') : 'Today' }}{{ job.arrivalWindow ? ' · ' + job.arrivalWindow : '' }}</small>
+      <h2>{{ customer()?.addressLine1 || 'Service location' }}</h2>
+      <p>{{ customerAddress() }}</p>
+      <div class="tech-actions">
+        <a class="tech-btn" [href]="phoneUrl()" [class.disabled]="!customer()?.phone">Call</a>
+        <a class="tech-btn" [href]="smsUrl()" [class.disabled]="!customer()?.phone">Message</a>
+        <a class="tech-btn" [href]="mapsUrl()" target="_blank" rel="noopener" [class.disabled]="!customer()?.addressLine1">Directions</a>
+      </div>
+    </section>
+
+    <section class="tech-card">
+      <h2>Work instructions</h2>
+      <p>{{ job.description || 'Standard service visit. Review equipment, test operation, and confirm findings with customer.' }}</p>
+      @if (job.priority === 'Urgent') {
+        <div class="callout" style="margin-top: 10px; border-left: 3px solid var(--red);"><b>Priority:</b> Urgent dispatch.</div>
+      }
+    </section>
+
+    <section class="tech-card">
+      <div class="card-head">
+        <h2>Checklist</h2>
+        <b>{{ completedChecks() }} / {{ checks.length }}</b>
+      </div>
+      @for (item of checks; track item.label) {
+        <label class="check-row">
+          <input type="checkbox" [(ngModel)]="item.done">
+          <span>{{ item.label }}</span>
+        </label>
+      }
+    </section>
+
+    <section class="tech-card">
+      <h2>Site notes</h2>
+      <textarea rows="3" placeholder="Enter on-site notes or inspection observations…" [(ngModel)]="siteNote"></textarea>
+    </section>
+
+    @if (job.status !== 'Completed') {
+      <button class="complete" [disabled]="completing()" (click)="completeJob(job.id)">
+        {{ completing() ? 'Completing job…' : 'Complete job' }}
+      </button>
+    } @else {
+      <div class="tech-completed-banner">
+        <span>✓ Job Completed</span>
+      </div>
+    }
+  } @else {
+    <div class="empty-state tech-card" style="text-align: center; padding: 40px 20px;">
+      <h2>No assigned visits today</h2>
+      <p class="muted">You have no active or scheduled visits at this time.</p>
+      <a class="btn primary" routerLink="/app/jobs" style="margin-top: 14px;">View job board</a>
+    </div>
+  }
+</main>
+`,
+  styles: `
+:host { display: block; background: #edf2f4; min-height: 100vh; }
+.tech-page { max-width: 520px; min-height: 100vh; margin: auto; padding-bottom: 100px; background: #f7f9fa; }
+.tech-page > header { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; color: #fff; background: var(--navy); }
+.tech-page > header a { color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.tech-refresh-btn { border: 0; color: #fff; background: transparent; font-size: 20px; cursor: pointer; padding: 6px; border-radius: 5px; }
+.tech-loading { padding: 40px; text-align: center; color: var(--muted); font-size: 14px; }
+.tech-switcher { display: flex; align-items: center; gap: 10px; margin: 12px 12px 0; padding: 10px 14px; background: #fff; border: 1px solid var(--line); border-radius: 5px; font-size: 13px; }
+.tech-switcher select { flex: 1; padding: 6px 10px; border-radius: 5px; border: 1px solid var(--line); font-size: 13px; }
+.tech-hero { padding: 20px 18px 12px; }
+.tech-hero-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.tech-hero .job-ref { font-size: 13px; font-weight: 700; color: var(--muted); }
+.tech-hero h1 { margin: 4px 0; font-size: 22px; color: var(--ink); }
+.tech-hero p { margin: 0; color: var(--muted); font-size: 14px; }
+.tech-card { margin: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
+.tech-card > small { color: var(--teal); font-size: 10px; font-weight: 800; letter-spacing: 0.5px; }
+.tech-card h2 { margin: 6px 0 4px; font-size: 16px; color: var(--ink); }
+.tech-card p { margin: 0; color: var(--muted); line-height: 1.5; font-size: 13px; }
+.tech-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.tech-btn { min-height: 44px; border: 1px solid var(--line); border-radius: 5px; background: #fff; font-size: 12px; font-weight: 700; color: var(--ink); display: flex; align-items: center; justify-content: center; text-decoration: none; transition: background .15s; cursor: pointer; }
+.tech-btn:hover { background: #f0fdfa; border-color: var(--teal); color: var(--teal); }
+.tech-btn.disabled { opacity: 0.45; pointer-events: none; }
+.check-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-soft); cursor: pointer; font-size: 13px; }
+.check-row input { accent-color: var(--teal); width: 18px; height: 18px; }
+textarea { width: 100%; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 5px; font-family: inherit; font-size: 13px; box-sizing: border-box; resize: vertical; }
+.complete { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(calc(100% - 36px), 484px); min-height: 48px; border: 0; border-radius: 5px; color: #fff; background: var(--teal); font-weight: 800; font-size: 14px; box-shadow: 0 4px 16px rgba(44, 122, 110, 0.35); cursor: pointer; transition: background .15s; }
+.complete:hover { background: #23655b; }
+.complete:disabled { opacity: 0.65; cursor: not-allowed; }
+.tech-completed-banner { margin: 16px; text-align: center; padding: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 5px; color: #065f46; font-weight: 700; }
+`
+})
+export class TechnicianPage implements OnInit {
+  private api = inject(WorkApiService);
+  jobs = signal<Job[]>([]);
+  selectedJobId = signal<string>('');
+  customer = signal<Customer | null>(null);
+  loading = signal(true);
+  error = signal('');
+  completing = signal(false);
+  siteNote = '';
+
+  checks = [
+    { label: 'Confirm job safety and access conditions', done: true },
+    { label: 'Inspect existing equipment and connections', done: false },
+    { label: 'Execute requested work scope', done: false },
+    { label: 'Test operation and verify cleanup', done: false },
+    { label: 'Review completed work with customer', done: false }
+  ];
+
+  currentJob = computed(() => {
+    const id = this.selectedJobId();
+    const list = this.jobs();
+    return list.find(j => j.id === id) || list[0] || null;
+  });
+
+  completedChecks = computed(() => this.checks.filter(c => c.done).length);
+
+  ngOnInit(): void {
+    this.load();
+  }
+
+  load(): void {
+    this.loading.set(true);
+    this.error.set('');
+    this.api.jobs('', '', 100).subscribe({
+      next: (res: { items: Job[] }) => {
+        const active = (res.items || []).filter((j: Job) => j.status !== 'Canceled');
+        active.sort((a: Job, b: Job) => {
+          if (a.status === 'InProgress' && b.status !== 'InProgress') return -1;
+          if (b.status === 'InProgress' && a.status !== 'InProgress') return 1;
+          if (a.status === 'Scheduled' && b.status !== 'Scheduled') return -1;
+          if (b.status === 'Scheduled' && a.status !== 'Scheduled') return 1;
+          return 0;
+        });
+        this.jobs.set(active);
+        if (active.length > 0) {
+          const currentId = this.selectedJobId() && active.some((j: Job) => j.id === this.selectedJobId())
+            ? this.selectedJobId()
+            : active[0].id;
+          this.selectJob(currentId);
+        } else {
+          this.loading.set(false);
+        }
+      },
+      error: () => {
+        this.error.set('Failed to load technician jobs.');
+        this.loading.set(false);
+      }
+    });
+  }
+
+  selectJob(jobId: string): void {
+    this.selectedJobId.set(jobId);
+    const job = this.jobs().find((j: Job) => j.id === jobId);
+    if (job?.customerId) {
+      this.api.customer(job.customerId).subscribe({
+        next: (c: Customer) => {
+          this.customer.set(c);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.customer.set(null);
+          this.loading.set(false);
+        }
+      });
+    } else {
+      this.customer.set(null);
+      this.loading.set(false);
+    }
+  }
+
+  customerAddress(): string {
+    const c = this.customer();
+    if (!c) return '';
+    const parts = [c.city, c.stateCode, c.postalCode].filter(Boolean);
+    return parts.join(', ');
+  }
+
+  phoneUrl(): string {
+    const phone = this.customer()?.phone;
+    return phone ? `tel:${phone}` : '#';
+  }
+
+  smsUrl(): string {
+    const phone = this.customer()?.phone;
+    return phone ? `sms:${phone}` : '#';
+  }
+
+  mapsUrl(): string {
+    const c = this.customer();
+    if (!c) return '#';
+    const query = [c.addressLine1, c.city, c.stateCode, c.postalCode].filter(Boolean).join(', ');
+    return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : '#';
+  }
+
+  completeJob(jobId: string): void {
+    this.completing.set(true);
+    this.api.changeJobStatus(jobId, 'Completed').subscribe({
+      next: (updated: Job) => {
+        this.completing.set(false);
+        this.jobs.update(list => list.map(j => j.id === updated.id ? updated : j));
+      },
+      error: () => {
+        this.completing.set(false);
+        this.error.set('Failed to mark job as complete.');
+      }
+    });
+  }
+}

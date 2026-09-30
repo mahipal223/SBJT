@@ -12,12 +12,14 @@ export const apiContextInterceptor: HttpInterceptorFn = (request, next) => {
 
   // If requesting platform admin endpoints, use dev platform admin header if available
   if (request.url.includes('/api/v1/admin')) {
-    const devAdminId = sessionStorage.getItem('servicedesk.devPlatformAdminId') ?? '99999999-9999-9999-9999-999999999999';
-    request = request.clone({
-      setHeaders: {
-        'X-Dev-Platform-Admin-Id': devAdminId,
-      },
-    });
+    const devAdminId = sessionStorage.getItem('servicedesk.devPlatformAdminId');
+    if (devAdminId) {
+      request = request.clone({
+        setHeaders: {
+          'X-Dev-Platform-Admin-Id': devAdminId,
+        },
+      });
+    }
     return next(request);
   }
 

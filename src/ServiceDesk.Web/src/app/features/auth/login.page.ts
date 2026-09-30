@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, AuthTokenResponse } from '../../core/auth.service';
 import { GOOGLE_CLIENT_ID } from '../../app.config';
 
@@ -29,18 +29,18 @@ interface ProblemDetails {
 
 @Component({
   selector: 'app-login-page',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   template: `
     <main class="login-root">
       <aside class="login-brand">
         <div class="brand-inner">
           <a class="brand-logo" href="/">servicedesk</a>
-          <p class="brand-tagline">Run your trade business from one place.<br>Jobs, invoices, customers — all connected.</p>
+          <p class="brand-tagline">Run your trade business from one place.<br>Jobs, invoices, customers - all connected.</p>
           <ul class="brand-bullets">
             <li>✓ Manage jobs, customers and estimates</li>
             <li>✓ Send professional invoices and get paid</li>
             <li>✓ Works on desktop, tablet and mobile</li>
-            <li>✓ Solo operator or growing team — no migration needed</li>
+            <li>✓ Solo operator or growing team - no migration needed</li>
           </ul>
         </div>
       </aside>
@@ -264,6 +264,10 @@ interface ProblemDetails {
               </div>
             </form>
           }
+
+          <div class="platform-link-wrapper">
+            <a routerLink="/platform-admin/login" class="platform-link">Platform Operations Console →</a>
+          </div>
         </div>
       </section>
     </main>
@@ -332,7 +336,7 @@ interface ProblemDetails {
       max-width: 440px;
       padding: 40px;
       background: #ffffff;
-      border-radius: 16px;
+      border-radius: 5px;
       box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
       border: 1px solid #e2e8f0;
     }
@@ -374,7 +378,7 @@ interface ProblemDetails {
       border: 1px solid #fecaca;
       color: #b91c1c;
       padding: 12px 16px;
-      border-radius: 8px;
+      border-radius: 5px;
       font-size: 13px;
       margin-bottom: 20px;
       line-height: 1.4;
@@ -384,7 +388,7 @@ interface ProblemDetails {
       border: 1px solid #bfdbfe;
       color: #1d4ed8;
       padding: 12px 16px;
-      border-radius: 8px;
+      border-radius: 5px;
       font-size: 13px;
       margin-bottom: 20px;
       line-height: 1.4;
@@ -403,7 +407,7 @@ interface ProblemDetails {
       gap: 12px;
       width: 100%;
       height: 46px;
-      border-radius: 8px;
+      border-radius: 5px;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
@@ -483,7 +487,7 @@ interface ProblemDetails {
       height: 44px;
       padding: 0 14px;
       border: 1px solid #cbd5e1;
-      border-radius: 8px;
+      border-radius: 5px;
       font-size: 14px;
       color: #0f172a;
       background: #fff;
@@ -555,7 +559,7 @@ interface ProblemDetails {
       background: #087f74;
       color: #fff;
       border: none;
-      border-radius: 8px;
+      border-radius: 5px;
       font-size: 15px;
       font-weight: 600;
       cursor: pointer;
@@ -607,6 +611,22 @@ interface ProblemDetails {
     .secondary-link {
       color: #64748b;
       font-size: 13px;
+    }
+
+    .platform-link-wrapper {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #f1f5f9;
+      text-align: center;
+    }
+    .platform-link {
+      font-size: 12px;
+      color: #94a3b8;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .platform-link:hover {
+      color: #087f74;
     }
 
     /* ── Spinner ─────────────────────────────────────────────────── */

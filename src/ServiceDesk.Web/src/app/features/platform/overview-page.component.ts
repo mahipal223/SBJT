@@ -31,7 +31,10 @@ import { PlatformContextService } from '../../core/platform-context.service';
     </div>
   } @else if (error()) {
     <div class="state-card error">
-      <p class="error-msg">⚠️ {{ error() }}</p>
+      <p class="error-msg">
+        <svg class="inline-warn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        {{ error() }}
+      </p>
       <button type="button" class="btn-retry" (click)="loadMetrics()">Try Again</button>
     </div>
   } @else if (metrics()) {
@@ -105,12 +108,12 @@ import { PlatformContextService } from '../../core/platform-context.service';
 .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
 h2 { font-size: 24px; font-weight: 800; color: var(--ink); margin: 0; font-family: 'Manrope', sans-serif; }
 .subtitle { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
-.btn-refresh { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; background: #fff; color: var(--navy); border: 1px solid var(--line); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+.btn-refresh { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 5px; background: #fff; color: var(--navy); border: 1px solid var(--line); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
 .btn-refresh:hover:not(:disabled) { background: #f8fafb; border-color: #cbd5e1; color: var(--teal-dark); }
 .btn-refresh:disabled { opacity: 0.6; cursor: not-allowed; }
 .refresh-icon.spin { animation: spin 0.8s linear infinite; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; width: 100%; }
-.kpi-card { padding: 20px; border-radius: 12px; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; }
+.kpi-card { padding: 20px; border-radius: 5px; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; }
 .kpi-card .label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .05em; }
 .kpi-card .value { font-size: 28px; font-weight: 800; color: var(--ink); font-family: 'Manrope', sans-serif; }
 .kpi-card .meta { font-size: 12px; color: var(--muted); }
@@ -120,7 +123,7 @@ h2 { font-size: 24px; font-weight: 800; color: var(--ink); margin: 0; font-famil
 .kpi-card.amber { border-left: 4px solid var(--amber); }
 .kpi-card.purple { border-left: 4px solid #6366f1; }
 .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; }
-.card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 22px; box-shadow: var(--shadow); }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 22px; box-shadow: var(--shadow); }
 .card h3 { font-size: 16px; font-weight: 800; color: var(--ink); margin: 0 0 1rem; font-family: 'Manrope', sans-serif; }
 .dist-list { display: flex; flex-direction: column; gap: 0.85rem; }
 .dist-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 0.35rem; }
@@ -131,11 +134,12 @@ h2 { font-size: 24px; font-weight: 800; color: var(--ink); margin: 0; font-famil
 .bar-fill.blue { background: var(--blue); }
 .bar-fill.teal { background: var(--teal); }
 .empty-text { font-size: 0.85rem; color: var(--muted); text-align: center; padding: 2rem 0; }
-.state-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 3rem 1.5rem; text-align: center; color: var(--muted); box-shadow: var(--shadow); }
+.state-card { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 3rem 1.5rem; text-align: center; color: var(--muted); box-shadow: var(--shadow); }
 .spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.btn-retry { margin-top: 1rem; padding: 8px 16px; border-radius: 6px; background: var(--teal); color: #fff; border: 0; font-weight: 700; cursor: pointer; }
+.btn-retry { margin-top: 1rem; padding: 8px 16px; border-radius: 5px; background: var(--teal); color: #fff; border: 0; font-weight: 700; cursor: pointer; }
 .btn-retry:hover { background: var(--teal-dark); }
+.inline-warn { display: inline-block; vertical-align: middle; margin-right: 4px; color: var(--red); }
   `
 })
 export class PlatformOverviewComponent implements OnInit {

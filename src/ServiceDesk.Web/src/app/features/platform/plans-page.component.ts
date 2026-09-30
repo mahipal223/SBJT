@@ -33,7 +33,10 @@ import { PlatformContextService } from '../../core/platform-context.service';
     </div>
   } @else if (error()) {
     <div class="state-card error">
-      <p class="error-msg">⚠️ {{ error() }}</p>
+      <p class="error-msg">
+        <svg class="inline-warn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        {{ error() }}
+      </p>
       <button type="button" class="btn-retry" (click)="loadPlans()">Try Again</button>
     </div>
   } @else {
@@ -132,14 +135,14 @@ import { PlatformContextService } from '../../core/platform-context.service';
 .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
 h2 { font-size: 24px; font-weight: 800; color: var(--ink); margin: 0; font-family: 'Manrope', sans-serif; }
 .subtitle { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
-.btn-create { padding: 8px 16px; border-radius: 8px; background: var(--teal); color: #fff; border: 0; font-weight: 700; font-size: 13px; cursor: pointer; transition: background 0.15s; }
+.btn-create { padding: 8px 16px; border-radius: 5px; background: var(--teal); color: #fff; border: 0; font-weight: 700; font-size: 13px; cursor: pointer; transition: background 0.15s; }
 .btn-create:hover { background: var(--teal-dark); }
 .plans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; width: 100%; }
-.plan-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: var(--shadow); }
+.plan-card { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: var(--shadow); }
 .plan-head { display: flex; justify-content: space-between; align-items: flex-start; }
 .plan-code { font-size: 11px; font-weight: 800; color: var(--teal); text-transform: uppercase; letter-spacing: 0.05em; }
 .plan-card h3 { font-size: 18px; font-weight: 800; color: var(--ink); margin: 4px 0 0; font-family: 'Manrope', sans-serif; }
-.pub-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 12px; background: #e9f0f3; color: var(--muted); }
+.pub-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; background: #e9f0f3; color: var(--muted); }
 .pub-badge.live { background: var(--teal-tint); color: var(--teal-dark); border: 1px solid #b7e8de; }
 .plan-price { display: flex; align-items: baseline; gap: 0.35rem; }
 .plan-price .amount { font-size: 32px; font-weight: 800; color: var(--ink); font-family: 'Manrope', sans-serif; }
@@ -150,26 +153,27 @@ h2 { font-size: 24px; font-weight: 800; color: var(--ink); margin: 0; font-famil
 .ent-icon { font-weight: 800; color: var(--teal); width: 14px; }
 .ent-text { color: var(--ink); }
 .ent-text.disabled { color: var(--muted); text-decoration: line-through; opacity: 0.6; }
-.state-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 3rem 1.5rem; text-align: center; color: var(--muted); box-shadow: var(--shadow); }
+.state-card { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 3rem 1.5rem; text-align: center; color: var(--muted); box-shadow: var(--shadow); }
 .spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(10, 28, 36, 0.55); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 50; padding: 1rem; }
-.modal-card { width: 100%; max-width: 500px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.75rem; box-shadow: 0 20px 40px rgba(16, 41, 54, 0.18); color: var(--ink); }
+.modal-card { width: 100%; max-width: 500px; background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 1.75rem; box-shadow: 0 20px 40px rgba(16, 41, 54, 0.18); color: var(--ink); }
 .modal-card h3 { margin: 0 0 0.5rem; font-size: 18px; font-weight: 800; color: var(--ink); font-family: 'Manrope', sans-serif; }
 .modal-desc { font-size: 13px; color: var(--muted); margin-bottom: 1.25rem; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .form-group { margin-bottom: 1rem; }
 .form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 0.35rem; }
-.modal-input { width: 100%; padding: 8px 12px; border-radius: 8px; background: #fff; border: 1px solid var(--line); color: var(--ink); font-size: 13px; box-sizing: border-box; }
+.modal-input { width: 100%; padding: 8px 12px; border-radius: 5px; background: #fff; border: 1px solid var(--line); color: var(--ink); font-size: 13px; box-sizing: border-box; }
 select.modal-input { appearance: none; -webkit-appearance: none; padding-right: 36px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23647985' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer; }
 .modal-input:focus { outline: 2px solid var(--teal-tint); border-color: var(--teal); }
 .modal-alert { margin-top: 0.75rem; font-size: 12px; color: var(--red); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
-.btn-cancel { padding: 8px 16px; border-radius: 6px; background: #fff; border: 1px solid var(--line); color: var(--ink); font-weight: 600; font-size: 13px; cursor: pointer; }
+.btn-cancel { padding: 8px 16px; border-radius: 5px; background: #fff; border: 1px solid var(--line); color: var(--ink); font-weight: 600; font-size: 13px; cursor: pointer; }
 .btn-cancel:hover { background: #f8fafb; }
-.btn-confirm { padding: 8px 16px; border-radius: 6px; background: var(--teal); border: 0; color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+.btn-confirm { padding: 8px 16px; border-radius: 5px; background: var(--teal); border: 0; color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
 .btn-confirm:hover:not(:disabled) { background: var(--teal-dark); }
 .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+.inline-warn { display: inline-block; vertical-align: middle; margin-right: 4px; color: var(--red); }
   `
 })
 export class PlatformPlansComponent implements OnInit {

@@ -31,7 +31,7 @@ import { RouterLink } from '@angular/router';
       width: 100%;
       background: #fff;
       border: 1px solid var(--line);
-      border-radius: 16px;
+      border-radius: 5px;
       padding: 40px 32px;
       text-align: center;
       box-shadow: var(--shadow);

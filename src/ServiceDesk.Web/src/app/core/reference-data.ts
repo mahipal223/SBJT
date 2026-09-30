@@ -19,19 +19,19 @@ export interface IndustryOption {
 }
 
 export const INDUSTRIES: IndustryOption[] = [
-  { code: 'Plumbing', label: 'Plumbing', icon: '🔧' },
-  { code: 'Electrical', label: 'Electrical', icon: '⚡' },
-  { code: 'HVAC', label: 'HVAC (Heating & Cooling)', icon: '❄️' },
-  { code: 'AutoService', label: 'Automotive Service & Repair', icon: '🚗' },
-  { code: 'GeneralTrade', label: 'General Trade & Handyman', icon: '🏗️' },
-  { code: 'Landscaping', label: 'Landscaping & Grounds Care', icon: '🌿' },
-  { code: 'CleaningServices', label: 'Cleaning & Janitorial', icon: '🧹' },
-  { code: 'Roofing', label: 'Roofing & Gutters', icon: '🏠' },
-  { code: 'ApplianceRepair', label: 'Appliance Repair', icon: '🧺' },
-  { code: 'Carpentry', label: 'Carpentry & Woodworking', icon: '🪚' },
-  { code: 'Painting', label: 'Painting & Drywall', icon: '🖌️' },
-  { code: 'PestControl', label: 'Pest Control', icon: '🐜' },
-  { code: 'Other', label: 'Other Service Trade', icon: '🛠️' }
+  { code: 'Plumbing', label: 'Plumbing', icon: 'plumbing' },
+  { code: 'Electrical', label: 'Electrical', icon: 'electrical' },
+  { code: 'HVAC', label: 'HVAC (Heating & Cooling)', icon: 'trade' },
+  { code: 'AutoService', label: 'Automotive Service & Repair', icon: 'trade' },
+  { code: 'GeneralTrade', label: 'General Trade & Handyman', icon: 'trade' },
+  { code: 'Landscaping', label: 'Landscaping & Grounds Care', icon: 'trade' },
+  { code: 'CleaningServices', label: 'Cleaning & Janitorial', icon: 'trade' },
+  { code: 'Roofing', label: 'Roofing & Gutters', icon: 'trade' },
+  { code: 'ApplianceRepair', label: 'Appliance Repair', icon: 'trade' },
+  { code: 'Carpentry', label: 'Carpentry & Woodworking', icon: 'trade' },
+  { code: 'Painting', label: 'Painting & Drywall', icon: 'trade' },
+  { code: 'PestControl', label: 'Pest Control', icon: 'trade' },
+  { code: 'Other', label: 'Other Service Trade', icon: 'trade' }
 ];
 
 export const TIMEZONES: ReferenceOption[] = [

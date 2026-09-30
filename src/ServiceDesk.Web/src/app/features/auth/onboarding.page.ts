@@ -22,14 +22,14 @@ interface OnboardingState {
 }
 
 const INDUSTRIES = [
-  { code: 'plumbing',   label: 'Plumbing',           icon: '🔧' },
-  { code: 'electrical', label: 'Electrical',          icon: '⚡' },
-  { code: 'hvac',       label: 'HVAC',                icon: '❄️' },
-  { code: 'automotive', label: 'Automotive Service',  icon: '🚗' },
-  { code: 'general',    label: 'General Trade',       icon: '🏗️' },
-  { code: 'landscaping',label: 'Landscaping',         icon: '🌿' },
-  { code: 'cleaning',   label: 'Cleaning Services',   icon: '🧹' },
-  { code: 'roofing',    label: 'Roofing',             icon: '🏠' },
+  { code: 'plumbing',   label: 'Plumbing',           icon: 'plumbing' },
+  { code: 'electrical', label: 'Electrical',          icon: 'electrical' },
+  { code: 'hvac',       label: 'HVAC',                icon: 'hvac' },
+  { code: 'automotive', label: 'Automotive Service',  icon: 'automotive' },
+  { code: 'general',    label: 'General Trade',       icon: 'general' },
+  { code: 'landscaping',label: 'Landscaping',         icon: 'landscaping' },
+  { code: 'cleaning',   label: 'Cleaning Services',   icon: 'cleaning' },
+  { code: 'roofing',    label: 'Roofing',             icon: 'roofing' },
 ];
 
 @Component({
@@ -68,7 +68,34 @@ const INDUSTRIES = [
                   (click)="form.industry = ind.code"
                   [id]="'industry-' + ind.code"
                   [attr.aria-pressed]="form.industry === ind.code">
-                  <span class="tile-icon">{{ ind.icon }}</span>
+                  <span class="tile-icon" aria-hidden="true">
+                    @switch (ind.icon) {
+                      @case ('plumbing') {
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                      }
+                      @case ('electrical') {
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      }
+                      @case ('hvac') {
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/><line x1="19.07" y1="4.93" x2="4.93" y2="19.07"/></svg>
+                      }
+                      @case ('automotive') {
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                      }
+                      @case ('general') {
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M5 20V8l7-5 7 5v12"/></svg>
+                      }
+                      @case ('landscaping') {
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L8 6v5a4 4 0 0 0 8 0V6z"/><path d="M12 17v5"/></svg>
+                      }
+                      @case ('cleaning') {
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 4-3 3 6 6 3-3z"/><path d="m3 21 9-9"/><path d="M12.2 6.8 4 15l-1 5 5-1 8.2-8.2"/></svg>
+                      }
+                      @case ('roofing') {
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                      }
+                    }
+                  </span>
                   <span class="tile-label">{{ ind.label }}</span>
                 </button>
               }
@@ -120,7 +147,7 @@ const INDUSTRIES = [
               </div>
               <div class="field field-sm">
                 <label for="biz-state">State</label>
-                <ng-select id="biz-state" [(ngModel)]="form.state" name="state" [items]="states" bindLabel="label" bindValue="code" placeholder="TX — Texas" [clearable]="true" (change)="onStateChange($event)"></ng-select>
+                <ng-select id="biz-state" [(ngModel)]="form.state" name="state" [items]="states" bindLabel="label" bindValue="code" placeholder="TX - Texas" [clearable]="true" (change)="onStateChange($event)"></ng-select>
               </div>
               <div class="field">
                 <label for="biz-city">City</label>
@@ -154,7 +181,7 @@ const INDUSTRIES = [
         @if (step() === 3) {
           <section class="onboard-card" aria-labelledby="step3-title">
             <h1 id="step3-title">How do you currently operate?</h1>
-            <p class="sub">You can change this at any time — no data migration needed.</p>
+            <p class="sub">You can change this at any time - no data migration needed.</p>
             <div class="team-tiles">
               <button
                 id="tile-solo"
@@ -163,7 +190,9 @@ const INDUSTRIES = [
                 [class.selected]="form.teamSize === 'solo'"
                 (click)="form.teamSize = 'solo'"
                 [attr.aria-pressed]="form.teamSize === 'solo'">
-                <span class="team-icon">👤</span>
+                <span class="team-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
                 <strong>Just me</strong>
                 <p>Solo operator. Jobs auto-assign to you. Team menus stay hidden.</p>
               </button>
@@ -174,7 +203,9 @@ const INDUSTRIES = [
                 [class.selected]="form.teamSize === 'team'"
                 (click)="form.teamSize = 'team'"
                 [attr.aria-pressed]="form.teamSize === 'team'">
-                <span class="team-icon">👥</span>
+                <span class="team-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
                 <strong>I have a team</strong>
                 <p>Multi-technician dispatch, assignments and role-based access unlocked.</p>
               </button>
@@ -256,7 +287,7 @@ const INDUSTRIES = [
       width: min(640px, 100%);
       padding: 44px 40px;
       border: 1px solid #dce5ea;
-      border-radius: 18px;
+      border-radius: 5px;
       background: #fff;
       box-shadow: 0 12px 40px rgba(16,41,54,.07);
     }
@@ -275,7 +306,7 @@ const INDUSTRIES = [
       display: flex; flex-direction: column; align-items: center; gap: 8px;
       padding: 20px 12px;
       border: 1.5px solid #dce5ea;
-      border-radius: 12px;
+      border-radius: 5px;
       background: #fff;
       cursor: pointer;
       transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
@@ -307,7 +338,7 @@ const INDUSTRIES = [
       height: 42px;
       padding: 0 12px;
       border: 1.5px solid #dce5ea;
-      border-radius: 8px;
+      border-radius: 5px;
       font: inherit; font-size: 14px;
       color: #142d3b;
       background: #fff;
@@ -323,7 +354,7 @@ const INDUSTRIES = [
       display: flex; flex-direction: column; align-items: center; gap: 10px;
       padding: 28px 20px;
       border: 1.5px solid #dce5ea;
-      border-radius: 14px;
+      border-radius: 5px;
       background: #fff;
       cursor: pointer;
       text-align: center;
@@ -331,7 +362,7 @@ const INDUSTRIES = [
     }
     .team-tile:hover { border-color: #087f74; }
     .team-tile.selected { border-color: #087f74; background: #e4f5f1; }
-    .team-icon { font-size: 36px; }
+    .team-icon { font-size: 32px; color: #087f74; }
     .team-tile strong { font-size: 16px; color: #142d3b; }
     .team-tile p { margin: 0; font-size: 13px; color: #5c7180; line-height: 1.4; }
     @media (max-width: 500px) { .team-tiles { grid-template-columns: 1fr; } }
@@ -340,7 +371,7 @@ const INDUSTRIES = [
     .step-footer { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
     .btn-primary {
       min-height: 46px; padding: 0 28px;
-      border: 0; border-radius: 10px;
+      border: 0; border-radius: 5px;
       background: #087f74; color: #fff;
       font: inherit; font-size: 15px; font-weight: 700;
       cursor: pointer; display: flex; align-items: center; gap: 8px;
@@ -358,7 +389,7 @@ const INDUSTRIES = [
     /* ── Error / spinner ─────────────────────────────────────────── */
     .error-banner {
       margin-bottom: 16px; padding: 12px 16px;
-      border-radius: 8px; background: #fef2f2;
+      border-radius: 5px; background: #fef2f2;
       border: 1px solid #fca5a5; color: #991b1b; font-size: 14px;
     }
     .spinner {

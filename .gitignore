@@ -19,3 +19,4 @@ work/browser-use-qa/artifacts/
 !/.env.example
 scratch
 WhatsApp*
+.claude/

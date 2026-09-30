@@ -14,7 +14,7 @@ export class PlatformContextService {
 
   // In development, store operator dev identity in sessionStorage (isolated from tenant storage)
   readonly devAdminId = signal<string | null>(
-    sessionStorage.getItem('servicedesk.devPlatformAdminId') ?? '99999999-9999-9999-9999-999999999999'
+    sessionStorage.getItem('servicedesk.devPlatformAdminId')
   );
 
   readonly isAuthenticated = computed(() => Boolean(this.operator()));

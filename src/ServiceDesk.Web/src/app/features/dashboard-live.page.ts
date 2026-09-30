@@ -67,7 +67,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
 
 @media(max-width:880px) { .overview-actions a.primary { display:none; } }
 .overview-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
-.overview-metric { min-width:0; display:flex; flex-direction:column; gap:14px; padding:22px; background:white; border:1px solid var(--line); border-radius:14px; color:var(--ink); text-decoration:none; }
+.overview-metric { min-width:0; display:flex; flex-direction:column; gap:14px; padding:22px; background:white; border:1px solid var(--line); border-radius:5px; color:var(--ink); text-decoration:none; }
 .metric-label { display:flex; justify-content:space-between; gap:8px; font-size:13px; font-weight:600; }
 .metric-label > span { color:var(--teal); }
 .overview-metric > strong { font-size:clamp(22px,2.3vw,34px); letter-spacing:-1px; line-height:1.15; overflow-wrap:anywhere; }
@@ -77,7 +77,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
 .overview .revenue .metric-label { color:#e6f4f3 !important; }
 .overview .revenue > strong { color:white !important; }
 .revenue .metric-label > span { color:#79ddd1; }
-.overview-clear { display:flex; gap:12px; align-items:center; margin:20px 0 28px; padding:14px 18px; background:#eaf7f2; border-radius:12px; color:#1c6051; }
+.overview-clear { display:flex; gap:12px; align-items:center; margin:20px 0 28px; padding:14px 18px; background:#eaf7f2; border-radius:5px; color:#1c6051; }
 .overview-clear > span { font-size:22px; }
 .overview-clear p { display:grid; gap:3px; margin:0; font-size:13px; }
 .overview-clear p > span { font-size:12px; }
@@ -87,7 +87,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
 .overview-section-head p { margin:5px 0 0; color:var(--muted); font-size:12px; }
 .overview-section-head > a { display:flex; align-items:center; min-height:44px; color:var(--teal); font-size:13px; font-weight:700; text-decoration:none; flex-shrink:0; }
 .overview-job-list { display:grid; gap:10px; }
-.overview-job { display:grid; grid-template-columns:135px minmax(0,1fr) auto 18px; gap:16px; align-items:center; padding:18px; border:1px solid var(--line); border-radius:12px; background:white; color:var(--ink); text-decoration:none; min-width:0; }
+.overview-job { display:grid; grid-template-columns:135px minmax(0,1fr) auto 18px; gap:16px; align-items:center; padding:18px; border:1px solid var(--line); border-radius:5px; background:white; color:var(--ink); text-decoration:none; min-width:0; }
 .job-heading { display:grid; gap:8px; justify-items:start; }
 .job-number { color:var(--muted); font-size:12px; font-weight:700; }
 .job-status { padding:4px 8px; border-radius:6px; background:#f0f4f6; font-size:11px; font-weight:700; }
@@ -100,7 +100,7 @@ import { DashboardSummary, WorkApiService } from '../core/work-api.service';
 .job-priority { color:#9c500e; font-weight:700; }
 .job-arrow { color:var(--teal); }
 .overview-shortcuts > a { display:flex; align-items:center; gap:12px; padding:16px 0; color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line); }
-.shortcut-icon { width:40px; height:40px; display:grid; place-items:center; border-radius:10px; background:#e5f3f1; color:var(--teal); font-size:20px; flex-shrink:0; }
+.shortcut-icon { width:40px; height:40px; display:grid; place-items:center; border-radius:5px; background:#e5f3f1; color:var(--teal); font-size:20px; flex-shrink:0; }
 .overview-shortcuts a > span:nth-child(2) { display:grid; gap:5px; flex:1; min-width:0; }
 .overview-shortcuts strong { font-size:13px; }
 .overview-shortcuts small { color:var(--muted); font-size:12px; }

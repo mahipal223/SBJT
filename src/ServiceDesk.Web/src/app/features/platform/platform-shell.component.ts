@@ -6,18 +6,24 @@ import { PlatformContextService } from '../../core/platform-context.service';
 @Component({
   selector: 'app-platform-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
 <div class="shell-layout">
+  <!-- Backdrop for mobile drawer -->
   @if (drawerOpen()) {
-    <button class="scrim" aria-label="Close menu" (click)="drawerOpen.set(false)"></button>
+    <div class="scrim" (click)="drawerOpen.set(false)"></div>
   }
 
   <!-- Sidebar -->
   <aside class="sidebar" [class.open]="drawerOpen()">
+    <!-- Brand / Control Plane Tag -->
     <div class="brand-row">
       <div class="brand">
-        <span class="brand-badge">🛡️</span>
+        <div class="brand-badge">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
         <div class="brand-text">
           <strong>Platform Operations</strong>
           <small>Control Plane</small>
@@ -26,6 +32,7 @@ import { PlatformContextService } from '../../core/platform-context.service';
       <button class="close-btn" (click)="drawerOpen.set(false)">×</button>
     </div>
 
+    <!-- Operator Profile Card -->
     <div class="operator-card">
       <div class="op-avatar">
         {{ operatorInitials() }}
@@ -39,71 +46,61 @@ import { PlatformContextService } from '../../core/platform-context.service';
       </div>
     </div>
 
-    <!-- Quick dev role switcher (development testing) -->
-    <div class="dev-switcher">
-      <p class="dev-title">Dev Role Switcher:</p>
-      <div class="dev-buttons">
-        <button
-          type="button"
-          class="btn-dev-role"
-          [class.active]="platformContext.role() === 'OperationsAdmin'"
-          (click)="switchRole('99999999-9999-9999-9999-999999999999')">
-          SuperAdmin
-        </button>
-        <button
-          type="button"
-          class="btn-dev-role"
-          [class.active]="platformContext.role() === 'BillingAdmin'"
-          (click)="switchRole('77777777-7777-7777-7777-777777777777')">
-          Billing
-        </button>
-        <button
-          type="button"
-          class="btn-dev-role"
-          [class.active]="platformContext.role() === 'Support'"
-          (click)="switchRole('88888888-8888-8888-8888-888888888888')">
-          Support
-        </button>
-      </div>
-    </div>
-
     <!-- Navigation -->
     <nav class="nav-tree">
       <p class="nav-section">Operations</p>
 
       @if (platformContext.canViewMetrics()) {
         <a routerLink="/platform-admin/overview" routerLinkActive="active" (click)="drawerOpen.set(false)">
-          <span class="nav-icon">📊</span> Overview & Telemetry
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          Overview & Telemetry
         </a>
       }
 
       @if (platformContext.canViewWorkspaces()) {
         <a routerLink="/platform-admin/workspaces" routerLinkActive="active" (click)="drawerOpen.set(false)">
-          <span class="nav-icon">🏢</span> Tenant Workspaces
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
+          </svg>
+          Tenant Workspaces
         </a>
       }
 
       @if (platformContext.canViewPlans()) {
         <a routerLink="/platform-admin/plans" routerLinkActive="active" (click)="drawerOpen.set(false)">
-          <span class="nav-icon">💳</span> Plans & Entitlements
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+          </svg>
+          Plans & Entitlements
         </a>
       }
 
       @if (platformContext.canViewBackups()) {
         <a routerLink="/platform-admin/backups" routerLinkActive="active" (click)="drawerOpen.set(false)">
-          <span class="nav-icon">🛡️</span> Backups & DR
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Backups & DR
         </a>
       }
 
       @if (platformContext.canViewAudit()) {
         <a routerLink="/platform-admin/audit" routerLinkActive="active" (click)="drawerOpen.set(false)">
-          <span class="nav-icon">📋</span> Platform Audit Log
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Platform Audit Log
         </a>
       }
 
       @if (platformContext.canManageSmtp()) {
         <a routerLink="/platform-admin/smtp" routerLinkActive="active" (click)="drawerOpen.set(false)">
-          <span class="nav-icon">✉️</span> Platform SMTP
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+          </svg>
+          Platform SMTP
         </a>
       }
     </nav>
@@ -111,7 +108,8 @@ import { PlatformContextService } from '../../core/platform-context.service';
     <!-- Footer actions -->
     <div class="sidebar-footer">
       <button type="button" class="btn-tenant-exit" (click)="exitToTenant()">
-        ↗ Exit to Business App
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Return to Business App
       </button>
       <button type="button" class="btn-signout" (click)="signout()">
         Sign Out Operator
@@ -127,9 +125,17 @@ import { PlatformContextService } from '../../core/platform-context.service';
         <span class="indicator">●</span> Platform Operations Console
       </div>
       <div class="topbar-actions">
-        <span class="role-pill">{{ platformContext.role() }}</span>
-        <button type="button" class="btn-top-exit" (click)="exitToTenant()">Exit</button>
-        <button type="button" class="btn-top-signout" (click)="signout()">Sign Out</button>
+        <div class="operator-profile-pill">
+          <span class="role-pill">{{ platformContext.role() }}</span>
+          <span class="op-email-pill">{{ platformContext.email() || 'admin@servicedesk.local' }}</span>
+        </div>
+        <button type="button" class="btn-top-exit" (click)="exitToTenant()" title="Switch to Tenant Business App">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Business App
+        </button>
+        <button type="button" class="btn-top-signout" (click)="signout()">
+          Sign Out
+        </button>
       </div>
     </header>
 
@@ -148,45 +154,42 @@ import { PlatformContextService } from '../../core/platform-context.service';
 .sidebar::-webkit-scrollbar-thumb { background: #274d5d; border-radius: 3px; }
 .brand-row { display: flex; align-items: center; justify-content: space-between; padding: 0 6px 16px; border-bottom: 1px solid #204554; }
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand-badge { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; background: #65d0c5; color: var(--navy); font-size: 16px; font-weight: 800; }
+.brand-badge { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 5px; background: #65d0c5; color: var(--navy); }
 .brand-text strong { display: block; font-size: 14px; font-weight: 800; color: #fff; font-family: 'Manrope', sans-serif; }
 .brand-text small { font-size: 10px; color: #65d0c5; text-transform: uppercase; font-weight: 800; letter-spacing: .05em; }
 .close-btn { display: none; background: transparent; border: 0; color: #aac0c9; font-size: 24px; cursor: pointer; }
-.operator-card { margin: 16px 0 12px; padding: 10px 12px; border-radius: 10px; background: #173846; border: 1px solid #31505d; display: flex; align-items: center; gap: 10px; }
-.op-avatar { width: 34px; height: 34px; border-radius: 8px; background: var(--teal); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; flex-shrink: 0; }
+.operator-card { margin: 16px 0 12px; padding: 10px 12px; border-radius: 5px; background: #173846; border: 1px solid #31505d; display: flex; align-items: center; gap: 10px; }
+.op-avatar { width: 34px; height: 34px; border-radius: 5px; background: var(--teal); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; flex-shrink: 0; }
 .op-meta { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .op-meta strong { font-size: 12px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.op-email { font-size: 10px; color: #aac0c9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.role-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #224b5a; color: #9edbd4; align-self: flex-start; margin-top: 2px; }
-.role-badge.super { background: rgba(101, 208, 197, 0.2); color: #65d0c5; border: 1px solid rgba(101, 208, 197, 0.4); }
-.dev-switcher { margin-bottom: 14px; padding: 10px; border-radius: 8px; background: #14323e; border: 1px dashed #31505d; }
-.dev-title { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #78939e; margin: 0 0 6px; letter-spacing: .1em; }
-.dev-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-.btn-dev-role { padding: 4px 2px; font-size: 10px; font-weight: 700; border-radius: 5px; border: 1px solid #31505d; background: #1b3d4b; color: #aac0c9; cursor: pointer; transition: all 0.15s; text-align: center; }
-.btn-dev-role:hover { background: #234f62; color: #fff; }
-.btn-dev-role.active { background: var(--teal); color: #fff; border-color: var(--teal); }
-.nav-tree { display: flex; flex-direction: column; gap: 4px; flex: 1; margin: 6px 0; }
+.op-email { font-size: 11px; color: #8cb5c2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role-badge { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: #264e5e; color: #a4d8cf; width: fit-content; margin-top: 2px; }
+.role-badge.super { background: #1c5e56; color: #7ceddf; }
+.nav-tree { display: flex; flex-direction: column; gap: 4px; flex: 1; margin: 10px 0; }
 .nav-section { margin: 12px 8px 4px; color: #78939e; font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-.nav-tree a { position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #c9d7dd; text-decoration: none; transition: all 0.15s; }
+.nav-tree a { position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 5px; font-size: 13px; font-weight: 600; color: #c9d7dd; text-decoration: none; transition: all 0.15s; }
 .nav-tree a:hover { color: #fff; background: #1c4653; }
 .nav-tree a.active { color: #fff; background: #1c4653; }
-.nav-tree a.active::before { content: ''; position: absolute; left: -14px; width: 3px; height: 22px; border-radius: 0 4px 4px 0; background: #59c7bc; }
-.nav-icon { width: 18px; text-align: center; font-size: 14px; }
+.nav-tree a.active::before { content: ''; position: absolute; left: -14px; width: 3px; height: 22px; border-radius: 0 5px 5px 0; background: #59c7bc; }
+.nav-icon { width: 16px; height: 16px; flex-shrink: 0; color: #8cb5c2; }
+.nav-tree a.active .nav-icon { color: #59c7bc; }
 .sidebar-footer { margin-top: auto; padding-top: 14px; border-top: 1px solid #204554; display: flex; flex-direction: column; gap: 8px; }
-.btn-tenant-exit { width: 100%; padding: 8px 10px; border-radius: 6px; background: #173846; border: 1px solid #31505d; color: #c9d7dd; font-size: 11px; font-weight: 700; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.btn-tenant-exit { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; border-radius: 5px; background: #173846; border: 1px solid #31505d; color: #c9d7dd; font-size: 11px; font-weight: 700; cursor: pointer; transition: background 0.15s, color 0.15s; }
 .btn-tenant-exit:hover { background: #1c4653; color: #fff; border-color: #4a7587; }
-.btn-signout { width: 100%; padding: 8px 10px; border-radius: 6px; background: transparent; border: 1px solid #5a3030; color: #e57373; font-size: 11px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.btn-signout { width: 100%; padding: 8px 10px; border-radius: 5px; background: transparent; border: 1px solid #5a3030; color: #e57373; font-size: 11px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
 .btn-signout:hover { background: rgba(177, 75, 69, 0.2); border-color: #b14b45; color: #ff8a80; }
 .main-content { min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
-.topbar { height: 66px; border-bottom: 1px solid var(--line); background: #fff; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; }
+.topbar { height: 64px; border-bottom: 1px solid var(--line); background: #fff; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; }
 .mobile-menu-btn { display: none; background: transparent; border: 0; color: var(--ink); font-size: 20px; cursor: pointer; }
 .topbar-title { font-size: 14px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; font-family: 'Manrope', sans-serif; }
 .indicator { color: var(--teal); font-size: 12px; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
-.role-pill { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: var(--teal-tint); color: var(--teal-dark); border: 1px solid #b7e8de; }
-.btn-top-exit { height: 34px; padding: 0 12px; border-radius: 6px; background: #f0f4f6; border: 1px solid var(--line); color: var(--navy); font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.operator-profile-pill { display: flex; align-items: center; gap: 8px; padding: 4px 10px; background: #f8fafb; border: 1px solid var(--line); border-radius: 5px; }
+.op-email-pill { font-size: 12px; font-weight: 600; color: var(--ink); }
+.role-pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 5px; background: var(--teal-tint); color: var(--teal-dark); border: 1px solid #b7e8de; }
+.btn-top-exit { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 5px; background: #f0f4f6; border: 1px solid var(--line); color: var(--navy); font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
 .btn-top-exit:hover { background: #e2ebef; }
-.btn-top-signout { height: 34px; padding: 0 12px; border-radius: 6px; background: #fff; border: 1px solid #fed2d2; color: var(--red); font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-top-signout { height: 34px; padding: 0 14px; border-radius: 5px; background: #fff; border: 1px solid #fed2d2; color: var(--red); font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
 .btn-top-signout:hover { background: var(--red-bg); }
 .content-body { padding: 32px; width: 100%; box-sizing: border-box; }
 .scrim { display: none; position: fixed; inset: 0; background: rgba(10,28,36,.55); z-index: 30; border: 0; }
@@ -198,13 +201,13 @@ import { PlatformContextService } from '../../core/platform-context.service';
   .scrim { display: block; }
   .mobile-menu-btn { display: block; }
   .topbar { padding: 0 16px; height: 58px; }
+  .operator-profile-pill { display: none; }
   .content-body { padding: 16px; }
 }
   `
 })
 export class PlatformShellComponent {
   readonly platformContext = inject(PlatformContextService);
-  private readonly router = inject(Router);
 
   readonly drawerOpen = signal(false);
 
@@ -215,16 +218,6 @@ export class PlatformShellComponent {
     return parts.length >= 2
       ? (parts[0][0] + parts[1][0]).toUpperCase()
       : name.substring(0, 2).toUpperCase();
-  }
-
-  async switchRole(adminId: string): Promise<void> {
-    await this.platformContext.switchDevRole(adminId);
-    // Route to first permitted section
-    if (this.platformContext.canViewMetrics()) {
-      void this.router.navigate(['/platform-admin/overview']);
-    } else if (this.platformContext.canViewWorkspaces()) {
-      void this.router.navigate(['/platform-admin/workspaces']);
-    }
   }
 
   exitToTenant(): void {

@@ -335,7 +335,7 @@ export class CustomerFormLivePage {
             <h3>{{j.title}}</h3>
             <p>{{customerName(j.customerId)}}</p>
             <div class="mobile-job-bottom">
-              <span>📅 {{j.scheduledDate || 'Unscheduled'}}{{j.arrivalWindow ? ' · ' + j.arrivalWindow : ''}}</span>
+              <span>{{j.scheduledDate || 'Unscheduled'}}{{j.arrivalWindow ? ' · ' + j.arrivalWindow : ''}}</span>
               <b>{{j.total | currency}}</b>
             </div>
           </a>
@@ -471,7 +471,7 @@ export class JobsLivePage {
                 <span class="preview-avatar">{{sc.name[0]}}</span>
                 <div class="preview-info">
                   <strong>{{sc.name}}</strong>
-                  <span>📞 {{sc.phone}} · 📍 {{sc.addressLine1}}, {{sc.city}} {{sc.stateCode}}</span>
+                  <span>{{sc.phone}} · {{sc.addressLine1}}, {{sc.city}} {{sc.stateCode}}</span>
                 </div>
                 <button type="button" class="btn-clear-customer" (click)="clearCustomer()" title="Remove selection">✕</button>
               </div>
@@ -651,7 +651,9 @@ export class JobsLivePage {
         </div>
 
         <div class="summary-meta">
-          <span>🛡️</span>
+          <span style="display:inline-flex;color:var(--teal)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
           <div>No invoice is issued yet. Review the work with your customer before invoicing.</div>
         </div>
       </div>
@@ -698,7 +700,15 @@ export class JobsLivePage {
           <div class="catalog-list">
             @for (c of filteredCatalog(); track c.id) {
               <div class="catalog-choice" [class.selected]="!!pickerSelections()[c.id]">
-                <span class="item-symbol">{{c.itemType === 'Part' ? '📦' : c.itemType === 'Labor' ? '⏱️' : '🔧'}}</span>
+                <span class="item-symbol" aria-hidden="true">
+                  @if (c.itemType === 'Part') {
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                  } @else if (c.itemType === 'Labor') {
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  } @else {
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                  }
+                </span>
                 <div class="info">
                   <strong>{{c.name}}</strong>
                   <small>{{c.itemType}} · per {{c.unit || 'visit'}}</small>
@@ -1257,7 +1267,7 @@ export class CustomerLivePage {
 <header class="page-head"><div><a class="back-link" routerLink="/app/jobs">← Back to jobs</a><p class="eyebrow">#{{j.jobNumber}}</p><h1>{{j.title}}</h1><p><a class="link" [routerLink]="['/app/customers', j.customerId]">{{customer()?.name||'Customer'}}</a> · {{customer()?.addressLine1}}</p></div>
 <div class="page-actions">
   @if(j.status==='Draft'){
-    <button class="btn primary" [disabled]="statusSaving()||scheduleSaving()" (click)="openScheduleModal()" id="schedule-visit-btn">📅 Schedule visit</button>
+    <button class="btn primary" [disabled]="statusSaving()||scheduleSaving()" (click)="openScheduleModal()" id="schedule-visit-btn">Schedule visit</button>
   }
   @else if(j.status==='Scheduled'){
     <button class="btn primary" [disabled]="statusSaving()" (click)="changeStatus('InProgress')" id="start-job-btn">→ Start job</button>
@@ -1529,7 +1539,7 @@ export class CustomerLivePage {
   <div class="quick-modal-backdrop" (click)="closeScheduleModal()">
     <div class="quick-modal-card" (click)="$event.stopPropagation()" style="max-width:480px">
       <div class="modal-header">
-        <h3>📅 Schedule visit for Job #{{j.jobNumber}}</h3>
+        <h3>Schedule visit for Job #{{j.jobNumber}}</h3>
         <button type="button" class="modal-close-btn" (click)="closeScheduleModal()">✕</button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
@@ -1589,7 +1599,15 @@ export class CustomerLivePage {
         <div class="catalog-list">
           @for (c of filteredCatalog(); track c.id) {
             <div class="catalog-choice" [class.selected]="!!pickerSelections()[c.id]">
-              <span class="item-symbol">{{c.itemType === 'Part' ? '📦' : c.itemType === 'Labor' ? '⏱️' : '🔧'}}</span>
+              <span class="item-symbol" aria-hidden="true">
+                @if (c.itemType === 'Part') {
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                } @else if (c.itemType === 'Labor') {
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                } @else {
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                }
+              </span>
               <div class="info">
                 <strong>{{c.name}}</strong>
                 <small>{{c.itemType}} · per {{c.unit || 'visit'}}</small>

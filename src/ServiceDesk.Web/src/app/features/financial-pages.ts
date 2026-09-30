@@ -30,14 +30,14 @@ const financialMessage = (error: unknown) => error instanceof HttpErrorResponse
       <div class="toolbar">
         <label class="search">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input aria-label="Search estimates" placeholder="Search estimate or customer…" [(ngModel)]="search">
+          <input aria-label="Search estimates" placeholder="Search estimate or customer…" [ngModel]="search()" (ngModelChange)="search.set($event)">
         </label>
         <ng-select class="filter-ng-select" [items]="estimateStatusOptions" bindLabel="label" bindValue="value" [clearable]="false" [searchable]="false" [(ngModel)]="status" (change)="load()"></ng-select>
       </div>
       <section class="card section-gap">
         @if(loading()){<div class="card-body muted">Loading estimates…</div>}
         @else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}
-        @else if(!filteredEstimates().length){<div class="empty-state"><h2>No estimates found</h2><p>Try clearing your search or status filter.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
+        @else if(!filteredEstimates().length){<div class="empty-state"><h2>No estimates found</h2><p>Try clearing your search or status filter.</p><div style="display:flex;gap:8px;justify-content:center;margin-top:12px">@if(search()||status){<button class="btn" type="button" (click)="clearFilters()">Clear filters</button>}<a class="btn primary" routerLink="/app/jobs">View jobs</a></div></div>}
         @else {<div class="table-scroll"><table class="data-table"><thead><tr><th>Estimate</th><th>Customer</th><th>Created</th><th>Expires</th><th>Status</th><th>Total</th><th></th></tr></thead><tbody>
           @for(e of filteredEstimates();track e.id){<tr><td><span class="cell-main"><a [routerLink]="['/app/estimates',e.id]"><strong>#{{e.estimateNumber}}</strong></a><small>{{e.items.length}} line items · revision {{e.revision}}</small></span></td><td>{{e.customerName}}</td><td>{{e.createdAt|date:'MMM d, y'}}</td><td>{{e.validUntil|date:'MMM d, y'}}</td><td><span class="badge" [class.gray]="e.status==='Draft'" [class.amber]="e.status==='Sent'" [class.teal]="e.status==='Approved'">{{e.status}}</span></td><td class="money">{{e.total|currency}}</td><td><div class="page-actions" style="flex-wrap: nowrap; justify-content: flex-end;">@if(e.status==='Draft'){<button class="btn small" [disabled]="savingId()===e.id" (click)="send(e)">Send</button><button class="btn small primary" [disabled]="savingId()===e.id" (click)="quickApprove(e)">Approve</button>}@else if(e.status==='Sent'){<button class="btn small primary" [disabled]="savingId()===e.id" (click)="quickApprove(e)">Approve</button>}@else if(e.status==='Approved'){<a class="btn small" [routerLink]="['/app/jobs', e.jobId]">View job</a>}</div></td></tr>}
         </tbody></table></div>}
@@ -51,15 +51,17 @@ export class EstimatesLivePage {
   readonly error = signal('');
   readonly savingId = signal('');
   readonly pipelineValue = computed(() => this.estimates().filter(x => x.status !== 'Declined' && x.status !== 'Expired').reduce((sum, x) => sum + x.total, 0));
-  search = '';
+  readonly search = signal('');
   readonly filteredEstimates = computed(() => {
-    const q = this.search.trim().toLowerCase();
+    const q = this.search().trim().toLowerCase().replace(/^#/, '');
     const list = this.estimates();
     if (!q) return list;
-    return list.filter(e =>
-      (e.estimateNumber && e.estimateNumber.toLowerCase().includes(q)) ||
-      (e.customerName && e.customerName.toLowerCase().includes(q))
-    );
+    return list.filter(e => {
+      const num = (e.estimateNumber || '').toLowerCase().replace(/^#/, '');
+      const cust = (e.customerName || '').toLowerCase();
+      const st = (e.status || '').toLowerCase();
+      return num.includes(q) || cust.includes(q) || st.includes(q);
+    });
   });
   status = '';
   readonly estimateStatusOptions = [
@@ -73,6 +75,11 @@ export class EstimatesLivePage {
   constructor() { this.load(); }
   load() { this.loading.set(true); this.error.set(''); this.api.estimates(this.status).subscribe({ next: rows => { this.estimates.set(rows); this.loading.set(false); }, error: error => { this.error.set(financialMessage(error)); this.loading.set(false); } }); }
   count(status: string) { return this.estimates().filter(x => x.status === status).length; }
+  clearFilters() {
+    this.search.set('');
+    this.status = '';
+    this.load();
+  }
   send(estimate: Estimate) { this.savingId.set(estimate.id); this.error.set(''); this.api.sendEstimate(estimate.id).subscribe({ next: updated => { this.estimates.update(rows => rows.map(x => x.id === updated.id ? updated : x)); this.savingId.set(''); }, error: error => { this.error.set(financialMessage(error)); this.savingId.set(''); } }); }
   quickApprove(estimate: Estimate) {
     this.savingId.set(estimate.id);
@@ -108,7 +115,7 @@ export class EstimatesLivePage {
       <div class="toolbar">
         <label class="search">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input aria-label="Search invoices" placeholder="Search invoice or customer…" [(ngModel)]="search">
+          <input aria-label="Search invoices" placeholder="Search invoice or customer…" [ngModel]="search()" (ngModelChange)="search.set($event)">
         </label>
         <div style="display: flex; align-items: center; gap: 10px;">
           @if(loading() || error()){<strong>{{loading() ? 'Loading invoices…' : 'Invoices unavailable'}}</strong>}
@@ -118,7 +125,7 @@ export class EstimatesLivePage {
       <section class="card section-gap">
         @if(loading()){<div class="card-body muted">Loading invoices…</div>}
         @else if(error()){<div class="card-body"><div class="callout error-text">{{error()}}</div><button class="btn" (click)="load()">Try again</button></div>}
-        @else if(!filteredInvoices().length){<div class="empty-state"><h2>No invoices found</h2><p>Try clearing your search or status filter.</p><a class="btn primary" routerLink="/app/jobs">View jobs</a></div>}
+        @else if(!filteredInvoices().length){<div class="empty-state"><h2>No invoices found</h2><p>Try clearing your search or status filter.</p><div style="display:flex;gap:8px;justify-content:center;margin-top:12px">@if(search()||status){<button class="btn" type="button" (click)="clearFilters()">Clear filters</button>}<a class="btn primary" routerLink="/app/jobs">View jobs</a></div></div>}
         @else {<div class="table-scroll"><table class="data-table"><thead><tr><th>Invoice</th><th>Customer</th><th>Issued / due</th><th>Status</th><th>Total</th><th>Balance</th><th></th></tr></thead><tbody>
           @for(i of filteredInvoices();track i.id){<tr><td><span class="cell-main"><a [routerLink]="['/app/invoices',i.id]"><strong>#{{i.invoiceNumber}}</strong></a><small>{{i.items.length}} line items</small></span></td><td>{{i.customerName}}</td><td><span class="cell-main"><strong>{{i.issuedOn?(i.issuedOn|date:'MMM d, y'):'Not issued'}}</strong><small>{{i.dueOn?'Due '+(i.dueOn|date:'MMM d, y'):'Draft'}}</small></span></td><td><span class="badge" [class.gray]="i.status==='Draft'" [class.red]="i.isOverdue" [class.teal]="i.paymentStatus==='Paid'">{{i.isOverdue?'Overdue':i.paymentStatus==='Paid'?'Paid':i.status}}</span></td><td class="money">{{i.total|currency}}</td><td class="money">{{i.balance|currency}}</td><td><div class="page-actions" style="flex-wrap: nowrap; justify-content: flex-end;">@if(i.status==='Draft'){<button class="btn small primary" [disabled]="savingId()===i.id" (click)="issue(i)">Issue</button>}@else if(i.status==='Issued'&&i.balance>0){<button class="btn small primary" [disabled]="savingId()===i.id" (click)="pay(i)">Record paid</button>}</div></td></tr>}
         </tbody></table></div>}
@@ -131,15 +138,19 @@ export class InvoicesLivePage {
   readonly loading = signal(true);
   readonly error = signal('');
   readonly savingId = signal('');
-  search = '';
+  readonly search = signal('');
   readonly filteredInvoices = computed(() => {
-    const q = this.search.trim().toLowerCase();
+    const q = this.search().trim().toLowerCase().replace(/^#/, '');
     const list = this.invoices();
     if (!q) return list;
-    return list.filter(i =>
-      (i.invoiceNumber && i.invoiceNumber.toLowerCase().includes(q)) ||
-      (i.customerName && i.customerName.toLowerCase().includes(q))
-    );
+    return list.filter(i => {
+      const num = (i.invoiceNumber || '').toLowerCase().replace(/^#/, '');
+      const cust = (i.customerName || '').toLowerCase();
+      const st = (i.status || '').toLowerCase();
+      const paySt = (i.paymentStatus || '').toLowerCase();
+      const matchPay = q === 'paid' ? paySt === 'paid' : paySt.includes(q);
+      return num.includes(q) || cust.includes(q) || st.includes(q) || matchPay;
+    });
   });
   status = '';
   readonly invoiceStatusOptions = [
@@ -154,6 +165,11 @@ export class InvoicesLivePage {
   constructor() { this.load(); }
   load() { this.loading.set(true); this.error.set(''); this.api.invoices(this.status).subscribe({ next: rows => { this.invoices.set(rows); this.loading.set(false); }, error: error => { this.error.set(financialMessage(error)); this.loading.set(false); } }); }
   count(status: string) { return this.invoices().filter(x => x.status === status).length; }
+  clearFilters() {
+    this.search.set('');
+    this.status = '';
+    this.load();
+  }
   issue(invoice: Invoice) { const issued = new Date(); const due = new Date(issued); due.setDate(due.getDate() + 14); this.mutate(invoice.id, this.api.issueInvoice(invoice.id, this.date(issued), this.date(due))); }
   pay(invoice: Invoice) { this.savingId.set(invoice.id); this.error.set(''); this.api.recordPayment(invoice.id, invoice.balance, 'Card').subscribe({ next: () => this.load(), error: error => { this.error.set(financialMessage(error)); this.savingId.set(''); } }); }
   private mutate(id: string, request: ReturnType<WorkApiService['issueInvoice']>) { this.savingId.set(id); this.error.set(''); request.subscribe({ next: updated => { this.invoices.update(rows => rows.map(x => x.id === updated.id ? updated : x)); this.savingId.set(''); }, error: error => { this.error.set(financialMessage(error)); this.savingId.set(''); } }); }

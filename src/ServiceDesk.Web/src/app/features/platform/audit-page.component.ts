@@ -34,7 +34,10 @@ import { PlatformContextService } from '../../core/platform-context.service';
     </div>
   } @else if (error()) {
     <div class="state-card error">
-      <p class="error-msg">⚠️ {{ error() }}</p>
+      <p class="error-msg">
+        <svg class="inline-warn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        {{ error() }}
+      </p>
       <button type="button" class="btn-retry" (click)="loadAuditEvents()">Try Again</button>
     </div>
   } @else if (events().length === 0) {
@@ -67,7 +70,7 @@ import { PlatformContextService } from '../../core/platform-context.service';
                 }
               </td>
               <td><span class="mono">{{ event.actorUserId }}</span></td>
-              <td class="details-cell">{{ event.details || '—' }}</td>
+              <td class="details-cell">{{ event.details || '-' }}</td>
             </tr>
           }
         </tbody>
@@ -81,24 +84,25 @@ import { PlatformContextService } from '../../core/platform-context.service';
 .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
 h2 { font-size: 24px; font-weight: 800; color: var(--ink); margin: 0; font-family: 'Manrope', sans-serif; }
 .subtitle { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
-.btn-refresh { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; background: #fff; color: var(--navy); border: 1px solid var(--line); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+.btn-refresh { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 5px; background: #fff; color: var(--navy); border: 1px solid var(--line); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
 .btn-refresh:hover:not(:disabled) { background: #f8fafb; border-color: #cbd5e1; color: var(--teal-dark); }
 .btn-refresh:disabled { opacity: 0.6; cursor: not-allowed; }
 .refresh-icon.spin { animation: spin 0.8s linear infinite; }
-.table-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; box-shadow: var(--shadow); width: 100%; }
+.table-card { background: #fff; border: 1px solid var(--line); border-radius: 5px; overflow-x: auto; box-shadow: var(--shadow); width: 100%; }
 .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
 .data-table th { padding: 12px 16px; background: #f8fafb; color: var(--muted); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .05em; border-bottom: 1px solid var(--line); }
 .data-table td { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); color: var(--ink); }
 .data-table tr:hover td { background: #f8fafb; }
 .nowrap { white-space: nowrap; }
-.action-tag { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; background: var(--teal-tint); color: var(--teal-dark); border: 1px solid #b7e8de; }
+.action-tag { display: inline-block; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; background: var(--teal-tint); color: var(--teal-dark); border: 1px solid #b7e8de; }
 .mono { font-family: monospace; font-size: 12px; color: var(--navy); font-weight: 600; }
 .mono-sub { display: block; font-family: monospace; font-size: 11px; color: var(--muted); }
 .muted { color: var(--muted); font-style: italic; }
 .details-cell { max-width: 320px; word-break: break-word; font-size: 12px; color: var(--muted); }
-.state-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 3rem 1.5rem; text-align: center; color: var(--muted); box-shadow: var(--shadow); }
+.state-card { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 3rem 1.5rem; text-align: center; color: var(--muted); box-shadow: var(--shadow); }
 .spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.inline-warn { display: inline-block; vertical-align: middle; margin-right: 4px; color: var(--red); }
   `
 })
 export class PlatformAuditComponent implements OnInit {
