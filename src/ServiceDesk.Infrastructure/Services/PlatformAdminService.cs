@@ -1,7 +1,9 @@
 using System.Data;
+using System.Globalization;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using ServiceDesk.Application.Platform;
+using ServiceDesk.Application.Security;
 using ServiceDesk.Infrastructure.Data;
 
 namespace ServiceDesk.Infrastructure.Services;
@@ -9,7 +11,8 @@ namespace ServiceDesk.Infrastructure.Services;
 public sealed class PlatformAdminService(
     BaseDAL baseDAL,
     ILogger<PlatformAdminService> logger,
-    IAdministratorResolver administratorResolver)
+    IAdministratorResolver administratorResolver,
+    IPasswordHasher? passwordHasher = null)
     : IPlatformAdminService
 {
     private static readonly Action<ILogger, Guid, string, string, Exception?> LogBusinessStatusChanged =
@@ -386,6 +389,209 @@ public sealed class PlatformAdminService(
             request.Entitlements);
     }
 
+    public async Task<PlatformPlanDetailResponse> UpdatePlanAsync(
+        Guid actorUserId,
+        Guid planId,
+        UpdatePlatformPlanRequest request,
+        CancellationToken cancellationToken)
+    {
+        const string checkSql = "SELECT Code, Revision FROM platform.Plans WHERE Id = @Id;";
+        const string updatePlanSql = """
+            UPDATE platform.Plans
+            SET Name = @Name,
+                BillingInterval = @Interval,
+                Price = @Price,
+                Currency = @Currency,
+                IsPublished = @IsPublished,
+                Revision = Revision + 1
+            WHERE Id = @Id;
+            """;
+
+        const string deleteEntitlementsSql = "DELETE FROM platform.PlanEntitlements WHERE PlanId = @PlanId;";
+        const string insertEntitlementSql = """
+            INSERT INTO platform.PlanEntitlements (PlanId, FeatureCode, Enabled, LimitValue, DisplayText)
+            VALUES (@PlanId, @FeatureCode, @Enabled, @LimitValue, @DisplayText);
+            """;
+
+        const string auditSql = """
+            INSERT INTO platform.AdminAuditEvents (ActorUserId, BusinessId, Action, Details)
+            VALUES (@ActorUserId, NULL, 'plan.updated', N'{"planId":"' + CAST(@Id AS nvarchar(36)) + N'","price":' + CAST(@Price AS nvarchar) + N'}');
+            """;
+
+        var (code, newRev) = await baseDAL.ExecutePlatformInTransactionAsync(
+            "Platform.Plans.Update",
+            async (conn, tx, ct) =>
+            {
+                string planCode;
+                int currentRev;
+                await using (var cmdCheck = BaseDAL.BuildCommand(conn, tx, checkSql, parameters: [UniqueIdentifier("@Id", planId)]))
+                await using (var reader = await cmdCheck.ExecuteReaderAsync(ct).ConfigureAwait(false))
+                {
+                    if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+                    {
+                        throw new InvalidOperationException("The specified plan does not exist.");
+                    }
+                    planCode = reader.GetString(0);
+                    currentRev = reader.GetInt32(1);
+                }
+
+                await using (var cmdPlan = BaseDAL.BuildCommand(conn, tx, updatePlanSql, parameters:
+                [
+                    UniqueIdentifier("@Id", planId),
+                    NVarChar("@Name", request.Name, 100),
+                    NVarChar("@Interval", request.BillingInterval, 32),
+                    Decimal("@Price", request.Price),
+                    NVarChar("@Currency", request.Currency, 3),
+                    Bit("@IsPublished", request.IsPublished)
+                ]))
+                {
+                    await cmdPlan.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                await using (var cmdDel = BaseDAL.BuildCommand(conn, tx, deleteEntitlementsSql, parameters: [UniqueIdentifier("@PlanId", planId)]))
+                {
+                    await cmdDel.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                foreach (var ent in request.Entitlements)
+                {
+                    await using var cmdEnt = BaseDAL.BuildCommand(conn, tx, insertEntitlementSql, parameters:
+                    [
+                        UniqueIdentifier("@PlanId", planId),
+                        NVarChar("@FeatureCode", ent.FeatureCode, 60),
+                        Bit("@Enabled", ent.Enabled),
+                        ent.LimitValue.HasValue ? BigInt("@LimitValue", ent.LimitValue.Value) : NullBigInt("@LimitValue"),
+                        NVarChar("@DisplayText", ent.DisplayText, 200)
+                    ]);
+                    await cmdEnt.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                await using (var cmdAudit = BaseDAL.BuildCommand(conn, tx, auditSql, parameters:
+                [
+                    UniqueIdentifier("@ActorUserId", actorUserId),
+                    UniqueIdentifier("@Id", planId),
+                    Decimal("@Price", request.Price)
+                ]))
+                {
+                    await cmdAudit.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                return (planCode, currentRev + 1);
+            },
+            IsolationLevel.ReadCommitted,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        return new PlatformPlanDetailResponse(
+            planId, code, newRev, request.Name, request.BillingInterval,
+            request.Price, request.Currency, request.IsPublished,
+            request.Entitlements);
+    }
+
+    public async Task<PlatformPlanDetailResponse> TogglePlanPublishAsync(
+        Guid actorUserId,
+        Guid planId,
+        bool isPublished,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE platform.Plans
+            SET IsPublished = @IsPublished
+            WHERE Id = @Id;
+
+            INSERT INTO platform.AdminAuditEvents (ActorUserId, BusinessId, Action, Details)
+            VALUES (@ActorUserId, NULL, CASE WHEN @IsPublished = 1 THEN 'plan.published' ELSE 'plan.unpublished' END,
+                    N'{"planId":"' + CAST(@Id AS nvarchar(36)) + N'"}');
+            """;
+
+        await baseDAL.ExecutePlatformInTransactionAsync(
+            "Platform.Plans.TogglePublish",
+            async (conn, tx, ct) =>
+            {
+                await using var cmd = BaseDAL.BuildCommand(conn, tx, sql, parameters:
+                [
+                    UniqueIdentifier("@Id", planId),
+                    Bit("@IsPublished", isPublished),
+                    UniqueIdentifier("@ActorUserId", actorUserId)
+                ]);
+                var rows = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                if (rows == 0)
+                {
+                    throw new InvalidOperationException("Plan not found.");
+                }
+                return true;
+            },
+            IsolationLevel.ReadCommitted,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        var allPlans = await GetPlansAsync(cancellationToken).ConfigureAwait(false);
+        var plan = allPlans.FirstOrDefault(p => p.Id == planId);
+        if (plan is null)
+        {
+            throw new InvalidOperationException("Plan not found after update.");
+        }
+        return plan;
+    }
+
+    public async Task DeletePlanAsync(
+        Guid actorUserId,
+        Guid planId,
+        CancellationToken cancellationToken)
+    {
+        const string checkSubSql = """
+            SELECT COUNT(*)
+            FROM app.Subscriptions
+            WHERE PlanId = @PlanId AND IsCurrent = 1;
+            """;
+
+        const string deleteEntSql = "DELETE FROM platform.PlanEntitlements WHERE PlanId = @PlanId;";
+        const string deletePlanSql = "DELETE FROM platform.Plans WHERE Id = @PlanId;";
+        const string auditSql = """
+            INSERT INTO platform.AdminAuditEvents (ActorUserId, BusinessId, Action, Details)
+            VALUES (@ActorUserId, NULL, 'plan.deleted', N'{"planId":"' + CAST(@PlanId AS nvarchar(36)) + N'"}');
+            """;
+
+        await baseDAL.ExecutePlatformInTransactionAsync(
+            "Platform.Plans.Delete",
+            async (conn, tx, ct) =>
+            {
+                await using (var cmdCheck = BaseDAL.BuildCommand(conn, tx, checkSubSql, parameters: [UniqueIdentifier("@PlanId", planId)]))
+                {
+                    var count = Convert.ToInt32(await cmdCheck.ExecuteScalarAsync(ct).ConfigureAwait(false), System.Globalization.CultureInfo.InvariantCulture);
+                    if (count > 0)
+                    {
+                        throw new InvalidOperationException("Cannot delete plan: active tenant workspaces are currently subscribed to this plan. Unpublish the plan instead to prevent new signups.");
+                    }
+                }
+
+                await using (var cmdEnt = BaseDAL.BuildCommand(conn, tx, deleteEntSql, parameters: [UniqueIdentifier("@PlanId", planId)]))
+                {
+                    await cmdEnt.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                await using (var cmdPlan = BaseDAL.BuildCommand(conn, tx, deletePlanSql, parameters: [UniqueIdentifier("@PlanId", planId)]))
+                {
+                    var rows = await cmdPlan.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                    if (rows == 0)
+                    {
+                        throw new InvalidOperationException("Plan not found.");
+                    }
+                }
+
+                await using (var cmdAudit = BaseDAL.BuildCommand(conn, tx, auditSql, parameters:
+                [
+                    UniqueIdentifier("@ActorUserId", actorUserId),
+                    UniqueIdentifier("@PlanId", planId)
+                ]))
+                {
+                    await cmdAudit.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                return true;
+            },
+            IsolationLevel.ReadCommitted,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
     // ─── Backup & Restore ────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<BackupRunResponse>> GetBackupRunsAsync(
@@ -608,6 +814,496 @@ public sealed class PlatformAdminService(
                 UniqueIdentifier("@BusinessId", businessId),
                 UniqueIdentifier("@GrantId", grantId)
             ],
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    // ─── Platform Users & Custom Permissions ─────────────────────────────────
+
+    public async Task<IReadOnlyList<PlatformUserDetailResponse>> GetPlatformUsersAsync(
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            IF NOT EXISTS (SELECT 1 FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'platform' AND t.name = 'AdministratorPermissions')
+            BEGIN
+                CREATE TABLE platform.AdministratorPermissions (
+                    UserId uniqueidentifier NOT NULL,
+                    PermissionCode varchar(80) NOT NULL,
+                    PRIMARY KEY (UserId, PermissionCode),
+                    FOREIGN KEY (UserId) REFERENCES platform.Administrators(UserId) ON DELETE CASCADE
+                );
+            END;
+
+            SELECT
+                a.UserId,
+                u.FullName,
+                u.Email,
+                a.RoleCode,
+                a.IsActive,
+                u.CreatedAt
+            FROM platform.Administrators AS a
+            INNER JOIN auth.Users AS u ON u.Id = a.UserId
+            ORDER BY u.FullName ASC;
+            """;
+
+        var users = await baseDAL.ExecutePlatformQueryAsync(
+            "Platform.Users.List",
+            sql,
+            reader => (
+                UserId: reader.GetGuid(0),
+                FullName: reader.GetString(1),
+                Email: reader.GetString(2),
+                RoleCode: reader.GetString(3),
+                IsActive: reader.GetBoolean(4),
+                CreatedAt: (DateTimeOffset?)new DateTimeOffset(DateTime.SpecifyKind(reader.GetDateTime(5), DateTimeKind.Utc))
+            ),
+            null,
+            cancellationToken).ConfigureAwait(false);
+
+        const string permSql = """
+            SELECT UserId, PermissionCode
+            FROM platform.AdministratorPermissions;
+            """;
+
+        var allPerms = await baseDAL.ExecutePlatformQueryAsync(
+            "Platform.Users.AllPermissions",
+            permSql,
+            reader => (UserId: reader.GetGuid(0), PermissionCode: reader.GetString(1)),
+            null,
+            cancellationToken).ConfigureAwait(false);
+
+        var permsByUser = allPerms
+            .GroupBy(p => p.UserId)
+            .ToDictionary(g => g.Key, g => g.Select(p => p.PermissionCode).ToList());
+
+        var result = new List<PlatformUserDetailResponse>();
+        foreach (var u in users)
+        {
+            IReadOnlyList<string> pageAccess;
+            if (permsByUser.TryGetValue(u.UserId, out var customList) && customList.Count > 0)
+            {
+                pageAccess = customList;
+            }
+            else
+            {
+                // Fall back to role-based defaults if not explicitly customized
+                pageAccess = u.RoleCode switch
+                {
+                    "OperationsAdmin" => ["overview", "workspaces", "plans", "backups", "audit", "smtp", "security", "users"],
+                    "BillingAdmin" => ["overview", "workspaces", "plans"],
+                    _ => ["overview", "workspaces", "security"]
+                };
+            }
+
+            result.Add(new PlatformUserDetailResponse(
+                u.UserId,
+                u.FullName,
+                u.Email,
+                u.RoleCode,
+                u.IsActive,
+                pageAccess,
+                u.CreatedAt));
+        }
+
+        return result;
+    }
+
+    public async Task<PlatformUserDetailResponse> CreatePlatformUserAsync(
+        Guid actorUserId,
+        CreatePlatformUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.FullName))
+            throw new ArgumentException("Full name is required.");
+        if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
+            throw new ArgumentException("A valid email address is required.");
+
+        var cleanEmail = request.Email.Trim();
+        var normalizedEmail = cleanEmail.ToUpperInvariant();
+        var normalizedPages = (request.PageAccess ?? [])
+            .Select(p => p.Trim().ToLowerInvariant())
+            .Distinct()
+            .ToList();
+
+        if (normalizedPages.Count == 0)
+        {
+            normalizedPages = ["overview"];
+        }
+
+        return await baseDAL.ExecutePlatformInTransactionAsync(
+            "Platform.Users.Create",
+            async (connection, transaction, ct) =>
+            {
+                const string ensureTableSql = """
+                    IF NOT EXISTS (SELECT 1 FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'platform' AND t.name = 'AdministratorPermissions')
+                    BEGIN
+                        CREATE TABLE platform.AdministratorPermissions (
+                            UserId uniqueidentifier NOT NULL,
+                            PermissionCode varchar(80) NOT NULL,
+                            PRIMARY KEY (UserId, PermissionCode),
+                            FOREIGN KEY (UserId) REFERENCES platform.Administrators(UserId) ON DELETE CASCADE
+                        );
+                    END;
+                    """;
+
+                using (var ensureCmd = connection.CreateCommand())
+                {
+                    ensureCmd.Transaction = transaction;
+                    ensureCmd.CommandText = ensureTableSql;
+                    await ensureCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                // Check if user already exists in auth.Users
+                const string findUserSql = """
+                    SELECT Id FROM auth.Users WHERE NormalizedEmail = @NormalizedEmail;
+                    """;
+
+                Guid userId;
+                using (var cmd = connection.CreateCommand())
+                {
+                    cmd.Transaction = transaction;
+                    cmd.CommandText = findUserSql;
+                    cmd.Parameters.Add(new SqlParameter("@NormalizedEmail", SqlDbType.NVarChar, 254) { Value = normalizedEmail });
+                    var existingId = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+                    if (existingId is not null && existingId != DBNull.Value)
+                    {
+                        userId = (Guid)existingId;
+                    }
+                    else
+                    {
+                        userId = Guid.NewGuid();
+                        string? hash = null;
+                        string? salt = null;
+                        if (!string.IsNullOrWhiteSpace(request.InitialPassword) && passwordHasher is not null)
+                        {
+                            var res = passwordHasher.HashPassword(request.InitialPassword);
+                            hash = res.Hash;
+                            salt = res.Salt;
+                        }
+
+                        const string insertUserSql = """
+                            INSERT INTO auth.Users (Id, Subject, Email, NormalizedEmail, FullName, PasswordHash, PasswordSalt, CreatedAt, UpdatedAt)
+                            VALUES (@Id, @Subject, @Email, @NormalizedEmail, @FullName, @PasswordHash, @PasswordSalt, SYSUTCDATETIME(), SYSUTCDATETIME());
+                            """;
+
+                        using var insertCmd = connection.CreateCommand();
+                        insertCmd.Transaction = transaction;
+                        insertCmd.CommandText = insertUserSql;
+                        insertCmd.Parameters.Add(new SqlParameter("@Id", SqlDbType.UniqueIdentifier) { Value = userId });
+                        insertCmd.Parameters.Add(new SqlParameter("@Subject", SqlDbType.NVarChar, 200) { Value = $"platform-user-{userId:N}" });
+                        insertCmd.Parameters.Add(new SqlParameter("@Email", SqlDbType.NVarChar, 254) { Value = cleanEmail });
+                        insertCmd.Parameters.Add(new SqlParameter("@NormalizedEmail", SqlDbType.NVarChar, 254) { Value = normalizedEmail });
+                        insertCmd.Parameters.Add(new SqlParameter("@FullName", SqlDbType.NVarChar, 200) { Value = request.FullName.Trim() });
+                        insertCmd.Parameters.Add(new SqlParameter("@PasswordHash", SqlDbType.NVarChar, 500) { Value = (object?)hash ?? DBNull.Value });
+                        insertCmd.Parameters.Add(new SqlParameter("@PasswordSalt", SqlDbType.NVarChar, 200) { Value = (object?)salt ?? DBNull.Value });
+                        await insertCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                    }
+                }
+
+                // Check if already in platform.Administrators
+                const string checkAdminSql = "SELECT 1 FROM platform.Administrators WHERE UserId = @UserId;";
+                using (var checkCmd = connection.CreateCommand())
+                {
+                    checkCmd.Transaction = transaction;
+                    checkCmd.CommandText = checkAdminSql;
+                    checkCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = userId });
+                    var exists = await checkCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+                    if (exists is not null && exists != DBNull.Value)
+                    {
+                        throw new InvalidOperationException("This user is already registered as a platform user.");
+                    }
+                }
+
+                var roleCode = normalizedPages.Contains("users") ? "OperationsAdmin" : "Support";
+
+                const string insertAdminSql = """
+                    INSERT INTO platform.Administrators (UserId, RoleCode, IsActive)
+                    VALUES (@UserId, @RoleCode, 1);
+                    """;
+
+                using (var adminCmd = connection.CreateCommand())
+                {
+                    adminCmd.Transaction = transaction;
+                    adminCmd.CommandText = insertAdminSql;
+                    adminCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = userId });
+                    adminCmd.Parameters.Add(new SqlParameter("@RoleCode", SqlDbType.VarChar, 32) { Value = roleCode });
+                    await adminCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                // Insert into platform.AdministratorPermissions
+                foreach (var page in normalizedPages)
+                {
+                    const string insertPermSql = """
+                        INSERT INTO platform.AdministratorPermissions (UserId, PermissionCode)
+                        VALUES (@UserId, @PermissionCode);
+                        """;
+
+                    using var permCmd = connection.CreateCommand();
+                    permCmd.Transaction = transaction;
+                    permCmd.CommandText = insertPermSql;
+                    permCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = userId });
+                    permCmd.Parameters.Add(new SqlParameter("@PermissionCode", SqlDbType.VarChar, 80) { Value = page });
+                    await permCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                // Audit event
+                const string auditSql = """
+                    INSERT INTO platform.AdminAuditEvents (ActorUserId, BusinessId, Action, Details, CreatedAt)
+                    VALUES (@ActorUserId, NULL, 'PlatformUserCreated', @Details, SYSUTCDATETIME());
+                    """;
+
+                using (var auditCmd = connection.CreateCommand())
+                {
+                    auditCmd.Transaction = transaction;
+                    auditCmd.CommandText = auditSql;
+                    auditCmd.Parameters.Add(new SqlParameter("@ActorUserId", SqlDbType.UniqueIdentifier) { Value = actorUserId });
+                    auditCmd.Parameters.Add(new SqlParameter("@Details", SqlDbType.NVarChar, -1)
+                    {
+                        Value = $"Created platform user {cleanEmail} ({request.FullName}) with custom page access: {string.Join(", ", normalizedPages)}"
+                    });
+                    await auditCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                return new PlatformUserDetailResponse(
+                    userId,
+                    request.FullName.Trim(),
+                    cleanEmail,
+                    roleCode,
+                    true,
+                    normalizedPages,
+                    DateTimeOffset.UtcNow);
+            },
+            IsolationLevel.ReadCommitted,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<PlatformUserDetailResponse> UpdatePlatformUserAsync(
+        Guid actorUserId,
+        Guid targetUserId,
+        UpdatePlatformUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.FullName))
+            throw new ArgumentException("Full name is required.");
+
+        var normalizedPages = (request.PageAccess ?? [])
+            .Select(p => p.Trim().ToLowerInvariant())
+            .Distinct()
+            .ToList();
+
+        if (normalizedPages.Count == 0)
+        {
+            normalizedPages = ["overview"];
+        }
+
+        return await baseDAL.ExecutePlatformInTransactionAsync(
+            "Platform.Users.Update",
+            async (connection, transaction, ct) =>
+            {
+                // Check if deactivating or removing users access
+                if (!request.IsActive || !normalizedPages.Contains("users"))
+                {
+                    const string countAdminsSql = """
+                        SELECT COUNT(DISTINCT a.UserId)
+                        FROM platform.Administrators a
+                        LEFT JOIN platform.AdministratorPermissions ap ON ap.UserId = a.UserId
+                        WHERE a.IsActive = 1
+                          AND a.UserId != @TargetUserId
+                          AND (a.RoleCode = 'OperationsAdmin' OR ap.PermissionCode = 'users');
+                        """;
+
+                    using var countCmd = connection.CreateCommand();
+                    countCmd.Transaction = transaction;
+                    countCmd.CommandText = countAdminsSql;
+                    countCmd.Parameters.Add(new SqlParameter("@TargetUserId", SqlDbType.UniqueIdentifier) { Value = targetUserId });
+                    var otherAdmins = Convert.ToInt32(await countCmd.ExecuteScalarAsync(ct).ConfigureAwait(false), CultureInfo.InvariantCulture);
+                    if (otherAdmins == 0)
+                    {
+                        throw new InvalidOperationException("Cannot deactivate or remove user management access from the last active administrative user.");
+                    }
+                }
+
+                // Update auth.Users full name
+                const string updateNameSql = """
+                    UPDATE auth.Users
+                    SET FullName = @FullName, UpdatedAt = SYSUTCDATETIME()
+                    WHERE Id = @UserId;
+                    """;
+
+                using (var nameCmd = connection.CreateCommand())
+                {
+                    nameCmd.Transaction = transaction;
+                    nameCmd.CommandText = updateNameSql;
+                    nameCmd.Parameters.Add(new SqlParameter("@FullName", SqlDbType.NVarChar, 200) { Value = request.FullName.Trim() });
+                    nameCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = targetUserId });
+                    await nameCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                var roleCode = normalizedPages.Contains("users") ? "OperationsAdmin" : "Support";
+
+                // Update platform.Administrators
+                const string updateAdminSql = """
+                    UPDATE platform.Administrators
+                    SET RoleCode = @RoleCode, IsActive = @IsActive
+                    WHERE UserId = @UserId;
+                    """;
+
+                using (var adminCmd = connection.CreateCommand())
+                {
+                    adminCmd.Transaction = transaction;
+                    adminCmd.CommandText = updateAdminSql;
+                    adminCmd.Parameters.Add(new SqlParameter("@RoleCode", SqlDbType.VarChar, 32) { Value = roleCode });
+                    adminCmd.Parameters.Add(new SqlParameter("@IsActive", SqlDbType.Bit) { Value = request.IsActive });
+                    adminCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = targetUserId });
+                    await adminCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                // Replace permissions
+                const string deletePermsSql = "DELETE FROM platform.AdministratorPermissions WHERE UserId = @UserId;";
+                using (var delCmd = connection.CreateCommand())
+                {
+                    delCmd.Transaction = transaction;
+                    delCmd.CommandText = deletePermsSql;
+                    delCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = targetUserId });
+                    await delCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                foreach (var page in normalizedPages)
+                {
+                    const string insertPermSql = """
+                        INSERT INTO platform.AdministratorPermissions (UserId, PermissionCode)
+                        VALUES (@UserId, @PermissionCode);
+                        """;
+
+                    using var permCmd = connection.CreateCommand();
+                    permCmd.Transaction = transaction;
+                    permCmd.CommandText = insertPermSql;
+                    permCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = targetUserId });
+                    permCmd.Parameters.Add(new SqlParameter("@PermissionCode", SqlDbType.VarChar, 80) { Value = page });
+                    await permCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                // Audit event
+                const string auditSql = """
+                    INSERT INTO platform.AdminAuditEvents (ActorUserId, BusinessId, Action, Details, CreatedAt)
+                    VALUES (@ActorUserId, NULL, 'PlatformUserUpdated', @Details, SYSUTCDATETIME());
+                    """;
+
+                using (var auditCmd = connection.CreateCommand())
+                {
+                    auditCmd.Transaction = transaction;
+                    auditCmd.CommandText = auditSql;
+                    auditCmd.Parameters.Add(new SqlParameter("@ActorUserId", SqlDbType.UniqueIdentifier) { Value = actorUserId });
+                    auditCmd.Parameters.Add(new SqlParameter("@Details", SqlDbType.NVarChar, -1)
+                    {
+                        Value = $"Updated platform user {targetUserId}: Active={request.IsActive}, Name={request.FullName.Trim()}, Pages={string.Join(", ", normalizedPages)}"
+                    });
+                    await auditCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                // Fetch email & created
+                const string getEmailSql = "SELECT Email, CreatedAt FROM auth.Users WHERE Id = @UserId;";
+                string email = "";
+                DateTimeOffset? createdAt = null;
+                using (var emailCmd = connection.CreateCommand())
+                {
+                    emailCmd.Transaction = transaction;
+                    emailCmd.CommandText = getEmailSql;
+                    emailCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = targetUserId });
+                    using var r = await emailCmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                    if (await r.ReadAsync(ct).ConfigureAwait(false))
+                    {
+                        email = r.GetString(0);
+                        createdAt = new DateTimeOffset(DateTime.SpecifyKind(r.GetDateTime(1), DateTimeKind.Utc));
+                    }
+                }
+
+                return new PlatformUserDetailResponse(
+                    targetUserId,
+                    request.FullName.Trim(),
+                    email,
+                    roleCode,
+                    request.IsActive,
+                    normalizedPages,
+                    createdAt);
+            },
+            IsolationLevel.ReadCommitted,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task DeletePlatformUserAsync(
+        Guid actorUserId,
+        Guid targetUserId,
+        CancellationToken cancellationToken)
+    {
+        if (actorUserId == targetUserId)
+        {
+            throw new InvalidOperationException("You cannot delete your own administrative account.");
+        }
+
+        await baseDAL.ExecutePlatformInTransactionAsync(
+            "Platform.Users.Delete",
+            async (connection, transaction, ct) =>
+            {
+                // Verify another active admin exists
+                const string countAdminsSql = """
+                    SELECT COUNT(*)
+                    FROM platform.Administrators
+                    WHERE IsActive = 1 AND UserId != @TargetUserId;
+                    """;
+
+                using (var countCmd = connection.CreateCommand())
+                {
+                    countCmd.Transaction = transaction;
+                    countCmd.CommandText = countAdminsSql;
+                    countCmd.Parameters.Add(new SqlParameter("@TargetUserId", SqlDbType.UniqueIdentifier) { Value = targetUserId });
+                    var otherAdmins = Convert.ToInt32(await countCmd.ExecuteScalarAsync(ct).ConfigureAwait(false), CultureInfo.InvariantCulture);
+                    if (otherAdmins == 0)
+                    {
+                        throw new InvalidOperationException("Cannot delete the last active platform administrator.");
+                    }
+                }
+
+                // Delete permissions
+                const string delPermsSql = "DELETE FROM platform.AdministratorPermissions WHERE UserId = @UserId;";
+                using (var delCmd = connection.CreateCommand())
+                {
+                    delCmd.Transaction = transaction;
+                    delCmd.CommandText = delPermsSql;
+                    delCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = targetUserId });
+                    await delCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                // Delete administrator record
+                const string delAdminSql = "DELETE FROM platform.Administrators WHERE UserId = @UserId;";
+                using (var adminCmd = connection.CreateCommand())
+                {
+                    adminCmd.Transaction = transaction;
+                    adminCmd.CommandText = delAdminSql;
+                    adminCmd.Parameters.Add(new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = targetUserId });
+                    await adminCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                // Audit event
+                const string auditSql = """
+                    INSERT INTO platform.AdminAuditEvents (ActorUserId, BusinessId, Action, Details, CreatedAt)
+                    VALUES (@ActorUserId, NULL, 'PlatformUserDeleted', @Details, SYSUTCDATETIME());
+                    """;
+
+                using (var auditCmd = connection.CreateCommand())
+                {
+                    auditCmd.Transaction = transaction;
+                    auditCmd.CommandText = auditSql;
+                    auditCmd.Parameters.Add(new SqlParameter("@ActorUserId", SqlDbType.UniqueIdentifier) { Value = actorUserId });
+                    auditCmd.Parameters.Add(new SqlParameter("@Details", SqlDbType.NVarChar, -1)
+                    {
+                        Value = $"Deleted platform user {targetUserId}"
+                    });
+                    await auditCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+
+                return true;
+            },
+            IsolationLevel.ReadCommitted,
             cancellationToken).ConfigureAwait(false);
     }
 

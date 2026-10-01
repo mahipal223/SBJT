@@ -141,7 +141,7 @@ All checks and verification gates passed with zero errors:
 | **.NET Build** | `dotnet build ServiceDesk.slnx --no-restore` | **PASSED (0 warnings, 0 errors)** |
 | **Backend Integration Tests** | `dotnet run --project tests/ServiceDesk.Api.Tests --no-build` | **PASSED (Phase 1–11 passed)** |
 | **Angular Web Build** | `npm --prefix src/ServiceDesk.Web run build` | **PASSED (0 errors)** |
-| **Angular Unit Tests** | `npm --prefix src/ServiceDesk.Web test -- --watch=false` | **PASSED (8 test files, 23/23 passed)** |
+| **Angular Unit Tests** | `npm --prefix src/ServiceDesk.Web test -- --watch=false` | **PASSED (10 test files, 29/29 passed)** |
 
 ---
 
@@ -171,6 +171,41 @@ All checks and verification gates passed with zero errors:
 | `/app/settings/smtp` | `SmtpSettingsPage` | `smtp-settings.page.ts` | **100% Live** |
 | `/app/technician` | `TechnicianPage` | `management-pages.ts` | **100% Live** |
 | `/platform-admin/login` | `PlatformLoginComponent` | `platform/platform-login.component.ts` | **100% Live** |
-| `/platform-admin/*` | Platform Admin Suite | `platform/*.component.ts` | **100% Live** |
+| `/platform-admin/overview` | `PlatformOverviewComponent` | `platform/overview-page.component.ts` | **100% Live** |
+| `/platform-admin/workspaces` | `PlatformWorkspacesComponent` | `platform/workspaces-page.component.ts` | **100% Live** |
+| `/platform-admin/plans` | `PlatformPlansComponent` | `platform/plans-page.component.ts` | **100% Live** |
+| `/platform-admin/users` | `PlatformUsersPageComponent` | `platform/users-page.component.ts` | **100% Live** |
+| `/platform-admin/backups` | `PlatformBackupsComponent` | `platform/backups-page.component.ts` | **100% Live** |
+| `/platform-admin/audit` | `PlatformAuditComponent` | `platform/audit-page.component.ts` | **100% Live** |
+| `/platform-admin/smtp` | `PlatformSmtpComponent` | `platform/smtp-page.component.ts` | **100% Live** |
+| `/platform-admin/security` | `PlatformSecurityComponent` | `platform/security-page.component.ts` | **100% Live** |
 
-All pages across the entire ServiceDesk application are now live, wired to backend SQL Server APIs through tenant-isolated services, free of mock/dummy data, and fully compliant with project standards.
+
+### G. Platform Plans & Subscription Entitlements Management
+- **Status:** Complete Live API & Full Management Suite.
+- **Backend & Database Infrastructure:**
+  - Seeded standard pricing tiers:
+    - `SOLO`: $29/mo, 1 staff seat, 100 jobs/period, 1 GB storage, estimates enabled.
+    - `TEAM`: $79/mo, 5 staff seats, 500 jobs/period, 10 GB storage, estimates and data export enabled.
+    - `BUSINESS`: $199/mo, 20 staff seats, 2,500 jobs/period, 50 GB storage, estimates, data export, and advanced reports enabled.
+  - Added backend endpoints in [`PlatformAdminController.cs`](file:///d:/TempDebug/SBJT/src/ServiceDesk.Api/Controllers/PlatformAdminController.cs):
+    - `POST /api/v1/admin/plans`: Create new plan with custom quotas and feature entitlement toggles.
+    - `PUT /api/v1/admin/plans/{planId}`: Edit plan pricing, interval, publication state, quotas, and feature flags.
+    - `PUT /api/v1/admin/plans/{planId}/publish`: Quick toggle for publication / active availability.
+    - `DELETE /api/v1/admin/plans/{planId}`: Safe deletion with active subscription checks (blocks deletion if any tenant workspace is actively subscribed to prevent cascading breaks).
+- **Frontend Management UI:**
+  - Rewritten [`PlatformPlansComponent`](file:///d:/TempDebug/SBJT/src/ServiceDesk.Web/src/app/features/platform/plans-page.component.ts) with full CRUD:
+    - **Plan Cards Grid:** Displays tier code, revision, name, published/draft status badge, pricing per interval, and feature entitlement badges (staff seats, jobs quota, storage GB, estimates, exports, reports, API webhooks).
+    - **Create Plan Modal:** Dynamic form with `.has-error` / `.field-error` client-side validation, quota inputs, and feature checkboxes.
+    - **Edit Plan Modal:** Pre-populates all existing plan quotas and entitlement toggles for instant revision and saving.
+    - **Publish / Unpublish & Delete Actions:** Directly available on each plan card with confirmation dialogs and error alerts.
+- **Testing & Verification:**
+  - [`plans-page.component.spec.ts`](file:///d:/TempDebug/SBJT/src/ServiceDesk.Web/src/app/features/platform/plans-page.component.spec.ts): 5 unit tests covering plan listing, create validation & submission, edit modal prefilling & update, publish state toggle, and delete flow.
+  - All 11 Angular test suites (34 tests) passing (`ng test --watch=false`).
+  - Production build passing (`ng build`).
+  - Backend integration test suite passing (`dotnet run --project tests/ServiceDesk.Api.Tests`).
+  - Code formatting strictly verified (`dotnet format ServiceDesk.slnx --verify-no-changes`).
+
+---
+
+All pages across the entire ServiceDesk application — including the Platform Administration Control Plane, custom granular Platform User access management, and Platform Plans & Entitlements — are live, wired to backend SQL Server APIs through tenant-isolated services, free of mock/dummy data, and fully compliant with project standards.

@@ -17,8 +17,8 @@ import { PlatformContextService } from '../../core/platform-context.service';
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
       </div>
-      <h1>Platform Operations</h1>
-      <p class="subtitle">Secure administrative control plane for authorized operators only.</p>
+      <h1>Platform Administration</h1>
+      <p class="subtitle">Secure administrative control plane for authorized platform users only.</p>
     </div>
 
     @if (error()) {
@@ -27,10 +27,10 @@ import { PlatformContextService } from '../../core/platform-context.service';
       </div>
     }
 
-    <!-- Operator Credentials Form -->
+    <!-- Platform User Credentials Form -->
     <form class="operator-form" (ngSubmit)="loginWithCredentials()">
       <div class="field" [class.has-error]="emailError()">
-        <label for="op-email">Operator Email</label>
+        <label for="op-email">Email Address</label>
         <input
           id="op-email"
           type="email"
@@ -53,7 +53,7 @@ import { PlatformContextService } from '../../core/platform-context.service';
           name="operatorSecret"
           [(ngModel)]="operatorSecret"
           (input)="secretError.set('')"
-          placeholder="Enter operator access secret"
+          placeholder="Enter access secret"
           autocomplete="current-password"
           required />
         @if (secretError()) {
@@ -79,7 +79,7 @@ import { PlatformContextService } from '../../core/platform-context.service';
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
       </svg>
-      <span>Restricted Area. Authorized administrative operators only. All authentication attempts and telemetry queries are cryptographically logged.</span>
+      <span>Restricted Area. Authorized administrative platform users only. All authentication attempts and telemetry queries are cryptographically logged.</span>
     </div>
 
     <div class="footer-links">
@@ -133,7 +133,7 @@ export class PlatformLoginPage {
     const secret = this.operatorSecret.trim();
 
     if (!email) {
-      this.emailError.set('Operator email is required.');
+      this.emailError.set('Email address is required.');
       return;
     }
     if (!secret) {
@@ -159,7 +159,7 @@ export class PlatformLoginPage {
     if (success) {
       void this.router.navigate(['/platform-admin/overview']);
     } else {
-      this.error.set('Failed to authenticate as platform operator. Verify server configuration.');
+      this.error.set('Failed to authenticate as platform user. Verify server configuration.');
     }
   }
 }

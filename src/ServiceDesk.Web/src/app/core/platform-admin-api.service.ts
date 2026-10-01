@@ -80,6 +80,15 @@ export interface CreatePlatformPlanRequest {
   entitlements: PlatformPlanEntitlementRow[];
 }
 
+export interface UpdatePlatformPlanRequest {
+  name: string;
+  billingInterval: string;
+  price: number;
+  currency: string;
+  isPublished: boolean;
+  entitlements: PlatformPlanEntitlementRow[];
+}
+
 export interface BackupRunResponse {
   id: string;
   providerReference: string;
@@ -169,6 +178,19 @@ export class PlatformAdminApiService {
     return this.http.post<PlatformPlanDetailResponse>(`${this.apiBase}/plans`, request);
   }
 
+  updatePlan(planId: string, request: UpdatePlatformPlanRequest): Observable<PlatformPlanDetailResponse> {
+    return this.http.put<PlatformPlanDetailResponse>(`${this.apiBase}/plans/${planId}`, request);
+  }
+
+  togglePlanPublish(planId: string, isPublished: boolean): Observable<PlatformPlanDetailResponse> {
+    const params = new HttpParams().set('isPublished', isPublished.toString());
+    return this.http.put<PlatformPlanDetailResponse>(`${this.apiBase}/plans/${planId}/publish`, null, { params });
+  }
+
+  deletePlan(planId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiBase}/plans/${planId}`);
+  }
+
   getBackupRuns(limit = 20): Observable<BackupRunResponse[]> {
     const params = new HttpParams().set('limit', limit.toString());
     return this.http.get<BackupRunResponse[]>(`${this.apiBase}/backups`, { params });
@@ -186,4 +208,78 @@ export class PlatformAdminApiService {
     const params = new HttpParams().set('limit', limit.toString());
     return this.http.get<PlatformAdminAuditEventResponse[]>(`${this.apiBase}/audit-events`, { params });
   }
+
+  getPasswordPolicy(): Observable<PasswordPolicyResponse> {
+    return this.http.get<PasswordPolicyResponse>(`${this.apiBase}/security/password-policy`);
+  }
+
+  updatePasswordPolicy(request: UpdatePasswordPolicyRequest): Observable<PasswordPolicyResponse> {
+    return this.http.put<PasswordPolicyResponse>(`${this.apiBase}/security/password-policy`, request);
+  }
+
+  getPlatformUsers(): Observable<PlatformUserDetailResponse[]> {
+    return this.http.get<PlatformUserDetailResponse[]>(`${this.apiBase}/users`);
+  }
+
+  createPlatformUser(request: CreatePlatformUserRequest): Observable<PlatformUserDetailResponse> {
+    return this.http.post<PlatformUserDetailResponse>(`${this.apiBase}/users`, request);
+  }
+
+  updatePlatformUser(userId: string, request: UpdatePlatformUserRequest): Observable<PlatformUserDetailResponse> {
+    return this.http.put<PlatformUserDetailResponse>(`${this.apiBase}/users/${userId}`, request);
+  }
+
+  deletePlatformUser(userId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiBase}/users/${userId}`);
+  }
+}
+
+export interface PlatformUserDetailResponse {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  pageAccess: string[];
+  createdAt?: string;
+}
+
+export interface CreatePlatformUserRequest {
+  fullName: string;
+  email: string;
+  initialPassword?: string;
+  pageAccess: string[];
+}
+
+export interface UpdatePlatformUserRequest {
+  fullName: string;
+  isActive: boolean;
+  pageAccess: string[];
+}
+
+export interface PasswordPolicyResponse {
+  minLength: number;
+  maxLength: number;
+  requireUppercase: boolean;
+  requireLowercase: boolean;
+  requireDigit: boolean;
+  requireNonAlphanumeric: boolean;
+  maxFailedAccessAttempts: number;
+  lockoutDurationMinutes: number;
+  passwordExpirationDays?: number;
+  preventPasswordReuseCount: number;
+  updatedAt: string;
+}
+
+export interface UpdatePasswordPolicyRequest {
+  minLength: number;
+  maxLength: number;
+  requireUppercase: boolean;
+  requireLowercase: boolean;
+  requireDigit: boolean;
+  requireNonAlphanumeric: boolean;
+  maxFailedAccessAttempts: number;
+  lockoutDurationMinutes: number;
+  passwordExpirationDays?: number;
+  preventPasswordReuseCount: number;
 }

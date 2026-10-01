@@ -89,9 +89,7 @@ import { PlatformContextService } from '../../core/platform-context.service';
             <th>Plan & Members</th>
             <th>Billing Email</th>
             <th>Created</th>
-            @if (platformContext.canViewMetrics()) {
-              <th>Actions</th>
-            }
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -115,23 +113,80 @@ import { PlatformContextService } from '../../core/platform-context.service';
               </td>
               <td>{{ b.billingEmail }}</td>
               <td>{{ b.createdAt | date:'shortDate' }}</td>
-              @if (platformContext.canViewMetrics()) {
-                <td>
-                  @if (b.status === 'Active') {
-                    <button type="button" class="action-btn warn" (click)="openStatusModal(b, 'Suspended')">
-                      Suspend
-                    </button>
-                  } @else if (b.status === 'Suspended') {
-                    <button type="button" class="action-btn ok" (click)="openStatusModal(b, 'Active')">
-                      Reactivate
-                    </button>
+              <td>
+                <div class="btn-group">
+                  <button type="button" class="action-btn info" (click)="openDetailModal(b)">
+                    Details
+                  </button>
+                  @if (platformContext.canViewMetrics()) {
+                    @if (b.status === 'Active') {
+                      <button type="button" class="action-btn warn" (click)="openStatusModal(b, 'Suspended')">
+                        Suspend
+                      </button>
+                    } @else if (b.status === 'Suspended') {
+                      <button type="button" class="action-btn ok" (click)="openStatusModal(b, 'Active')">
+                        Reactivate
+                      </button>
+                    }
                   }
-                </td>
-              }
+                </div>
+              </td>
             </tr>
           }
         </tbody>
       </table>
+    </div>
+  }
+
+  <!-- Workspace Detail Modal -->
+  @if (detailModalOpen() && selectedBusiness()) {
+    <div class="modal-backdrop" (click)="closeDetailModal()">
+      <div class="modal-card detail-card" (click)="$event.stopPropagation()">
+        <div class="modal-header-row">
+          <div>
+            <h3>{{ selectedBusiness()!.name }}</h3>
+            <span class="biz-id">{{ selectedBusiness()!.id }}</span>
+          </div>
+          <span class="status-badge" [class.active]="selectedBusiness()!.status === 'Active'" [class.suspended]="selectedBusiness()!.status === 'Suspended'">
+            {{ selectedBusiness()!.status }}
+          </span>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-cell">
+            <span class="detail-lbl">Industry</span>
+            <span class="detail-txt">{{ selectedBusiness()!.industry }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">Billing Email</span>
+            <span class="detail-txt">{{ selectedBusiness()!.billingEmail }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">Subscription Plan</span>
+            <span class="detail-txt">{{ selectedBusiness()!.planName || 'No Plan' }} ({{ selectedBusiness()!.planCode || 'None' }})</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">Subscription Status</span>
+            <span class="detail-txt">{{ selectedBusiness()!.subscriptionStatus || 'N/A' }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">Team Size</span>
+            <span class="detail-txt">{{ selectedBusiness()!.memberCount }} active seats</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">Timezone & Currency</span>
+            <span class="detail-txt">{{ selectedBusiness()!.timeZone }} · {{ selectedBusiness()!.currency }}</span>
+          </div>
+          <div class="detail-cell full">
+            <span class="detail-lbl">Registered On</span>
+            <span class="detail-txt">{{ selectedBusiness()!.createdAt | date:'medium' }}</span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeDetailModal()">Close</button>
+        </div>
+      </div>
     </div>
   }
 
@@ -208,7 +263,10 @@ h2 { font-size: 24px; font-weight: 800; color: var(--ink); margin: 0; font-famil
 .plan-info { display: flex; flex-direction: column; gap: 0.15rem; }
 .plan-name { font-weight: 700; color: var(--ink); }
 .member-count { font-size: 12px; color: var(--muted); }
+.btn-group { display: flex; align-items: center; gap: 6px; }
 .action-btn { padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: 700; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; }
+.action-btn.info { background: #fff; color: var(--navy); border-color: var(--line); }
+.action-btn.info:hover { background: #f8fafb; border-color: #cbd5e1; }
 .action-btn.warn { background: #fff; color: var(--red); border-color: #fed2d2; }
 .action-btn.warn:hover { background: var(--red-bg); }
 .action-btn.ok { background: #fff; color: var(--teal-dark); border-color: #b7e8de; }
@@ -218,7 +276,14 @@ h2 { font-size: 24px; font-weight: 800; color: var(--ink); margin: 0; font-famil
 @keyframes spin { to { transform: rotate(360deg); } }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(10, 28, 36, 0.55); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 50; padding: 1rem; }
 .modal-card { width: 100%; max-width: 480px; background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 1.75rem; box-shadow: 0 20px 40px rgba(16, 41, 54, 0.18); color: var(--ink); }
+.detail-card { max-width: 520px; }
+.modal-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; }
 .modal-card h3 { margin: 0 0 0.5rem; font-size: 18px; font-weight: 800; color: var(--ink); font-family: 'Manrope', sans-serif; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+.detail-cell { display: flex; flex-direction: column; gap: 2px; }
+.detail-cell.full { grid-column: span 2; }
+.detail-lbl { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.detail-txt { font-size: 13px; font-weight: 600; color: var(--ink); }
 .modal-desc { font-size: 13px; color: var(--muted); margin-bottom: 1.25rem; }
 .form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 0.35rem; }
 .modal-input { width: 100%; padding: 8px 12px; border-radius: 5px; background: #fff; border: 1px solid var(--line); color: var(--ink); font-size: 13px; box-sizing: border-box; }
@@ -253,6 +318,20 @@ export class PlatformWorkspacesComponent implements OnInit {
     { value: 'Suspended', label: 'Suspended' },
     { value: 'Closed', label: 'Closed' }
   ];
+
+  // Detail modal
+  readonly detailModalOpen = signal(false);
+  readonly selectedBusiness = signal<PlatformBusinessSummaryResponse | null>(null);
+
+  openDetailModal(b: PlatformBusinessSummaryResponse): void {
+    this.selectedBusiness.set(b);
+    this.detailModalOpen.set(true);
+  }
+
+  closeDetailModal(): void {
+    this.detailModalOpen.set(false);
+    this.selectedBusiness.set(null);
+  }
 
   @HostListener('document:click')
   onDocumentClick(): void {

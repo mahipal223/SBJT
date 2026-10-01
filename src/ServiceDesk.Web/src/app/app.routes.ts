@@ -100,6 +100,16 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/platform/smtp-page.component').then(m => m.PlatformSmtpComponent),
           },
+          {
+            path: 'users',
+            loadComponent: () =>
+              import('./features/platform/users-page.component').then(m => m.PlatformUsersPageComponent),
+          },
+          {
+            path: 'security',
+            loadComponent: () =>
+              import('./features/platform/security-page.component').then(m => m.PlatformSecurityComponent),
+          },
           { path: '', pathMatch: 'full', redirectTo: 'overview' },
         ],
       },

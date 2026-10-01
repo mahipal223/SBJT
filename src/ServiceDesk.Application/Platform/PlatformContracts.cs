@@ -67,6 +67,14 @@ public sealed record CreatePlatformPlanRequest(
     bool IsPublished,
     IReadOnlyList<PlatformPlanEntitlementRow> Entitlements);
 
+public sealed record UpdatePlatformPlanRequest(
+    string Name,
+    string BillingInterval,
+    decimal Price,
+    string Currency,
+    bool IsPublished,
+    IReadOnlyList<PlatformPlanEntitlementRow> Entitlements);
+
 public sealed record BackupRunResponse(
     Guid Id,
     string ProviderReference,
@@ -123,7 +131,28 @@ public sealed record PlatformAdministratorRecord(
     string FullName,
     string Email,
     string RoleCode,
-    bool IsActive);
+    bool IsActive,
+    IReadOnlyList<string>? CustomPermissions = null);
+
+public sealed record PlatformUserDetailResponse(
+    Guid UserId,
+    string FullName,
+    string Email,
+    string RoleCode,
+    bool IsActive,
+    IReadOnlyList<string> PageAccess,
+    DateTimeOffset? CreatedAt);
+
+public sealed record CreatePlatformUserRequest(
+    string FullName,
+    string Email,
+    string? InitialPassword,
+    IReadOnlyList<string> PageAccess);
+
+public sealed record UpdatePlatformUserRequest(
+    string FullName,
+    bool IsActive,
+    IReadOnlyList<string> PageAccess);
 
 public interface IPlatformAdminService
 {
@@ -159,6 +188,23 @@ public interface IPlatformAdminService
         CreatePlatformPlanRequest request,
         CancellationToken cancellationToken);
 
+    Task<PlatformPlanDetailResponse> UpdatePlanAsync(
+        Guid actorUserId,
+        Guid planId,
+        UpdatePlatformPlanRequest request,
+        CancellationToken cancellationToken);
+
+    Task<PlatformPlanDetailResponse> TogglePlanPublishAsync(
+        Guid actorUserId,
+        Guid planId,
+        bool isPublished,
+        CancellationToken cancellationToken);
+
+    Task DeletePlanAsync(
+        Guid actorUserId,
+        Guid planId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<BackupRunResponse>> GetBackupRunsAsync(
         int limit,
         CancellationToken cancellationToken);
@@ -191,5 +237,24 @@ public interface IPlatformAdminService
         Guid businessId,
         Guid grantId,
         Guid actorUserId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<PlatformUserDetailResponse>> GetPlatformUsersAsync(
+        CancellationToken cancellationToken);
+
+    Task<PlatformUserDetailResponse> CreatePlatformUserAsync(
+        Guid actorUserId,
+        CreatePlatformUserRequest request,
+        CancellationToken cancellationToken);
+
+    Task<PlatformUserDetailResponse> UpdatePlatformUserAsync(
+        Guid actorUserId,
+        Guid targetUserId,
+        UpdatePlatformUserRequest request,
+        CancellationToken cancellationToken);
+
+    Task DeletePlatformUserAsync(
+        Guid actorUserId,
+        Guid targetUserId,
         CancellationToken cancellationToken);
 }

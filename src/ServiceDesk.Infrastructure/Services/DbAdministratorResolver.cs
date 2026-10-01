@@ -57,7 +57,32 @@ public sealed class DbAdministratorResolver(
 
                 if (record is not null)
                 {
-                    return record;
+                    try
+                    {
+                        const string permSql = """
+                            IF EXISTS (SELECT 1 FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'platform' AND t.name = 'AdministratorPermissions')
+                            BEGIN
+                                SELECT PermissionCode
+                                FROM platform.AdministratorPermissions
+                                WHERE UserId = @UserId;
+                            END
+                            """;
+
+                        var customPerms = await baseDAL.ExecutePlatformQueryAsync(
+                            "Platform.Administrator.Permissions",
+                            permSql,
+                            reader => reader.GetString(0),
+                            [
+                                new SqlParameter("@UserId", SqlDbType.UniqueIdentifier) { Value = userId }
+                            ],
+                            cancellationToken).ConfigureAwait(false);
+
+                        return record with { CustomPermissions = customPerms };
+                    }
+                    catch
+                    {
+                        return record;
+                    }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

@@ -22,15 +22,29 @@ public sealed record PlatformContext(
             permissions.Add(Security.Permissions.PlatformSupport);
             permissions.Add(Security.Permissions.PlatformBillingAdmin);
             permissions.Add(Security.Permissions.PlatformOperationsAdmin);
+            permissions.Add(Security.Permissions.PlatformUsers);
+            permissions.Add(Security.Permissions.PlatformOverview);
+            permissions.Add(Security.Permissions.PlatformWorkspaces);
+            permissions.Add(Security.Permissions.PlatformPlans);
+            permissions.Add(Security.Permissions.PlatformBackups);
+            permissions.Add(Security.Permissions.PlatformAudit);
+            permissions.Add(Security.Permissions.PlatformSmtp);
+            permissions.Add(Security.Permissions.PlatformSecurity);
         }
         else if (string.Equals(roleCode, "BillingAdmin", StringComparison.OrdinalIgnoreCase))
         {
             permissions.Add(Security.Permissions.PlatformSupport);
             permissions.Add(Security.Permissions.PlatformBillingAdmin);
+            permissions.Add(Security.Permissions.PlatformOverview);
+            permissions.Add(Security.Permissions.PlatformWorkspaces);
+            permissions.Add(Security.Permissions.PlatformPlans);
         }
         else if (string.Equals(roleCode, "Support", StringComparison.OrdinalIgnoreCase))
         {
             permissions.Add(Security.Permissions.PlatformSupport);
+            permissions.Add(Security.Permissions.PlatformOverview);
+            permissions.Add(Security.Permissions.PlatformWorkspaces);
+            permissions.Add(Security.Permissions.PlatformSecurity);
         }
 
         return permissions;
@@ -38,7 +52,19 @@ public sealed record PlatformContext(
 
     public static PlatformContext Create(PlatformAdministratorRecord admin)
     {
-        var permissions = GetPermissionsForRole(admin.RoleCode);
+        var permissions = new HashSet<string>(GetPermissionsForRole(admin.RoleCode), StringComparer.Ordinal);
+        if (admin.CustomPermissions is not null)
+        {
+            foreach (var perm in admin.CustomPermissions)
+            {
+                permissions.Add(perm);
+                if (!perm.StartsWith("platform:", StringComparison.OrdinalIgnoreCase))
+                {
+                    permissions.Add($"platform:{perm}");
+                }
+            }
+        }
+
         return new PlatformContext(
             admin.UserId,
             admin.FullName,

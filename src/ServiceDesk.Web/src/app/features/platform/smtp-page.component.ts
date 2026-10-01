@@ -165,24 +165,7 @@ interface SmtpSettings {
     }
   </div>
 
-  <!-- Delivery & Security Standards -->
-  <div class="card advisory-card">
-    <h2>Delivery & Security Standards</h2>
-    <div class="advisory-grid">
-      <div class="advisory-item">
-        <h3>STARTTLS (Port 587)</h3>
-        <p>Recommended standard for modern cloud transactional mail services including AWS SES, Postmark, and SendGrid.</p>
-      </div>
-      <div class="advisory-item">
-        <h3>Implicit TLS (Port 465)</h3>
-        <p>Supported for secure mail relays requiring SSL negotiation immediately upon TCP socket establishment.</p>
-      </div>
-      <div class="advisory-item">
-        <h3>Sender Domain Authentication</h3>
-        <p>Ensure SPF (Sender Policy Framework) and DKIM keys are published in your DNS to maximize deliverability to recipient inboxes.</p>
-      </div>
-    </div>
-  </div>
+
 
 </div>
   `,
@@ -377,22 +360,6 @@ interface SmtpSettings {
     .alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
     .alert-error   { background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; }
 
-    /* Advisory Standards */
-    .advisory-card { background: #f8fafc; border: 1px solid var(--line); border-radius: 5px; padding: 24px; }
-    .advisory-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 18px;
-      margin-top: 16px;
-    }
-    .advisory-item {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 5px;
-      padding: 16px;
-    }
-    .advisory-item h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--ink); }
-    .advisory-item p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.55; }
     .inline-warn { color: var(--red); flex-shrink: 0; }
     .inline-ok { color: var(--teal-dark); flex-shrink: 0; }
     .header-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 5px; background: var(--teal-tint); color: var(--teal-dark); border: 1px solid #b7e8de; }

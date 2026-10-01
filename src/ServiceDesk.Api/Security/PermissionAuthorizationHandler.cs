@@ -33,8 +33,8 @@ public sealed class PermissionAuthorizationHandler(
                 var admin = await administratorResolver.ResolveAsync(adminUserId, CancellationToken.None);
                 if (admin is not null && admin.IsActive)
                 {
-                    var permissions = PlatformContext.GetPermissionsForRole(admin.RoleCode);
-                    if (permissions.Contains(requirement.Permission))
+                    var platformCtx = PlatformContext.Create(admin);
+                    if (platformCtx.HasPermission(requirement.Permission))
                     {
                         context.Succeed(requirement);
                     }

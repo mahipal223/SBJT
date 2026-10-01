@@ -120,6 +120,41 @@ public sealed class PlatformAdminController(
         return CreatedAtAction(nameof(GetPlans), plan);
     }
 
+    [HttpPut("plans/{planId:guid}")]
+    [Authorize(Policy = Permissions.PlatformBillingAdmin)]
+    public async Task<ActionResult<PlatformPlanDetailResponse>> UpdatePlan(
+        Guid planId,
+        UpdatePlatformPlanRequest request,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId = platformContextAccessor.Current?.OperatorUserId ?? Guid.Empty;
+        var plan = await platformAdmin.UpdatePlanAsync(actorUserId, planId, request, cancellationToken);
+        return Ok(plan);
+    }
+
+    [HttpPut("plans/{planId:guid}/publish")]
+    [Authorize(Policy = Permissions.PlatformBillingAdmin)]
+    public async Task<ActionResult<PlatformPlanDetailResponse>> TogglePlanPublish(
+        Guid planId,
+        [FromQuery] bool isPublished,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId = platformContextAccessor.Current?.OperatorUserId ?? Guid.Empty;
+        var plan = await platformAdmin.TogglePlanPublishAsync(actorUserId, planId, isPublished, cancellationToken);
+        return Ok(plan);
+    }
+
+    [HttpDelete("plans/{planId:guid}")]
+    [Authorize(Policy = Permissions.PlatformBillingAdmin)]
+    public async Task<ActionResult> DeletePlan(
+        Guid planId,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId = platformContextAccessor.Current?.OperatorUserId ?? Guid.Empty;
+        await platformAdmin.DeletePlanAsync(actorUserId, planId, cancellationToken);
+        return NoContent();
+    }
+
     // ─── Backups & Restores ──────────────────────────────────────────────────
 
     [HttpGet("backups")]
@@ -260,6 +295,85 @@ public sealed class PlatformAdminController(
         catch (Exception ex)
         {
             return Ok(new PlatformSmtpTestResult(false, $"SMTP connection failed: {ex.Message}"));
+        }
+    }
+
+    // ─── Platform Users ───────────────────────────────────────────────────────
+
+    [HttpGet("users")]
+    [Authorize(Policy = Permissions.PlatformUsers)]
+    public async Task<ActionResult<IReadOnlyList<PlatformUserDetailResponse>>> GetPlatformUsers(
+        CancellationToken cancellationToken)
+    {
+        var users = await platformAdmin.GetPlatformUsersAsync(cancellationToken);
+        return Ok(users);
+    }
+
+    [HttpPost("users")]
+    [Authorize(Policy = Permissions.PlatformUsers)]
+    public async Task<ActionResult<PlatformUserDetailResponse>> CreatePlatformUser(
+        [FromBody] CreatePlatformUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId = platformContextAccessor.Current?.OperatorUserId ?? Guid.Empty;
+        try
+        {
+            var user = await platformAdmin.CreatePlatformUserAsync(actorUserId, request, cancellationToken);
+            return Ok(user);
+        }
+        catch (ArgumentException ex)
+        {
+            return Problem(statusCode: 400, title: "Validation failed", detail: ex.Message,
+                extensions: new Dictionary<string, object?> { ["code"] = "validation_failed" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(statusCode: 409, title: "Conflict", detail: ex.Message,
+                extensions: new Dictionary<string, object?> { ["code"] = "conflict" });
+        }
+    }
+
+    [HttpPut("users/{userId:guid}")]
+    [Authorize(Policy = Permissions.PlatformUsers)]
+    public async Task<ActionResult<PlatformUserDetailResponse>> UpdatePlatformUser(
+        Guid userId,
+        [FromBody] UpdatePlatformUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId = platformContextAccessor.Current?.OperatorUserId ?? Guid.Empty;
+        try
+        {
+            var user = await platformAdmin.UpdatePlatformUserAsync(actorUserId, userId, request, cancellationToken);
+            return Ok(user);
+        }
+        catch (ArgumentException ex)
+        {
+            return Problem(statusCode: 400, title: "Validation failed", detail: ex.Message,
+                extensions: new Dictionary<string, object?> { ["code"] = "validation_failed" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(statusCode: 400, title: "Action rejected", detail: ex.Message,
+                extensions: new Dictionary<string, object?> { ["code"] = "action_rejected" });
+        }
+    }
+
+    [HttpDelete("users/{userId:guid}")]
+    [Authorize(Policy = Permissions.PlatformUsers)]
+    public async Task<IActionResult> DeletePlatformUser(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId = platformContextAccessor.Current?.OperatorUserId ?? Guid.Empty;
+        try
+        {
+            await platformAdmin.DeletePlatformUserAsync(actorUserId, userId, cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(statusCode: 400, title: "Action rejected", detail: ex.Message,
+                extensions: new Dictionary<string, object?> { ["code"] = "action_rejected" });
         }
     }
 }

@@ -24,15 +24,38 @@ export class PlatformContextService {
   readonly permissions = computed(() => this.operator()?.permissions ?? []);
 
   // Capabilities
-  readonly canViewWorkspaces = computed(() => this.hasPermission('platform:Support'));
-  readonly canViewPlans = computed(() => this.hasPermission('platform:BillingAdmin'));
-  readonly canViewMetrics = computed(() => this.hasPermission('platform:OperationsAdmin'));
-  readonly canViewBackups = computed(() => this.hasPermission('platform:OperationsAdmin'));
-  readonly canViewAudit = computed(() => this.hasPermission('platform:OperationsAdmin'));
-  readonly canManageSmtp = computed(() => this.hasPermission('platform:OperationsAdmin'));
+  readonly canViewWorkspaces = computed(() => this.hasPageAccess('workspaces'));
+  readonly canViewPlans = computed(() => this.hasPageAccess('plans'));
+  readonly canViewMetrics = computed(() => this.hasPageAccess('overview'));
+  readonly canViewBackups = computed(() => this.hasPageAccess('backups'));
+  readonly canViewAudit = computed(() => this.hasPageAccess('audit'));
+  readonly canManageSmtp = computed(() => this.hasPageAccess('smtp'));
+  readonly canViewSecurity = computed(() => this.hasPageAccess('security'));
+  readonly canManageSecurity = computed(() => this.hasPageAccess('security'));
+  readonly canViewUsers = computed(() => this.hasPageAccess('users'));
+  readonly canManageUsers = computed(() => this.hasPageAccess('users'));
 
   hasPermission(permission: string): boolean {
     return this.operator()?.permissions?.includes(permission) ?? false;
+  }
+
+  hasPageAccess(pageKey: string): boolean {
+    if (!this.operator()) return false;
+    const perms = this.operator()?.permissions ?? [];
+    const normalized = pageKey.trim().toLowerCase();
+
+    if (perms.includes('platform:OperationsAdmin') || this.role() === 'OperationsAdmin') {
+      return true;
+    }
+
+    return perms.includes(normalized) ||
+      perms.includes(`platform:${normalized}`) ||
+      perms.includes(`platform:${pageKey}`) ||
+      (normalized === 'overview' && (perms.includes('platform:Support') || perms.includes('platform:BillingAdmin'))) ||
+      (normalized === 'workspaces' && perms.includes('platform:Support')) ||
+      (normalized === 'plans' && perms.includes('platform:BillingAdmin')) ||
+      (normalized === 'security' && perms.includes('platform:Support')) ||
+      (normalized === 'users' && (perms.includes('platform:Users') || perms.includes('users')));
   }
 
   async loadCurrentOperator(): Promise<PlatformOperatorResponse | null> {

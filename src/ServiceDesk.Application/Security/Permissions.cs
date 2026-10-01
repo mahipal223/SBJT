@@ -22,6 +22,14 @@ public static class Permissions
     public const string PlatformSupport = "platform:Support";
     public const string PlatformBillingAdmin = "platform:BillingAdmin";
     public const string PlatformOperationsAdmin = "platform:OperationsAdmin";
+    public const string PlatformUsers = "platform:Users";
+    public const string PlatformOverview = "platform:overview";
+    public const string PlatformWorkspaces = "platform:workspaces";
+    public const string PlatformPlans = "platform:plans";
+    public const string PlatformBackups = "platform:backups";
+    public const string PlatformAudit = "platform:audit";
+    public const string PlatformSmtp = "platform:smtp";
+    public const string PlatformSecurity = "platform:security";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -44,6 +52,14 @@ public static class Permissions
         SupportApprove,
         PlatformSupport,
         PlatformBillingAdmin,
-        PlatformOperationsAdmin
+        PlatformOperationsAdmin,
+        PlatformUsers,
+        PlatformOverview,
+        PlatformWorkspaces,
+        PlatformPlans,
+        PlatformBackups,
+        PlatformAudit,
+        PlatformSmtp,
+        PlatformSecurity
     };
 }

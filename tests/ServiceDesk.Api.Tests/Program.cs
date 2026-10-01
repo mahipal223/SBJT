@@ -545,7 +545,9 @@ var operatorResponse = new PlatformOperatorResponse(
     platformContext.Permissions.ToList());
 Require(operatorResponse.Id == adminRecord.UserId, "OperatorResponse ID matches");
 Require(operatorResponse.Role == "OperationsAdmin", "OperatorResponse role matches");
-Require(operatorResponse.Permissions.Count == 3, "OperatorResponse has all 3 platform permissions");
+Require(operatorResponse.Permissions.Contains(Permissions.PlatformSupport)
+    && operatorResponse.Permissions.Contains(Permissions.PlatformBillingAdmin)
+    && operatorResponse.Permissions.Contains(Permissions.PlatformOperationsAdmin), "OperatorResponse has all 3 platform permissions");
 
 // Tenant isolation: Tenant context must NOT contain platform permissions
 Require(!context.HasPermission(Permissions.PlatformSupport), "Tenant context cannot satisfy PlatformSupport");
